@@ -115,14 +115,9 @@ async function openItems(game) {
   const box = $('itemsList');
   if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
   box.innerHTML = '';
-
   if (game.id === 'app-premium') {
     const groups = {};
-    items.forEach(it => {
-      const cat = it.category || '📦 အခြား';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(it);
-    });
+    items.forEach(it => { const cat = it.category || '📦 အခြား'; if (!groups[cat]) groups[cat] = []; groups[cat].push(it); });
     Object.entries(groups).forEach(([cat, list]) => {
       const title = document.createElement('div');
       title.className = 'category-title';
@@ -158,26 +153,12 @@ function openBuy(item) {
   $('buyItemPrice').textContent = Number(item.price).toLocaleString();
   $('buyGameAccount').value = '';
   $('buyServerId').value = '';
-
   const gameId = item.game_id;
   const isAppPremium = gameId === 'app-premium';
-
-  hide('fieldServerId');
-  hide('fieldNote');
-  show('fieldGameId');
-
-  if (isAppPremium) {
-    hide('fieldGameId');
-    show('fieldNote');
-  } else if (gameId === 'mlbb' || gameId === 'magic-chess') {
-    show('fieldServerId');
-    $('gameIdLabel').textContent = 'Game ID';
-    $('buyGameAccount').placeholder = 'Game ID ထည့်ပါ';
-  } else if (gameId === 'pubg') {
-    $('gameIdLabel').textContent = 'PUBG ID';
-    $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ';
-  }
-
+  hide('fieldServerId'); hide('fieldNote'); show('fieldGameId');
+  if (isAppPremium) { hide('fieldGameId'); show('fieldNote'); }
+  else if (gameId === 'mlbb' || gameId === 'magic-chess') { show('fieldServerId'); $('gameIdLabel').textContent = 'Game ID'; $('buyGameAccount').placeholder = 'Game ID ထည့်ပါ'; }
+  else if (gameId === 'pubg') { $('gameIdLabel').textContent = 'PUBG ID'; $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ'; }
   hide('itemsModal'); show('buyModal');
 }
 
@@ -185,21 +166,13 @@ $('confirmBuy').addEventListener('click', async () => {
   const item = STATE.selectedItem;
   const isAppPremium = item.game_id === 'app-premium';
   const needsServer = (item.game_id === 'mlbb' || item.game_id === 'magic-chess');
-
   let account = '', serverId = '';
   if (!isAppPremium) {
     account = $('buyGameAccount').value.trim();
     if (account.length < 3) return toast('Game ID ထည့်ပါ', 'error');
-    if (needsServer) {
-      serverId = $('buyServerId').value.trim();
-      if (serverId.length < 1) return toast('Server ID ထည့်ပါ', 'error');
-    }
+    if (needsServer) { serverId = $('buyServerId').value.trim(); if (serverId.length < 1) return toast('Server ID ထည့်ပါ', 'error'); }
   }
-
-  const res = await api('/api/purchase', {
-    method: 'POST',
-    body: JSON.stringify({ item_id: item.id, game_account: account, server_id: serverId })
-  });
+  const res = await api('/api/purchase', { method: 'POST', body: JSON.stringify({ item_id: item.id, game_account: account, server_id: serverId }) });
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
@@ -288,10 +261,7 @@ async function loadChat(scrollBottom) {
   msgs.forEach(m => {
     const d = new Date(m.created_at * 1000);
     const dateStr = d.toLocaleDateString();
-    if (dateStr !== lastDate) {
-      html += `<div class="chat-date-divider">${dateStr}</div>`;
-      lastDate = dateStr;
-    }
+    if (dateStr !== lastDate) { html += `<div class="chat-date-divider">${dateStr}</div>`; lastDate = dateStr; }
     const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const cls = m.from === 'user' ? 'user' : 'admin';
     const safeText = m.text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
@@ -315,42 +285,50 @@ async function sendChat() {
   if (res.ok) {
     try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
     await loadChat(true);
-  } else {
-    toast(res.error || 'မပို့နိုင်ပါ', 'error');
-    $('chatInput').value = text;
-  }
+  } else { toast(res.error || 'မပို့နိုင်ပါ', 'error'); $('chatInput').value = text; }
 }
 
 async function checkUnread() {
   if (CHAT.open || !STATE.user) return;
   try {
     const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
-    if (res.count > 0) {
-      $('chatBadge').textContent = res.count;
-      $('chatBadge').style.display = 'inline-block';
-    } else {
-      $('chatBadge').style.display = 'none';
-    }
+    if (res.count > 0) { $('chatBadge').textContent = res.count; $('chatBadge').style.display = 'inline-block'; }
+    else { $('chatBadge').style.display = 'none'; }
   } catch(e) {}
 }
 setInterval(checkUnread, 15000);
+
+// ============ AUTO REFRESH (balance + orders) ============
+async function autoRefresh() {
+  if (!STATE.user || CHAT.open) return;
+  if ($('main').classList.contains('hidden')) return;
+  try {
+    const me = await api('/api/me', { method: 'POST', body: '{}' });
+    if (me.user) {
+      const oldBal = Number(STATE.user.balance || 0);
+      const newBal = Number(me.user.balance || 0);
+      STATE.user = me.user;
+      renderMain();
+      if (newBal > oldBal) {
+        const diff = newBal - oldBal;
+        toast(`💰 +${diff.toLocaleString()} MMK ရောက်ပါပြီ!`, 'success');
+        try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      }
+    }
+  } catch(e) {}
+}
+setInterval(autoRefresh, 8000);
 
 // ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => {
     const modal = e.target.closest('.modal');
-    if (modal) {
-      modal.classList.add('hidden');
-      if (modal.id === 'chatModal') closeChat();
-    }
+    if (modal) { modal.classList.add('hidden'); if (modal.id === 'chatModal') closeChat(); }
   });
 });
 document.querySelectorAll('.modal').forEach(m => {
   m.addEventListener('click', (e) => {
-    if (e.target === m) {
-      m.classList.add('hidden');
-      if (m.id === 'chatModal') closeChat();
-    }
+    if (e.target === m) { m.classList.add('hidden'); if (m.id === 'chatModal') closeChat(); }
   });
 });
 

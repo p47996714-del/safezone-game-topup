@@ -34,7 +34,6 @@ input[type=file]{padding:8px}
 .pay-btn{background:#22252f;color:var(--text);padding:12px;border-radius:10px;border:2px solid transparent}
 .pay-btn.active{border-color:var(--btn);background:rgba(46,166,255,.15)}
 .pay-info{background:rgba(46,166,255,.12);border:1px dashed var(--btn);padding:12px;border-radius:10px;margin-top:12px;font-size:14px;line-height:1.6}
-
 .category-title{margin:18px 0 8px;font-size:15px;font-weight:700;padding:4px 0 4px 8px;border-left:3px solid var(--btn)}
 .items-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .item-card{background:#0d0f15;border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,0.05)}
@@ -51,8 +50,6 @@ input[type=file]{padding:8px}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:30px;font-size:14px;z-index:999;max-width:90%;text-align:center}
 .toast.error{background:var(--danger)}
 .toast.success{background:var(--success)}
-
-/* ============ CHAT ============ */
 .chat-header{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
 .chat-header-left{display:flex;align-items:center;gap:10px}
 .chat-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2ea6ff,#6a5cff);display:flex;align-items:center;justify-content:center;font-size:20px}

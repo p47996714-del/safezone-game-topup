@@ -11,11 +11,12 @@ const ADMIN_ID = String(process.env.ADMIN_ID || '');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@pyae_phyo_12327';
+const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
 
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
-// ============ DATA STORAGE ============
+// ============ DATA ============
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'app.json');
@@ -29,11 +30,7 @@ function loadDB() {
   catch { return defaultDB(); }
 }
 let dbData = loadDB();
-function saveDB() {
-  const tmp = DB_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(dbData, null, 2));
-  fs.renameSync(tmp, DB_FILE);
-}
+function saveDB() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(dbData, null, 2)); fs.renameSync(tmp, DB_FILE); }
 const now = () => Math.floor(Date.now() / 1000);
 
 if (!dbData.games.length) {
@@ -46,71 +43,40 @@ if (!dbData.games.length) {
 }
 
 const SEED_ITEMS = [
-  { g: 'mlbb', n: 'Weekly Pass', p: 6650 },
-  { g: 'mlbb', n: 'Miya Twilight Pass', p: 35000 },
-  { g: 'mlbb', n: '86 Diamonds', p: 5500 },
-  { g: 'mlbb', n: '172 Diamonds', p: 11500 },
-  { g: 'mlbb', n: '257 Diamonds', p: 16300 },
-  { g: 'mlbb', n: '343 Diamonds', p: 21500 },
-  { g: 'mlbb', n: '429 Diamonds', p: 26800 },
-  { g: 'mlbb', n: '514 Diamonds', p: 31800 },
-  { g: 'mlbb', n: '600 Diamonds', p: 37000 },
-  { g: 'mlbb', n: '706 Diamonds', p: 42400 },
-  { g: 'mlbb', n: '878 Diamonds', p: 53000 },
-  { g: 'mlbb', n: '963 Diamonds', p: 58300 },
-  { g: 'mlbb', n: '1049 Diamonds', p: 63600 },
-  { g: 'mlbb', n: '1135 Diamonds', p: 68900 },
-  { g: 'mlbb', n: '1412 Diamonds', p: 84800 },
-  { g: 'mlbb', n: '2195 Diamonds', p: 128000 },
-  { g: 'mlbb', n: '3688 Diamonds', p: 213000 },
-  { g: 'mlbb', n: '5532 Diamonds', p: 319500 },
-  { g: 'mlbb', n: '9288 Diamonds', p: 530000 },
-  { g: 'mlbb', n: 'Double 50+50', p: 4000 },
-  { g: 'mlbb', n: 'Double 150+150', p: 12500 },
-  { g: 'mlbb', n: 'Double 250+250', p: 17500 },
+  { g: 'mlbb', n: 'Weekly Pass', p: 6650 }, { g: 'mlbb', n: 'Miya Twilight Pass', p: 35000 },
+  { g: 'mlbb', n: '86 Diamonds', p: 5500 }, { g: 'mlbb', n: '172 Diamonds', p: 11500 },
+  { g: 'mlbb', n: '257 Diamonds', p: 16300 }, { g: 'mlbb', n: '343 Diamonds', p: 21500 },
+  { g: 'mlbb', n: '429 Diamonds', p: 26800 }, { g: 'mlbb', n: '514 Diamonds', p: 31800 },
+  { g: 'mlbb', n: '600 Diamonds', p: 37000 }, { g: 'mlbb', n: '706 Diamonds', p: 42400 },
+  { g: 'mlbb', n: '878 Diamonds', p: 53000 }, { g: 'mlbb', n: '963 Diamonds', p: 58300 },
+  { g: 'mlbb', n: '1049 Diamonds', p: 63600 }, { g: 'mlbb', n: '1135 Diamonds', p: 68900 },
+  { g: 'mlbb', n: '1412 Diamonds', p: 84800 }, { g: 'mlbb', n: '2195 Diamonds', p: 128000 },
+  { g: 'mlbb', n: '3688 Diamonds', p: 213000 }, { g: 'mlbb', n: '5532 Diamonds', p: 319500 },
+  { g: 'mlbb', n: '9288 Diamonds', p: 530000 }, { g: 'mlbb', n: 'Double 50+50', p: 4000 },
+  { g: 'mlbb', n: 'Double 150+150', p: 12500 }, { g: 'mlbb', n: 'Double 250+250', p: 17500 },
   { g: 'mlbb', n: 'Double 500+500', p: 34500 },
-  { g: 'magic-chess', n: 'Weekly Pass', p: 8500 },
-  { g: 'magic-chess', n: '50+50 (တစ်ခါသာ)', p: 4000 },
-  { g: 'magic-chess', n: '150+150 (တစ်ခါသာ)', p: 11000 },
-  { g: 'magic-chess', n: '250+250 (တစ်ခါသာ)', p: 18500 },
-  { g: 'magic-chess', n: '500+500 (တစ်ခါသာ)', p: 35700 },
-  { g: 'magic-chess', n: '86 Diamonds', p: 6000 },
-  { g: 'magic-chess', n: '172 Diamonds', p: 11900 },
-  { g: 'magic-chess', n: '257 Diamonds', p: 17500 },
-  { g: 'magic-chess', n: '344 Diamonds', p: 23000 },
-  { g: 'magic-chess', n: '516 Diamonds', p: 34000 },
-  { g: 'magic-chess', n: '706 Diamonds', p: 45000 },
-  { g: 'magic-chess', n: '1346 Diamonds', p: 84200 },
-  { g: 'magic-chess', n: '1825 Diamonds', p: 111500 },
-  { g: 'magic-chess', n: '2195 Diamonds', p: 138000 },
-  { g: 'magic-chess', n: '3688 Diamonds', p: 220000 },
-  { g: 'magic-chess', n: '5532 Diamonds', p: 337500 },
+  { g: 'magic-chess', n: 'Weekly Pass', p: 8500 }, { g: 'magic-chess', n: '50+50 (တစ်ခါသာ)', p: 4000 },
+  { g: 'magic-chess', n: '150+150 (တစ်ခါသာ)', p: 11000 }, { g: 'magic-chess', n: '250+250 (တစ်ခါသာ)', p: 18500 },
+  { g: 'magic-chess', n: '500+500 (တစ်ခါသာ)', p: 35700 }, { g: 'magic-chess', n: '86 Diamonds', p: 6000 },
+  { g: 'magic-chess', n: '172 Diamonds', p: 11900 }, { g: 'magic-chess', n: '257 Diamonds', p: 17500 },
+  { g: 'magic-chess', n: '344 Diamonds', p: 23000 }, { g: 'magic-chess', n: '516 Diamonds', p: 34000 },
+  { g: 'magic-chess', n: '706 Diamonds', p: 45000 }, { g: 'magic-chess', n: '1346 Diamonds', p: 84200 },
+  { g: 'magic-chess', n: '1825 Diamonds', p: 111500 }, { g: 'magic-chess', n: '2195 Diamonds', p: 138000 },
+  { g: 'magic-chess', n: '3688 Diamonds', p: 220000 }, { g: 'magic-chess', n: '5532 Diamonds', p: 337500 },
   { g: 'magic-chess', n: '9288 Diamonds', p: 530000 },
-  { g: 'pubg', n: '60 UC', p: 4700 },
-  { g: 'pubg', n: '120 UC', p: 9400 },
-  { g: 'pubg', n: '180 UC', p: 13900 },
-  { g: 'pubg', n: '325 UC', p: 22700 },
-  { g: 'pubg', n: '660 UC', p: 45300 },
-  { g: 'pubg', n: '780 UC', p: 52900 },
-  { g: 'pubg', n: '1800 UC', p: 114000 },
-  { g: 'pubg', n: '3850 UC', p: 226000 },
+  { g: 'pubg', n: '60 UC', p: 4700 }, { g: 'pubg', n: '120 UC', p: 9400 },
+  { g: 'pubg', n: '180 UC', p: 13900 }, { g: 'pubg', n: '325 UC', p: 22700 },
+  { g: 'pubg', n: '660 UC', p: 45300 }, { g: 'pubg', n: '780 UC', p: 52900 },
+  { g: 'pubg', n: '1800 UC', p: 114000 }, { g: 'pubg', n: '3850 UC', p: 226000 },
   { g: 'pubg', n: '8100 UC', p: 440000 },
-  { g: 'pubg', n: 'Growth Pack - First Purchase', p: 5950 },
-  { g: 'pubg', n: 'Growth Pack - Firearm Materials', p: 14000 },
-  { g: 'pubg', n: 'Growth Pack - Mythic Emblem', p: 22750 },
-  { g: 'pubg', n: 'Elite Pass Lv1-50', p: 26000 },
-  { g: 'pubg', n: 'Elite Pass Lv1-100', p: 52000 },
-  { g: 'pubg', n: 'Elite Pass Plus Lv1-100', p: 112500 },
-  { g: 'pubg', n: 'Weekly Mythic Emblem', p: 17000 },
-  { g: 'pubg', n: 'Weekly Deal Pack 1', p: 6000 },
-  { g: 'pubg', n: 'Weekly Deal Pack 2', p: 14500 },
-  { g: 'pubg', n: 'Prime 1 Month', p: 6000 },
-  { g: 'pubg', n: 'Prime 3 Month', p: 15000 },
-  { g: 'pubg', n: 'Prime 6 Month', p: 27000 },
-  { g: 'pubg', n: 'Prime 12 Month', p: 51000 },
-  { g: 'pubg', n: 'Prime Plus 1 Month', p: 46000 },
-  { g: 'pubg', n: 'Prime Plus 3 Month', p: 126000 },
-  { g: 'pubg', n: 'Prime Plus 6 Month', p: 245000 },
+  { g: 'pubg', n: 'Growth Pack - First Purchase', p: 5950 }, { g: 'pubg', n: 'Growth Pack - Firearm Materials', p: 14000 },
+  { g: 'pubg', n: 'Growth Pack - Mythic Emblem', p: 22750 }, { g: 'pubg', n: 'Elite Pass Lv1-50', p: 26000 },
+  { g: 'pubg', n: 'Elite Pass Lv1-100', p: 52000 }, { g: 'pubg', n: 'Elite Pass Plus Lv1-100', p: 112500 },
+  { g: 'pubg', n: 'Weekly Mythic Emblem', p: 17000 }, { g: 'pubg', n: 'Weekly Deal Pack 1', p: 6000 },
+  { g: 'pubg', n: 'Weekly Deal Pack 2', p: 14500 }, { g: 'pubg', n: 'Prime 1 Month', p: 6000 },
+  { g: 'pubg', n: 'Prime 3 Month', p: 15000 }, { g: 'pubg', n: 'Prime 6 Month', p: 27000 },
+  { g: 'pubg', n: 'Prime 12 Month', p: 51000 }, { g: 'pubg', n: 'Prime Plus 1 Month', p: 46000 },
+  { g: 'pubg', n: 'Prime Plus 3 Month', p: 126000 }, { g: 'pubg', n: 'Prime Plus 6 Month', p: 245000 },
   { g: 'pubg', n: 'Prime Plus 12 Month', p: 482000 },
   { g: 'app-premium', n: 'TG SMS Free (Unlimited)', p: 8000, c: '📱 Telegram' },
   { g: 'app-premium', n: 'Telegram Premium 1 Month', p: 19500, c: '📱 Telegram' },
@@ -131,8 +97,7 @@ const SEED_ITEMS = [
 (function autoSeedItems() {
   let added = 0;
   for (const it of SEED_ITEMS) {
-    const exists = dbData.items.find(x => x.game_id === it.g && x.name === it.n);
-    if (!exists) {
+    if (!dbData.items.find(x => x.game_id === it.g && x.name === it.n)) {
       dbData.items.push({ id: dbData._seq.items++, game_id: it.g, name: it.n, price: it.p, category: it.c || null, image: null, active: 1, sort_order: 0 });
       added++;
     }
@@ -382,7 +347,7 @@ app.post('/api/purchase', auth, async (req, res) => {
   if (needsAccount) {
     cap += `\n⚠️ App Premium — Account ပေးရန် လိုအပ်သည်`;
     cap += `\n\n📩 ဒီ message ကို **Reply** လုပ်ပြီး account (mail/pw) ရိုက်ပို့ပါ → User ဆီ တိုက်ရိုက် ရောက်ပါမည်။`;
-    cap += `\n\n💡 ဒါမှမဟုတ် User က သင့် TG (${ADMIN_CONTACT}) ကို ဆက်သွယ်ပါမည်။`;
+    cap += `\n\n💡 User က သင့် TG (${ADMIN_CONTACT}) ကို ဆက်သွယ်ပါမည်။`;
   } else {
     cap += `🆔 Game ID: ${game_account}`;
     if (server_id) cap += `\n🌐 Server ID: ${server_id}`;
@@ -392,13 +357,15 @@ app.post('/api/purchase', auth, async (req, res) => {
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { console.error('send admin failed', e.message); }
 
-  // App Premium ဖြစ်ရင် User ဆီ Admin TG contact ပို့
+  // App Premium — User ဆီ Admin contact link ပို့
   if (needsAccount) {
     try {
+      const contactLink = `https://t.me/${ADMIN_CONTACT_CLEAN}`;
+      const newBal = Number(H.getUserById(u.id).balance).toLocaleString();
       await bot.telegram.sendMessage(
         u.telegram_id,
-        `✅ *Order #${orderId} လက်ခံပြီးပါပြီ*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${H.getUserById(u.id).balance} MMK\n\n━━━━━━━━━━━━━━━\n📌 *ဆက်လုပ်ရန်* 📌\n\nAdmin ရဲ့ Telegram Account ကို ဆက်သွယ်ပါ 👇\n\n👤 ${ADMIN_CONTACT}\n\nAdmin ကို Order ID (*#${orderId}*) ကို ပြောပြီး Account တောင်းပါ။\n━━━━━━━━━━━━━━━`,
-        { parse_mode: 'Markdown' }
+        `✅ *Order #${orderId} လက်ခံပြီးပါပြီ*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 *ဆက်လုပ်ရန်* 📌\n\nAdmin ကို ဆက်သွယ်ပြီး Order ID (*#${orderId}*) ကို ပြောပြီး Account တောင်းပါ။\n\n👇 ဒီ button ကို နှိပ်ပါ 👇`,
+        { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန် (${ADMIN_CONTACT})`, url: contactLink }]] } }
       );
     } catch (e) { console.error('notify user failed', e.message); }
   }
@@ -431,7 +398,7 @@ bot.start(async (ctx) => {
 bot.hears('💰 Balance', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   if (!u) return ctx.reply('Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
-  ctx.reply(`💰 Balance: ${u.balance} MMK\n👤 Name: ${u.name || '-'}\n📱 Phone: ${u.phone || '-'}`);
+  ctx.reply(`💰 Balance: ${Number(u.balance).toLocaleString()} MMK\n👤 Name: ${u.name || '-'}\n📱 Phone: ${u.phone || '-'}`);
 });
 
 bot.hears('📜 History', async (ctx) => {
@@ -446,7 +413,7 @@ bot.hears('📜 History', async (ctx) => {
 bot.hears('👤 အကောင့်', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   if (!u) return ctx.reply('Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
-  ctx.reply(`👤 အကောင့်\n\n📛 နာမည်: ${u.name || '-'}\n📱 ဖုန်း: ${u.phone || '-'}\n💰 Balance: ${u.balance} MMK\n🆔 User ID: ${u.id}`);
+  ctx.reply(`👤 အကောင့်\n\n📛 နာမည်: ${u.name || '-'}\n📱 ဖုန်း: ${u.phone || '-'}\n💰 Balance: ${Number(u.balance).toLocaleString()} MMK\n🆔 User ID: ${u.id}`);
 });
 
 // ============ ADMIN REPLY HANDLER ============
@@ -458,7 +425,6 @@ bot.on('message', async (ctx, next) => {
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return next();
 
-  // 1) Order reply
   const order = dbData.orders.find(o => o.admin_msg_id === replyId);
   if (order) {
     const user = H.getUserById(order.user_id);
@@ -472,7 +438,6 @@ bot.on('message', async (ctx, next) => {
     return;
   }
 
-  // 2) Chat reply
   const chatMsg = (dbData.messages || []).find(m => m.admin_msg_id === replyId);
   if (chatMsg) {
     const user = H.getUserById(chatMsg.user_id);
@@ -608,13 +573,14 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   const id = Number(ctx.match[1]);
   const d = H.getDeposit(id);
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already processed');
-  H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, 'Approved', 'deposit');
+  // ✅ FIX: addBalance က သူ့ဘာသာ balance ပေါင်းပြီးသား၊ ဒီနေရာမှာ ပြန်မပေါင်းရ
+  const newBal = H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, 'Approved', 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
   H.addLog(ctx.from.id, 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(d.user_id);
-  try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Deposit ${d.amount} MMK အတည်ပြုပြီ။\n💰 Balance: ${u.balance + d.amount} MMK`); } catch {}
-  await ctx.editMessageCaption(`✅ APPROVED — #${d.id} (${d.amount} MMK)`).catch(()=>{});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 Balance အသစ်: ${Number(newBal).toLocaleString()} MMK`); } catch {}
+  await ctx.editMessageCaption(`✅ APPROVED — #${d.id} (${Number(d.amount).toLocaleString()} MMK)`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
@@ -627,8 +593,8 @@ bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   H.addLog(ctx.from.id, 'deposit_reject', `dep#${d.id}`, `${d.amount} MMK`);
   await ctx.answerCbQuery('❌');
   const u = H.getUserById(d.user_id);
-  try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Deposit ${d.amount} MMK ပယ်ဖျက်လိုက်ပါသည်။`); } catch {}
-  await ctx.editMessageCaption(`❌ REJECTED — #${d.id} (${d.amount} MMK)`).catch(()=>{});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Deposit ${Number(d.amount).toLocaleString()} MMK ပယ်ဖျက်လိုက်ပါသည်။`); } catch {}
+  await ctx.editMessageCaption(`❌ REJECTED — #${d.id} (${Number(d.amount).toLocaleString()} MMK)`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
