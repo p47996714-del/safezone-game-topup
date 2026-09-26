@@ -42,12 +42,12 @@ const now = () => Math.floor(Date.now() / 1000);
 function fixImagePaths() {
   let changed = false;
   dbData.games.forEach(g => {
-    if (g.image && g.image.includes('/image/')) {
-      g.image = g.image.replace('/image/', '/image/');
+    if (g.image && g.image.includes('/images/')) {
+      g.image = g.image.replace('/images/', '/images/');
       changed = true;
     }
   });
-  if (changed) { console.log('✅ Fixed image paths /image/ → /image/'); saveDB(); }
+  if (changed) { console.log('✅ Fixed image paths /images/ → /images/'); saveDB(); }
 }
 
 // ============ LOCAL BACKUP ============
@@ -87,13 +87,13 @@ function restoreFromLocalBackup() {
 
 setInterval(() => saveLocalBackup('hourly'), 60 * 60 * 1000);
 
-// ============ GAMES SEED (uses /image/ singular) ============
+// ============ GAMES SEED (uses /images/ singular) ============
 if (!dbData.games.length) {
   dbData.games = [
-    { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/image/mlbb.png', active: 1, sort_order: 1 },
-    { id: 'magic-chess', name: 'Magic Chess Go Go', image: '/image/magic-chess.png', active: 1, sort_order: 2 },
-    { id: 'pubg', name: 'PUBG Mobile', image: '/image/pubg.png', active: 1, sort_order: 3 },
-    { id: 'app-premium', name: 'App Premium', image: '/image/app-premium.png', active: 1, sort_order: 4 }
+    { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
+    { id: 'magic-chess', name: 'Magic Chess Go Go', image: '/images/magic-chess.png', active: 1, sort_order: 2 },
+    { id: 'pubg', name: 'PUBG Mobile', image: '/images/pubg.png', active: 1, sort_order: 3 },
+    { id: 'app-premium', name: 'App Premium', image: '/images/app-premium.png', active: 1, sort_order: 4 }
   ];
 }
 fixImagePaths();
@@ -627,7 +627,7 @@ bot.command('restore', async (ctx) => {
     if (!parsed.users || !parsed._seq) return ctx.reply('❌ Invalid');
     H.replaceData(parsed);
     saveLocalBackup('manual-restore');
-    await ctx.reply(`✅ Restored\n👥 ${parsed.users.length}\n📦 ${parsed.items?.length || 0}\n🎮 Image paths fixed: /image/`);
+    await ctx.reply(`✅ Restored\n👥 ${parsed.users.length}\n📦 ${parsed.items?.length || 0}\n🎮 Image paths fixed: /images/`);
   } catch (e) { ctx.reply('❌ ' + e.message); }
 });
 
