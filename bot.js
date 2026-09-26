@@ -391,7 +391,7 @@ const isAdmin = (id) => String(id) === ADMIN_ID;
 
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
-  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup မှ ကြိုဆိုပါတယ်။\n\n${u ? `💰 Balance: ${u.balance} MMK\n📱 Phone: ${u.phone}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}\n\n👇 Menu Button ကနေ Mini App ဖွင့်ပါ။`;
+  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup မှ ကြိုဆိုပါတယ်။\n\n${u ? `💰 Balance: ${Number(u.balance).toLocaleString()} MMK\n📱 Phone: ${u.phone}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}\n\n👇 Menu Button ကနေ Mini App ဖွင့်ပါ။`;
   await ctx.reply(welcome, Markup.keyboard([['💰 Balance', '📜 History', '👤 အကောင့်']]).resize());
 });
 
@@ -425,6 +425,7 @@ bot.on('message', async (ctx, next) => {
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return next();
 
+  // 1) Order reply — User ဆီ Bot notification ပို့ (account info ပါတာမို့)
   const order = dbData.orders.find(o => o.admin_msg_id === replyId);
   if (order) {
     const user = H.getUserById(order.user_id);
@@ -438,16 +439,17 @@ bot.on('message', async (ctx, next) => {
     return;
   }
 
+  // 2) Chat reply — Mini App ထဲမှာပဲ ပေါ်မယ် (Bot notification မပို့)
   const chatMsg = (dbData.messages || []).find(m => m.admin_msg_id === replyId);
   if (chatMsg) {
-    const user = H.getUserById(chatMsg.user_id);
-    if (!user) return ctx.reply('❌ User မတွေ့ပါ');
+    const user = H.getUserByTg(chatMsg.user_id);
+    const userById = H.getUserById(chatMsg.user_id);
+    if (!userById) return ctx.reply('❌ User မတွေ့ပါ');
     try {
-      const adminMsg = { id: dbData._seq.messages++, user_id: user.id, from: 'admin', text: text.slice(0, 2000), created_at: now(), read_by_admin: true, read_by_user: false, admin_msg_id: null };
+      const adminMsg = { id: dbData._seq.messages++, user_id: userById.id, from: 'admin', text: text.slice(0, 2000), created_at: now(), read_by_admin: true, read_by_user: false, admin_msg_id: null };
       dbData.messages.push(adminMsg); saveDB();
-      try { await bot.telegram.sendMessage(user.telegram_id, `💬 Admin ဆီမှ စာ:\n\n━━━━━━━━━━━━━━━\n${text}\n━━━━━━━━━━━━━━━\n\n👇 Mini App ထဲဝင်ပြီး ဆက်လက်ပြောဆိုနိုင်ပါသည်`); } catch (e) { console.error('notify user failed', e.message); }
-      H.addLog(ctx.from.id, 'chat_reply', `user#${user.id}`, text.slice(0, 50));
-      await ctx.reply(`✅ ${user.name || user.first_name || ''} ဆီ ပို့ပြီးပါပြီ`);
+      H.addLog(ctx.from.id, 'chat_reply', `user#${userById.id}`, text.slice(0, 50));
+      await ctx.reply(`✅ ${userById.name || userById.first_name || ''} ဆီ ပို့ပြီးပါပြီ\n\n💬 User က Mini App ထဲမှာပဲ မြင်ရပါမည်။`);
     } catch (e) { ctx.reply('❌ ' + e.message); }
     return;
   }
@@ -542,7 +544,7 @@ bot.action('adm:chats', async (ctx) => {
   for (const m of msgs) {
     const u = H.getUserById(m.user_id);
     if (!u) continue;
-    const cap = `💬 *Message #${m.id}*\n\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'})\n🆔 TG: ${u.telegram_id}\n📱 ${u.phone || '-'}\n⏰ ${new Date(m.created_at * 1000).toLocaleString()}\n\n━━━━━━━━━━━━━━━\n${m.text}\n━━━━━━━━━━━━━━━\n\n💡 Reply လုပ်ပြီး ပြန်စာ ပို့ပါ`;
+    const cap = `💬 *Message #${m.id}*\n\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'})\n🆔 TG: ${u.telegram_id}\n📱 ${u.phone || '-'}\n⏰ ${new Date(m.created_at * 1000).toLocaleString()}\n\n━━━━━━━━━━━━━━━\n${m.text}\n━━━━━━━━━━━━━━━\n\n💡 Reply လုပ်ပြီး ပြန်စာ ပို့ပါ (User Mini App ထဲမှာပဲ မြင်ရမည်)`;
     try {
       const sent = await bot.telegram.sendMessage(ctx.from.id, cap, { parse_mode: 'Markdown' });
       const original = dbData.messages.find(x => x.id === m.id);
@@ -573,7 +575,6 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   const id = Number(ctx.match[1]);
   const d = H.getDeposit(id);
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already processed');
-  // ✅ FIX: addBalance က သူ့ဘာသာ balance ပေါင်းပြီးသား၊ ဒီနေရာမှာ ပြန်မပေါင်းရ
   const newBal = H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, 'Approved', 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
   H.addLog(ctx.from.id, 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
