@@ -4,9 +4,6 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
-const TG_USER_ID = tg.initDataUnsafe?.user?.id || null;
-const SESSION_KEY = TG_USER_ID ? 'miniapp_user_' + TG_USER_ID : 'miniapp_user_guest';
-
 let STATE = { user: null, games: [], selectedMethod: null, selectedItem: null, payments: {} };
 
 async function api(path, opts = {}) {
@@ -26,19 +23,6 @@ function toast(msg, type = '') {
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 
-function saveSession(user) {
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch(e){}
-}
-function clearSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch(e){}
-}
-function loadSession() {
-  try {
-    const saved = localStorage.getItem(SESSION_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch(e) { return null; }
-}
-
 // ============ INIT ============
 async function init() {
   try {
@@ -51,20 +35,13 @@ async function init() {
     return;
   }
 
-  const saved = loadSession();
-  if (saved && String(saved.telegram_id) === String(TG_USER_ID)) {
-    STATE.user = saved;
-    hide('loading'); show('main');
-    renderMain(); loadGames();
-    return;
-  }
-
+  // localStorage မသုံးတော့ဘူး — server ကနေ အမြဲ စစ်
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
-  if (!me.user) { show('login'); }
-  else {
+  if (!me.user) {
+    show('login');
+  } else {
     STATE.user = me.user;
-    saveSession(me.user);
     show('main');
     renderMain();
     loadGames();
@@ -90,7 +67,6 @@ $('registerBtn').addEventListener('click', async () => {
 
   if (res.ok) {
     STATE.user = res.user;
-    saveSession(res.user);
     hide('register'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -108,7 +84,6 @@ $('loginBtn').addEventListener('click', async () => {
   const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
   if (res.ok) {
     STATE.user = res.user;
-    saveSession(res.user);
     hide('login'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -135,12 +110,13 @@ $('profileBtn').addEventListener('click', () => {
 });
 
 // ============ LOGOUT ============
-$('logoutBtn').addEventListener('click', () => {
-  clearSession();
+$('logoutBtn').addEventListener('click', async () => {
+  await api('/api/logout', { method: 'POST', body: '{}' });
   STATE.user = null;
   hide('profileModal'); hide('main');
   $('loginPhone').value = ''; $('loginPassword').value = '';
-  $('phoneInput').value = ''; $('nameInput').value = ''; $('passwordInput').value = ''; $('passwordInput2').value = '';
+  $('phoneInput').value = ''; $('nameInput').value = '';
+  $('passwordInput').value = ''; $('passwordInput2').value = '';
   show('login');
   toast('အကောင့်မှ ထွက်ပြီးပါပြီ', 'success');
 });
@@ -152,11 +128,7 @@ function renderMain() {
 }
 async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
-  if (me.user) {
-    STATE.user = me.user;
-    saveSession(me.user);
-    renderMain();
-  }
+  if (me.user) { STATE.user = me.user; renderMain(); }
 }
 
 // ============ GAMES ============
@@ -183,10 +155,7 @@ async function openItems(game) {
   const res = await api(`/api/items/${game.id}`);
   const items = res.items || [];
   const box = $('itemsList');
-  if (!items.length) {
-    box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>';
-    return;
-  }
+  if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
   box.innerHTML = '';
   items.forEach(it => {
     const row = document.createElement('div');
@@ -207,8 +176,7 @@ function openBuy(item) {
   $('buyItemName').textContent = item.name;
   $('buyItemPrice').textContent = Number(item.price).toLocaleString();
   $('buyGameAccount').value = '';
-  hide('itemsModal');
-  show('buyModal');
+  hide('itemsModal'); show('buyModal');
 }
 
 $('confirmBuy').addEventListener('click', async () => {
@@ -221,19 +189,16 @@ $('confirmBuy').addEventListener('click', async () => {
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
-    hide('buyModal');
-    await refreshMe();
+    hide('buyModal'); await refreshMe();
   } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
 // ============ DEPOSIT ============
 $('depositBtn').addEventListener('click', () => {
-  $('depAmount').value = '';
-  $('receiptInput').value = '';
+  $('depAmount').value = ''; $('receiptInput').value = '';
   STATE.selectedMethod = null;
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
-  hide('payInfo');
-  show('depositModal');
+  hide('payInfo'); show('depositModal');
 });
 
 document.querySelectorAll('.pay-btn').forEach(btn => {
@@ -241,12 +206,8 @@ document.querySelectorAll('.pay-btn').forEach(btn => {
     document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     STATE.selectedMethod = btn.dataset.method;
-    const key = STATE.selectedMethod.toLowerCase();
-    const info = STATE.payments[key] || '';
-    $('payInfo').innerHTML = `
-      <div><b>${btn.textContent}</b> သို့ ငွေလွှဲပါ</div>
-      <div style="margin-top:6px">📱 ${info}</div>
-      <div class="hint" style="margin-top:6px">ငွေလွှဲပြီးပါက ပြေစာပုံ အောက်မှာ တင်ပါ။</div>`;
+    const info = STATE.payments[STATE.selectedMethod.toLowerCase()] || '';
+    $('payInfo').innerHTML = `<div><b>${btn.textContent}</b> သို့ ငွေလွှဲပါ</div><div style="margin-top:6px">📱 ${info}</div><div class="hint" style="margin-top:6px">ငွေလွှဲပြီးပါက ပြေစာပုံ အောက်မှာ တင်ပါ။</div>`;
     show('payInfo');
   });
 });
@@ -269,8 +230,7 @@ $('submitDeposit').addEventListener('click', async () => {
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('Admin ထံ ပို့ပြီးပါပြီ။ အတည်ပြုချက် စောင့်ပါ ⏳', 'success');
-    hide('depositModal');
-    await refreshMe();
+    hide('depositModal'); await refreshMe();
   } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
@@ -309,6 +269,7 @@ $('historyBtn').addEventListener('click', async () => {
   box.innerHTML = html;
 });
 
+// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => { e.target.closest('.modal').classList.add('hidden'); });
 });

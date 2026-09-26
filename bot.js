@@ -69,7 +69,7 @@ const H = {
   getUserById: (id) => dbData.users.find(u => u.id === Number(id)) || null,
   getUserByPhone: (phone) => dbData.users.find(u => u.phone === phone) || null,
   createUser: ({ telegram_id, username, first_name, phone, name, password_salt, password_hash }) => {
-    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, created_at: now() };
+    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, session_active: true, created_at: now() };
     dbData.users.push(u); saveDB(); return u;
   },
   updateUserPhone: (userId, phone) => { const u = H.getUserById(userId); if (u) { u.phone = phone; saveDB(); } },
@@ -172,8 +172,13 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// ============ ME (Telegram ID နဲ့ချိတ်) ============
 app.post('/api/me', auth, (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
+  // session_active = false ဖြစ်ရင် user မပြဘူး (logout လုပ်ပြီးသား)
+  if (u && u.session_active === false) {
+    return res.json({ ok: true, user: null, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
+  }
   res.json({ ok: true, user: u, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
 });
 
@@ -201,6 +206,8 @@ app.post('/api/register', auth, (req, res) => {
     password_salt: salt,
     password_hash: hash
   });
+  u.session_active = true;
+  saveDB();
 
   H.addLog(req.tgUser.id, 'register', `user#${u.id}`, `${name} | ${phone}`);
   res.json({ ok: true, user: u });
@@ -215,8 +222,28 @@ app.post('/api/login', auth, (req, res) => {
   const hash = hashPassword(password, user.password_salt || '');
   if (hash !== user.password_hash) return res.status(400).json({ ok: false, error: 'စကားဝှက် မှားနေပါသည်' });
   if (user.banned) return res.status(400).json({ ok: false, error: 'ဒီအကောင့်ကို ပိတ်ထားပါသည်' });
+
+  // Login လုပ်တဲ့ Telegram ID နဲ့ ချိတ်
+  if (String(user.telegram_id) !== String(req.tgUser.id)) {
+    // အရင် Telegram ID ကို update (ဖုန်းပြောင်းရင်)
+    user.telegram_id = String(req.tgUser.id);
+  }
+  user.session_active = true;
+  saveDB();
+
   H.addLog(req.tgUser.id, 'login', `user#${user.id}`, phone);
   res.json({ ok: true, user });
+});
+
+// ============ LOGOUT ============
+app.post('/api/logout', auth, (req, res) => {
+  const u = H.getUserByTg(req.tgUser.id);
+  if (u) {
+    u.session_active = false;
+    saveDB();
+    H.addLog(req.tgUser.id, 'logout', `user#${u.id}`, null);
+  }
+  res.json({ ok: true });
 });
 
 app.get('/api/games', auth, (req, res) => res.json({ ok: true, games: H.listGames() }));
