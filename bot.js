@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@pyae_phyo_12327';
 const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '218401';
 
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
@@ -256,6 +257,11 @@ function auth(req, res, next) {
   if (!tgUser) return res.status(401).json({ ok: false, error: 'no user' });
   req.tgUser = tgUser; next();
 }
+function adminAuth(req, res, next) {
+  const pwd = req.headers['x-admin-password'] || req.body?.password || req.query?.password;
+  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  next();
+}
 
 app.get('/api/config', (req, res) => {
   res.json({ ok: true, enabled: H.getSetting('miniapp_enabled', '1') === '1', payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') }, adminContact: ADMIN_CONTACT });
@@ -412,14 +418,177 @@ app.get('/api/my-tx', auth, (req, res) => {
   res.json({ ok: true, txs: H.listUserTx(u.id, 30) });
 });
 
+// ============ ADMIN WEB API ============
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASSWORD) return res.json({ ok: true });
+  res.status(401).json({ ok: false, error: 'Password မှားနေပါသည်' });
+});
+
+app.get('/api/admin/stats', adminAuth, (req, res) => {
+  const s = H.stats();
+  const totalBalance = dbData.users.reduce((a, b) => a + Number(b.balance || 0), 0);
+  const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
+  res.json({ ok: true, stats: s, totalBalance, unreadChats, itemsCount: dbData.items.length, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
+});
+
+app.get('/api/admin/users', adminAuth, (req, res) => {
+  const q = String(req.query.q || '').toLowerCase();
+  let users = dbData.users.slice().reverse();
+  if (q) users = users.filter(u => (u.name || '').toLowerCase().includes(q) || (u.phone || '').includes(q) || (u.username || '').toLowerCase().includes(q));
+  res.json({ ok: true, users: users.slice(0, 100) });
+});
+
+app.post('/api/admin/user/balance', adminAuth, (req, res) => {
+  const { user_id, amount, note } = req.body;
+  const amt = Number(amount);
+  if (!user_id || isNaN(amt)) return res.status(400).json({ ok: false, error: 'Invalid' });
+  const newBal = H.addBalance(Number(user_id), amt, 'admin', note || 'Admin adjustment', amt > 0 ? 'admin_credit' : 'admin_debit');
+  H.addLog('admin-panel', 'balance_adjust', `user#${user_id}`, `${amt} → ${newBal}`);
+  saveLocalBackup('admin-adjust');
+  res.json({ ok: true, newBalance: newBal });
+});
+
+app.post('/api/admin/user/ban', adminAuth, (req, res) => {
+  const { user_id } = req.body;
+  const u = H.getUserById(Number(user_id));
+  if (!u) return res.status(400).json({ ok: false, error: 'User မတွေ့ပါ' });
+  u.banned = u.banned ? 0 : 1;
+  saveDB();
+  H.addLog('admin-panel', u.banned ? 'ban' : 'unban', `user#${user_id}`, null);
+  res.json({ ok: true, banned: !!u.banned });
+});
+
+app.get('/api/admin/deposits', adminAuth, (req, res) => {
+  const status = req.query.status || 'pending';
+  const list = status === 'all' ? dbData.deposits.slice().reverse().slice(0, 100) : H.listDeposits(status, 100);
+  const enriched = list.map(d => {
+    const u = H.getUserById(d.user_id);
+    return { ...d, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' };
+  });
+  res.json({ ok: true, deposits: enriched });
+});
+
+app.post('/api/admin/deposit/approve', adminAuth, async (req, res) => {
+  const { deposit_id } = req.body;
+  const d = H.getDeposit(Number(deposit_id));
+  if (!d || d.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
+  const newBal = H.addBalance(d.user_id, d.amount, `dep#${d.id}`, 'Approved via web', 'deposit');
+  H.updateDeposit(d.id, 'approved', 'admin-web');
+  H.addLog('admin-panel', 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
+  saveLocalBackup('deposit-approved');
+  const u = H.getUserById(d.user_id);
+  try { await bot.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 ${Number(newBal).toLocaleString()} MMK`); } catch(e){}
+  res.json({ ok: true, newBalance: newBal });
+});
+
+app.post('/api/admin/deposit/reject', adminAuth, async (req, res) => {
+  const { deposit_id } = req.body;
+  const d = H.getDeposit(Number(deposit_id));
+  if (!d || d.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
+  H.updateDeposit(d.id, 'rejected', 'admin-web');
+  H.addLog('admin-panel', 'deposit_reject', `dep#${d.id}`, `${d.amount} MMK`);
+  const u = H.getUserById(d.user_id);
+  try { await bot.telegram.sendMessage(u.telegram_id, `❌ Deposit ပယ်လိုက်ပါသည်။`); } catch(e){}
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/orders', adminAuth, (req, res) => {
+  const status = req.query.status || 'pending';
+  const list = status === 'all' ? dbData.orders.slice().reverse().slice(0, 100) : H.listOrders(status, 100);
+  const enriched = list.map(o => {
+    const u = H.getUserById(o.user_id);
+    return { ...o, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' };
+  });
+  res.json({ ok: true, orders: enriched });
+});
+
+app.post('/api/admin/order/complete', adminAuth, async (req, res) => {
+  const { order_id, account_info } = req.body;
+  const o = H.getOrder(Number(order_id));
+  if (!o || o.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
+  H.updateOrder(o.id, 'completed');
+  H.addLog('admin-panel', 'order_complete', `ord#${o.id}`, o.item_name);
+  const u = H.getUserById(o.user_id);
+  if (account_info) {
+    try { await bot.telegram.sendMessage(u.telegram_id, `🎉 Order #${o.id}\n\n📦 ${o.item_name}\n\n━━━━━━━━━━━━━━━\n${account_info}\n━━━━━━━━━━━━━━━\n\n⚠️ password ကို ချက်ချင်း ပြောင်းပါ။`); } catch(e){}
+  } else {
+    try { await bot.telegram.sendMessage(u.telegram_id, `✅ Order #${o.id} ပို့ပြီး`); } catch(e){}
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/order/refund', adminAuth, async (req, res) => {
+  const { order_id } = req.body;
+  const o = H.getOrder(Number(order_id));
+  if (!o || o.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
+  H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund via web', 'refund');
+  H.updateOrder(o.id, 'rejected');
+  H.addLog('admin-panel', 'order_refund', `ord#${o.id}`, `${o.price} MMK`);
+  saveLocalBackup('order-refunded');
+  const u = H.getUserById(o.user_id);
+  try { await bot.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch(e){}
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/items', adminAuth, (req, res) => {
+  res.json({ ok: true, items: dbData.items.slice(), games: dbData.games.slice() });
+});
+
+app.post('/api/admin/item/add', adminAuth, (req, res) => {
+  const { game_id, name, price, category } = req.body;
+  if (!game_id || !name || !price) return res.status(400).json({ ok: false, error: 'Invalid' });
+  const id = H.addItem({ game_id, name, price: Number(price), category: category || null });
+  H.addLog('admin-panel', 'additem', `item#${id}`, `${game_id} ${name}`);
+  res.json({ ok: true, id });
+});
+
+app.post('/api/admin/item/price', adminAuth, (req, res) => {
+  const { item_id, price } = req.body;
+  H.setItemPrice(Number(item_id), Number(price));
+  H.addLog('admin-panel', 'setprice', `item#${item_id}`, price);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/item/toggle', adminAuth, (req, res) => {
+  const { item_id } = req.body;
+  H.toggleItem(Number(item_id));
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/item/delete', adminAuth, (req, res) => {
+  const { item_id } = req.body;
+  H.removeItem(Number(item_id));
+  H.addLog('admin-panel', 'delitem', `item#${item_id}`, null);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/logs', adminAuth, (req, res) => {
+  res.json({ ok: true, logs: H.listLogs(100) });
+});
+
+app.post('/api/admin/toggle-miniapp', adminAuth, (req, res) => {
+  const cur = H.getSetting('miniapp_enabled', '1') === '1';
+  H.setSetting('miniapp_enabled', cur ? '0' : '1');
+  H.addLog('admin-panel', 'toggle_miniapp', null, cur ? 'OFF' : 'ON');
+  res.json({ ok: true, enabled: !cur });
+});
+
+app.get('/api/admin/chats', adminAuth, (req, res) => {
+  const msgs = (dbData.messages || []).filter(m => m.from === 'user').slice(-50).reverse();
+  const enriched = msgs.map(m => {
+    const u = H.getUserById(m.user_id);
+    return { ...m, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-' };
+  });
+  res.json({ ok: true, messages: enriched });
+});
+
+// ============ BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
 
-// Admin activity tracker
 bot.use(async (ctx, next) => {
-  if (ctx.from && isAdmin(ctx.from.id)) {
-    H.setSetting('admin_last_seen', String(now()));
-  }
+  if (ctx.from && isAdmin(ctx.from.id)) H.setSetting('admin_last_seen', String(now()));
   return next();
 });
 
@@ -472,14 +641,12 @@ bot.on('message', async (ctx, next) => {
   return next();
 });
 
-// ============ FAQ BOT + AUTO REPLY ============
 bot.on('text', async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   const text = ctx.message.text || '';
   if (text.startsWith('/')) return next();
   if (ctx.message.reply_to_message) return next();
 
-  // FAQ answer
   const answer = FAQ.findAnswer(text);
   if (answer) {
     const kb = PUBLIC_URL
@@ -489,12 +656,9 @@ bot.on('text', async (ctx, next) => {
     return;
   }
 
-  // Auto reply if admin offline > 1 hour
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
   if (now() - lastSeen > 3600) {
-    await ctx.reply(
-      `🤖 Admin သည် ယခုအချိန် offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`
-    );
+    await ctx.reply(`🤖 Admin သည် ယခုအချိန် offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`);
   }
   return next();
 });
@@ -516,7 +680,7 @@ async function sendAdminPanel(ctx) {
   const s = H.stats();
   const enabled = H.getSetting('miniapp_enabled', '1') === '1';
   const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
-  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅' : '❌'}\n\n👤 ${ADMIN_CONTACT}`;
+  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅' : '❌'}\n\n🌐 Web: /admin.html`;
   const kb = Markup.inlineKeyboard([
     [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
     [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
@@ -638,7 +802,7 @@ bot.command('status', async (ctx) => {
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
   const isOnline = (now() - lastSeen) < 3600;
   const lastSeenStr = lastSeen ? new Date(lastSeen * 1000).toLocaleString() : 'မရှိ';
-  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n💡 Auto Reply: ${isOnline ? 'မပို့ပါ' : 'ပို့ပါမည်'}`, { parse_mode: 'Markdown' });
+  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ ${lastSeenStr}`, { parse_mode: 'Markdown' });
 });
 bot.command('faqlist', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
@@ -660,8 +824,7 @@ bot.command('backupstatus', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse() : [];
   const s = H.stats();
-  let text = `💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}`;
-  await ctx.reply(text);
+  await ctx.reply(`💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}`);
 });
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
@@ -683,6 +846,7 @@ app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   if (PUBLIC_URL) console.log(`🔵 ${PUBLIC_URL}`);
   console.log(`📦 Items: ${dbData.items.length}`);
+  console.log(`🔐 Admin: /admin.html`);
 });
 
 bot.launch()
@@ -690,9 +854,9 @@ bot.launch()
     console.log('🤖 Bot started');
     const needsRestore = !fs.existsSync(DB_FILE) || !dbData.users.length;
     if (needsRestore) {
-      console.log('📥 Restoring from local backup...');
+      console.log('📥 Restoring...');
       const ok = restoreFromLocalBackup();
-      if (!ok) console.log('⚠️ No backup — starting fresh');
+      if (!ok) console.log('⚠️ No backup');
     } else {
       console.log(`📊 Loaded: ${dbData.users.length} users, ${dbData.items.length} items`);
     }
