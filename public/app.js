@@ -45,21 +45,35 @@ async function init() {
 }
 
 $('registerBtn').addEventListener('click', async () => {
+  const name = $('nameInput').value.trim();
   const phone = $('phoneInput').value.trim();
+  const password = $('passwordInput').value;
+  const password2 = $('passwordInput2').value;
+
+  if (name.length < 2) return toast('နာမည် ထည့်ပါ', 'error');
   if (!/^[0-9+\-\s]{6,}$/.test(phone)) return toast('ဖုန်းနံပါတ် မှန်ကန်စွာထည့်ပါ', 'error');
-  const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ phone }) });
+  if (password.length < 4) return toast('စကားဝှက် အနည်းဆုံး 4 လုံး ထည့်ပါ', 'error');
+  if (password !== password2) return toast('စကားဝှက် နှစ်ခု မတူညီပါ', 'error');
+
+  const res = await api('/api/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, phone, password, password2 })
+  });
+
   if (res.ok) {
     STATE.user = res.user;
     hide('register'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
-  } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
+  } else {
+    toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  }
 });
 
 function renderMain() {
   $('balanceVal').textContent = Number(STATE.user.balance || 0).toLocaleString();
-  $('userLabel').textContent = `${STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
+  $('userLabel').textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
 }
 async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
@@ -193,7 +207,6 @@ $('historyBtn').addEventListener('click', async () => {
         <div class="price">${t.amount>0?'+':''}${t.amount} → ${t.balance_after}</div>
       </div>`).join('');
   } else html += '<p class="hint">မရှိပါ</p>';
-
   html += '<h3 style="margin:16px 0 6px">📥 Deposits</h3>';
   if ((deps.deposits||[]).length) {
     html += deps.deposits.map(d => `
@@ -202,7 +215,6 @@ $('historyBtn').addEventListener('click', async () => {
         <div class="price">${d.amount} <small>${d.status}</small></div>
       </div>`).join('');
   } else html += '<p class="hint">မရှိပါ</p>';
-
   html += '<h3 style="margin:16px 0 6px">🛒 Orders</h3>';
   if ((orders.orders||[]).length) {
     html += orders.orders.map(o => `
@@ -211,7 +223,6 @@ $('historyBtn').addEventListener('click', async () => {
         <div class="price">${o.price}</div>
       </div>`).join('');
   } else html += '<p class="hint">မရှိပါ</p>';
-
   box.innerHTML = html;
 });
 

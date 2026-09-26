@@ -1,3 +1,4 @@
+cat > bot.js << 'BOTEOF'
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -12,16 +13,10 @@ const ADMIN_ID = String(process.env.ADMIN_ID || '');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
 
-if (!BOT_TOKEN) {
-  console.error('❌ BOT_TOKEN မရှိပါ။ .env file စစ်ပါ။');
-  process.exit(1);
-}
-if (!ADMIN_ID) {
-  console.error('❌ ADMIN_ID မရှိပါ။ .env file စစ်ပါ။');
-  process.exit(1);
-}
+if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
+if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
-// ============ DATA STORAGE (JSON) ============
+// ============ DATA STORAGE ============
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'app.json');
@@ -33,15 +28,12 @@ function defaultDB() {
     _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1 }
   };
 }
-
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) return defaultDB();
   try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
   catch { return defaultDB(); }
 }
-
 let dbData = loadDB();
-
 function saveDB() {
   const tmp = DB_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(dbData, null, 2));
@@ -58,10 +50,10 @@ if (!dbData.games.length) {
 }
 const defaultSettings = {
   miniapp_enabled: '1',
-  payment_kbz: '09763442881 (Mg Pyae Phyo Kyae)',
-  payment_wave: '09763442881 (Mg Pyae Phyo Kyae)',
-  payment_uab: '09763442881 (Mg Pyae Phyo Kyae)',
-  payment_aya: '09763442881 (Mg Pyae Phyo Kyae)'
+  payment_kbz: '09763442881 (Pyae Phyo Kyaw)',
+  payment_wave: '09763442881 (Pyae Phyo Kyaw)',
+  payment_uab: '09763442881 (Pyae Phyo Kyaw)',
+  payment_aya: '09763442881 (Pyae Phyo Kyaw)'
 };
 Object.entries(defaultSettings).forEach(([k, v]) => {
   if (dbData.settings[k] === undefined) dbData.settings[k] = v;
@@ -76,8 +68,8 @@ const H = {
   setSetting: (k, v) => { dbData.settings[k] = String(v); saveDB(); },
   getUserByTg: (tgId) => dbData.users.find(u => String(u.telegram_id) === String(tgId)) || null,
   getUserById: (id) => dbData.users.find(u => u.id === Number(id)) || null,
-  createUser: ({ telegram_id, username, first_name, phone }) => {
-    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, phone: phone || null, balance: 0, banned: 0, created_at: now() };
+  createUser: ({ telegram_id, username, first_name, phone, name, password_salt, password_hash }) => {
+    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, created_at: now() };
     dbData.users.push(u); saveDB(); return u;
   },
   updateUserPhone: (userId, phone) => { const u = H.getUserById(userId); if (u) { u.phone = phone; saveDB(); } },
@@ -132,9 +124,6 @@ const H = {
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData })
 };
 
-// === ဒီနေရာမှာ ရပ်လိုက်ပါ (အပိုင်း ၂ ဆက်ရန်) ===
-
-
 // ============ UPLOAD ============
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -184,14 +173,31 @@ app.post('/api/me', auth, (req, res) => {
   res.json({ ok: true, user: u, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
 });
 
+// ============ REGISTER (Name + Phone + Password) ============
 app.post('/api/register', auth, (req, res) => {
-  const { phone } = req.body;
-  if (!phone || phone.length < 6) return res.status(400).json({ ok: false, error: 'invalid phone' });
+  const { name, phone, password, password2 } = req.body;
+  if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
+  if (!phone || phone.length < 6) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် မှန်ကန်စွာထည့်ပါ' });
+  if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'စကားဝှက် အနည်းဆုံး 4 လုံး ထည့်ပါ' });
+  if (password !== password2) return res.status(400).json({ ok: false, error: 'စကားဝှက် နှစ်ခု မတူညီပါ' });
+
   let u = H.getUserByTg(req.tgUser.id);
-  if (!u) {
-    u = H.createUser({ telegram_id: req.tgUser.id, username: req.tgUser.username, first_name: req.tgUser.first_name, phone });
-    H.addLog(req.tgUser.id, 'register', `user#${u.id}`, phone);
-  } else { H.updateUserPhone(u.id, phone); u = H.getUserById(u.id); }
+  if (u) return res.status(400).json({ ok: false, error: 'ဒီအကောင့် ရှိပြီးသားဖြစ်ပါသည်' });
+
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+
+  u = H.createUser({
+    telegram_id: req.tgUser.id,
+    username: req.tgUser.username,
+    first_name: req.tgUser.first_name,
+    name: name.trim(),
+    phone,
+    password_salt: salt,
+    password_hash: hash
+  });
+
+  H.addLog(req.tgUser.id, 'register', `user#${u.id}`, `${name} | ${phone}`);
   res.json({ ok: true, user: u });
 });
 
@@ -209,7 +215,7 @@ app.post('/api/deposit', auth, upload.single('receipt'), async (req, res) => {
     if (!req.file) return res.status(400).json({ ok: false, error: 'receipt required' });
     const depId = H.createDeposit({ user_id: u.id, amount, method, receipt_local: req.file.path });
     H.addLog(req.tgUser.id, 'deposit_request', `dep#${depId}`, `${amount} ${method}`);
-    const cap = `📥 Deposit Request #${depId}\n👤 ${u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n📱 ${u.phone}\n💵 ${amount} MMK\n🏦 ${method}`;
+    const cap = `📥 Deposit Request #${depId}\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n📱 ${u.phone}\n💵 ${amount} MMK\n🏦 ${method}`;
     try {
       const msg = await bot.telegram.sendPhoto(ADMIN_ID, { source: req.file.path }, {
         caption: cap,
@@ -247,7 +253,7 @@ app.post('/api/purchase', auth, (req, res) => {
   H.addBalance(u.id, -item.price, 'order', item.name, 'purchase');
   const orderId = H.createOrder({ user_id: u.id, item_id: item.id, item_name: item.name, game_id: item.game_id, price: item.price, game_account });
   H.addLog(req.tgUser.id, 'order_create', `ord#${orderId}`, `${item.name} ${item.price}`);
-  const cap = `🛒 New Order #${orderId}\n👤 ${u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n🆔 ${game_account}`;
+  const cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n🆔 ${game_account}`;
   bot.telegram.sendMessage(ADMIN_ID, cap, {
     reply_markup: { inline_keyboard: [[
       { text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` },
@@ -269,19 +275,13 @@ app.get('/api/my-tx', auth, (req, res) => {
   res.json({ ok: true, txs: H.listUserTx(u.id, 30) });
 });
 
-// === ဒီနေရာမှာ ရပ်လိုက်ပါ (အပိုင်း ၃ ဆက်ရန်) ===
-
 // ============ TELEGRAM BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
 
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
-  const enabled = H.getSetting('miniapp_enabled', '1') === '1';
-  if (!enabled) {
-    return ctx.reply('🛠️ Mini App ကို ခေတ္တပိတ်ထားပါသည်။ နောက်မှ ပြန်လာပါ။', Markup.removeKeyboard());
-  }
-  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ ကျွန်ုပ်တို့ Mini App မှာ ဂိမ်း Items များနှင့် App Premium များကို ဝယ်ယူနိုင်ပါတယ်။\n\n${u ? `💰 Balance: ${u.balance} MMK` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}`;
+  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ ကျွန်ုပ်တို့ Mini App မှာ ဂိမ်း Items နှင့် App Premium များ ဝယ်ယူနိုင်ပါတယ်။\n\n${u ? `💰 Balance: ${u.balance} MMK` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}`;
   const kb = [];
   if (PUBLIC_URL) kb.push([Markup.button.webApp('🛍️ Mini App ဖွင့်', PUBLIC_URL)]);
   kb.push(['💰 Balance', '📜 History']);
@@ -291,7 +291,7 @@ bot.start(async (ctx) => {
 bot.hears('💰 Balance', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   if (!u) return ctx.reply('Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
-  ctx.reply(`💰 Balance: ${u.balance} MMK\n📱 Phone: ${u.phone || '-'}`);
+  ctx.reply(`💰 Balance: ${u.balance} MMK\n👤 Name: ${u.name || '-'}\n📱 Phone: ${u.phone || '-'}`);
 });
 
 bot.hears('📜 History', async (ctx) => {
@@ -299,13 +299,10 @@ bot.hears('📜 History', async (ctx) => {
   if (!u) return ctx.reply('Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
   const txs = H.listUserTx(u.id, 10);
   if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိသေးပါ။');
-  const text = txs.map(t =>
-    `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} MMK  (${t.balance_after})\n  ${new Date(t.created_at * 1000).toLocaleString()}`
-  ).join('\n\n');
+  const text = txs.map(t => `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} MMK (${t.balance_after})\n  ${new Date(t.created_at * 1000).toLocaleString()}`).join('\n\n');
   ctx.reply(`📜 နောက်ဆုံး မှတ်တမ်း:\n\n${text}`);
 });
 
-// ---------- ADMIN ----------
 bot.command('admin', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await sendAdminPanel(ctx);
@@ -331,6 +328,8 @@ async function sendAdminPanel(ctx) {
   }
 }
 
+bot.action('adm:panel', async (ctx) => { ctx.answerCbQuery(); await sendAdminPanel(ctx); });
+
 bot.action('adm:toggle', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const cur = H.getSetting('miniapp_enabled', '1') === '1';
@@ -352,13 +351,10 @@ bot.action('adm:logs', async (ctx) => {
   const logs = H.listLogs(30);
   await ctx.answerCbQuery();
   if (!logs.length) return ctx.reply('Log မရှိပါ။');
-  const text = logs.map(l =>
-    `[${new Date(l.created_at * 1000).toLocaleString()}] ${l.actor} → ${l.action}${l.target ? ' (' + l.target + ')' : ''}${l.details ? ' :: ' + l.details : ''}`
-  ).join('\n');
+  const text = logs.map(l => `[${new Date(l.created_at * 1000).toLocaleString()}] ${l.actor} → ${l.action}${l.target ? ' (' + l.target + ')' : ''}${l.details ? ' :: ' + l.details : ''}`).join('\n');
   await ctx.reply('📜 Logs:\n\n' + text);
 });
 
-// ---------- DEPOSITS LIST ----------
 bot.action('adm:deposits', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listDeposits('pending', 20);
@@ -366,16 +362,20 @@ bot.action('adm:deposits', async (ctx) => {
   if (!list.length) return ctx.reply('📥 Pending deposit မရှိပါ။');
   for (const d of list) {
     const u = H.getUserById(d.user_id);
-    const cap = `📥 Deposit #${d.id}\n👤 ${u?.first_name || ''} (@${u?.username || '-'}) [${u?.telegram_id}]\n📱 ${u?.phone || '-'}\n💵 ${d.amount} MMK\n🏦 ${d.method}\n⏰ ${new Date(d.created_at * 1000).toLocaleString()}`;
+    const cap = `📥 Deposit #${d.id}\n👤 ${u?.name || u?.first_name || ''} (@${u?.username || '-'}) [${u?.telegram_id}]\n📱 ${u?.phone || '-'}\n💵 ${d.amount} MMK\n🏦 ${d.method}\n⏰ ${new Date(d.created_at * 1000).toLocaleString()}`;
     const kb = Markup.inlineKeyboard([[
       Markup.button.callback('✅ Approve', `dep:ok:${d.id}`),
       Markup.button.callback('❌ Reject', `dep:no:${d.id}`)
     ]]);
     try {
-      if (d.receipt_file_id) await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb });
-      else if (d.receipt_local && fs.existsSync(d.receipt_local)) await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb });
-      else await ctx.reply(cap, kb);
-    } catch { await ctx.reply(cap + '\n(ပုံပို့မရပါ)', kb); }
+      if (d.receipt_file_id) {
+        await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb });
+      } else if (d.receipt_local && fs.existsSync(d.receipt_local)) {
+        await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb });
+      } else {
+        await ctx.reply(cap, kb);
+      }
+    } catch (e) { await ctx.reply(cap + '\n(ပုံပို့မရပါ)', kb); }
   }
 });
 
@@ -384,14 +384,14 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   const id = Number(ctx.match[1]);
   const d = H.getDeposit(id);
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already processed');
-  H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, 'Approved by admin', 'deposit');
+  H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, `Approved by admin`, 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
   H.addLog(ctx.from.id, 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
   await ctx.answerCbQuery('✅ Approved');
   const u = H.getUserById(d.user_id);
-  if (u) try { await ctx.telegram.sendMessage(u.telegram_id, `✅ သင့် deposit ${d.amount} MMK ကို အတည်ပြုပြီးပါပြီ။\n💰 Balance အသစ်: ${u.balance + d.amount} MMK`); } catch {}
-  await ctx.editMessageCaption(`✅ APPROVED — Deposit #${d.id} (${d.amount} MMK)`, { reply_markup: undefined }).catch(() => {});
-  await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `✅ သင့် deposit ${d.amount} MMK ကို အတည်ပြုပြီးပါပြီ။\n💰 Balance အသစ်: ${u.balance + d.amount} MMK`); } catch {}
+  await ctx.editMessageCaption(`✅ APPROVED — Deposit #${d.id} (${d.amount} MMK)`, { reply_markup: undefined }).catch(()=>{});
+  await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
 bot.action(/^dep:no:(\d+)$/, async (ctx) => {
@@ -403,12 +403,11 @@ bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   H.addLog(ctx.from.id, 'deposit_reject', `dep#${d.id}`, `${d.amount} MMK`);
   await ctx.answerCbQuery('❌ Rejected');
   const u = H.getUserById(d.user_id);
-  if (u) try { await ctx.telegram.sendMessage(u.telegram_id, `❌ သင့် deposit ${d.amount} MMK ကို ပယ်ဖျက်လိုက်ပါသည်။`); } catch {}
-  await ctx.editMessageCaption(`❌ REJECTED — Deposit #${d.id} (${d.amount} MMK)`, { reply_markup: undefined }).catch(() => {});
-  await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `❌ သင့် deposit ${d.amount} MMK ကို ပယ်ဖျက်လိုက်ပါသည်။`); } catch {}
+  await ctx.editMessageCaption(`❌ REJECTED — Deposit #${d.id} (${d.amount} MMK)`, { reply_markup: undefined }).catch(()=>{});
+  await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
-// ---------- ORDERS LIST ----------
 bot.action('adm:orders', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listOrders('pending', 20);
@@ -416,10 +415,10 @@ bot.action('adm:orders', async (ctx) => {
   if (!list.length) return ctx.reply('🛒 Pending order မရှိပါ။');
   for (const o of list) {
     const u = H.getUserById(o.user_id);
-    const cap = `🛒 Order #${o.id}\n👤 ${u?.first_name || ''} (@${u?.username || '-'}) [${u?.telegram_id}]\n🎮 ${o.game_id}\n📦 ${o.item_name}\n💵 ${o.price} MMK\n🆔 Game ID: ${o.game_account || '-'}\n⏰ ${new Date(o.created_at * 1000).toLocaleString()}`;
+    const cap = `🛒 Order #${o.id}\n👤 ${u?.name || u?.first_name || ''} (@${u?.username || '-'}) [${u?.telegram_id}]\n🎮 ${o.game_id}\n📦 ${o.item_name}\n💵 ${o.price} MMK\n🆔 Game ID: ${o.game_account || '-'}\n⏰ ${new Date(o.created_at * 1000).toLocaleString()}`;
     const kb = Markup.inlineKeyboard([[
       Markup.button.callback('✅ ပို့ပြီး', `ord:ok:${o.id}`),
-      Markup.button.callback('❌ ပယ် (Refund)', `ord:no:${o.id}`)
+      Markup.button.callback('❌ ပယ်', `ord:no:${o.id}`)
     ]]);
     await ctx.reply(cap, kb);
   }
@@ -434,8 +433,8 @@ bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   H.addLog(ctx.from.id, 'order_complete', `ord#${id}`, o.item_name);
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(o.user_id);
-  if (u) try { await ctx.telegram.sendMessage(u.telegram_id, `✅ သင့် order #${o.id} (${o.item_name}) ကို ပို့ဆောင်ပြီးပါပြီ။`); } catch {}
-  await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `✅ သင့် order #${o.id} (${o.item_name}) ကို ပို့ဆောင်ပြီးပါပြီ။`); } catch {}
+  await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
 bot.action(/^ord:no:(\d+)$/, async (ctx) => {
@@ -448,28 +447,26 @@ bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   H.addLog(ctx.from.id, 'order_reject', `ord#${id}`, `refund ${o.price}`);
   await ctx.answerCbQuery('❌ + Refunded');
   const u = H.getUserById(o.user_id);
-  if (u) try { await ctx.telegram.sendMessage(u.telegram_id, `❌ သင့် order #${o.id} ကို ပယ်ဖျက်ပြီး ${o.price} MMK ကို wallet ထဲ ပြန်ထည့်ပေးလိုက်ပါသည်။`); } catch {}
-  await ctx.editMessageReplyMarkup(undefined).catch(() => {});
+  try { await ctx.telegram.sendMessage(u.telegram_id, `❌ သင့် order #${o.id} ကို ပယ်ဖျက်ပြီး ${o.price} MMK ကို wallet ထဲ ပြန်ထည့်ပေးလိုက်ပါသည်။`); } catch {}
+  await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
 
-// ---------- USERS ----------
 bot.action('adm:users', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const users = H.listAllUsers().slice(0, 30);
   await ctx.answerCbQuery();
   if (!users.length) return ctx.reply('User မရှိသေးပါ။');
-  const text = users.map(u => `#${u.id} ${u.first_name || ''} (@${u.username || '-'})\n  TG:${u.telegram_id} | 📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n');
+  const text = users.map(u => `#${u.id} ${u.name || u.first_name || ''} (@${u.username || '-'})\n  TG:${u.telegram_id} | 📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n');
   await ctx.reply('👥 Users:\n\n' + text);
 });
 
-// ---------- ITEMS ----------
 bot.action('adm:items', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const items = H.listAllItems();
   await ctx.answerCbQuery();
   if (!items.length) return ctx.reply('Item မရှိပါ။ /additem <game_id>|<name>|<price>');
   const text = items.map(i => `#${i.id} [${i.game_id}] ${i.name} — ${i.price} MMK ${i.active ? '🟢' : '🔴'}`).join('\n');
-  await ctx.reply(`🧾 Items\n\n${text}\n\nCommands:\n/setprice <id> <price>\n/toggleitem <id>\n/delitem <id>\n/additem <game_id>|<name>|<price>`);
+  await ctx.reply(`🧾 Items\n\n${text}\n\nCommand:\n/setprice <id> <price>\n/toggleitem <id>\n/delitem <id>\n/additem <game_id>|<name>|<price>`);
 });
 
 bot.command('setprice', async (ctx) => {
@@ -507,12 +504,11 @@ bot.command('additem', async (ctx) => {
   ctx.reply(`✅ Item #${id} ထည့်ပြီး`);
 });
 
-// ---------- BACKUP ----------
 bot.action('adm:backup', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const data = H.backup();
   const json = JSON.stringify(data, null, 2);
-  const filename = `backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const filename = `backup-${new Date().toISOString().slice(0,10)}.json`;
   await ctx.answerCbQuery('💾 Backup ပို့နေသည်');
   await ctx.replyWithDocument({ source: Buffer.from(json), filename });
   const dir = path.join(__dirname, 'backups');
@@ -520,12 +516,10 @@ bot.action('adm:backup', async (ctx) => {
   fs.writeFileSync(path.join(dir, filename), json);
 });
 
-bot.action('adm:panel', async (ctx) => { ctx.answerCbQuery(); await sendAdminPanel(ctx); });
-
 // ============ START SERVER ============
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
-  if (PUBLIC_URL) console.log(`🌐 Public URL: ${PUBLIC_URL}`);
+  if (PUBLIC_URL) console.log(`🔵 Public URL: ${PUBLIC_URL}`);
 });
 
 // ============ START BOT ============

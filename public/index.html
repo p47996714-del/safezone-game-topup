@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Game Shop</title>
+<title>Safe Zone Game Topup</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="style.css" />
 </head>
@@ -23,8 +23,15 @@
   <div id="register" class="hidden">
     <div class="card">
       <h1>အကောင့်ဖွင့်ပါ</h1>
-      <p class="hint">ဆက်လုပ်ရန် ဖုန်းနံပါတ် ထည့်ပါ။</p>
+      <p class="hint">ဆက်လုပ်ရန် အချက်အလက်များ ဖြည့်ပါ။</p>
+      <label class="label">နာမည်</label>
+      <input id="nameInput" type="text" placeholder="သင့်နာမည်" />
+      <label class="label">ဖုန်းနံပါတ်</label>
       <input id="phoneInput" type="tel" placeholder="09xxxxxxxxx" />
+      <label class="label">စကားဝှက် (Password)</label>
+      <input id="passwordInput" type="password" placeholder="အနည်းဆုံး 4 လုံး" />
+      <label class="label">စကားဝှက် အတည်ပြုပါ</label>
+      <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ထည့်ပါ" />
       <button id="registerBtn" class="primary full">✅ အကောင့်ဖွင့်မယ်</button>
     </div>
   </div>
