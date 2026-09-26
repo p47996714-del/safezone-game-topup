@@ -4,7 +4,7 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
-let STATE = { user: null, games: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {} };
+let STATE = { user: null, games: [], items: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {}, banners: [], wishlist: JSON.parse(localStorage.getItem('wishlist') || '[]') };
 let CHAT = { open: false, timer: null, lastCount: 0 };
 let AUDIO_CTX = null;
 
@@ -29,10 +29,7 @@ function applyTheme(theme) {
   const btn = $('themeToggle');
   if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
 }
-(function initTheme() {
-  const saved = localStorage.getItem('miniapp_theme') || 'dark';
-  applyTheme(saved);
-})();
+(function initTheme() { applyTheme(localStorage.getItem('miniapp_theme') || 'dark'); })();
 document.addEventListener('click', (e) => {
   if (e.target && e.target.id === 'themeToggle') {
     const cur = document.body.getAttribute('data-theme') || 'dark';
@@ -60,6 +57,32 @@ function notifySound(type = 'message') {
   else if (type === 'error') { playBeep(400, 200); }
 }
 
+// ============ WISHLIST ============
+function saveWishlist() { localStorage.setItem('wishlist', JSON.stringify(STATE.wishlist)); updateWishBadge(); }
+function updateWishBadge() {
+  const b = $('wishBadge');
+  if (!b) return;
+  if (STATE.wishlist.length > 0) { b.textContent = STATE.wishlist.length; b.classList.remove('hidden'); }
+  else b.classList.add('hidden');
+}
+function toggleWishlist(item) {
+  const idx = STATE.wishlist.findIndex(w => w.id === item.id);
+  if (idx >= 0) { STATE.wishlist.splice(idx, 1); toast('Wishlist မှ ဖျက်ပြီ', 'success'); }
+  else { STATE.wishlist.push({ id: item.id, name: item.name, price: item.price, game_id: item.game_id }); toast('Wishlist ထဲ ထည့်ပြီ ❤️', 'success'); }
+  saveWishlist();
+}
+$('wishlistBtn').addEventListener('click', () => { renderWishlist(); show('wishlistModal'); });
+function renderWishlist() {
+  const box = $('wishlistContent');
+  if (!STATE.wishlist.length) { box.innerHTML = '<p class="hint" style="text-align:center;padding:20px">Wishlist အလွတ်ဖြစ်နေတယ်။ ❤️ နှိပ်ပြီး ထည့်ပါ။</p>'; return; }
+  box.innerHTML = STATE.wishlist.map(w => `
+    <div class="item-row" style="margin-bottom:8px">
+      <div><div style="font-weight:600">${w.name}</div><div class="hint">${w.game_id}</div></div>
+      <div class="price">${Number(w.price).toLocaleString()} Ks</div>
+    </div>
+  `).join('');
+}
+
 // ============ INIT ============
 async function init() {
   try {
@@ -70,9 +93,17 @@ async function init() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
   if (!me.user) show('login');
-  else { STATE.user = me.user; show('main'); renderMain(); loadGames(); checkUnread(); }
+  else {
+    STATE.user = me.user;
+    show('main');
+    renderMain();
+    loadGames();
+    loadBanners();
+    checkUnread();
+  }
 }
 
+// ============ REGISTER / LOGIN ============
 $('registerBtn').addEventListener('click', async () => {
   const name = $('nameInput').value.trim();
   const phone = $('phoneInput').value.trim();
@@ -84,7 +115,9 @@ $('registerBtn').addEventListener('click', async () => {
   if (password !== password2) return toast('စကားဝှက် မတူပါ', 'error');
   const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ name, phone, password, password2 }) });
   if (res.ok) {
-    STATE.user = res.user; hide('register'); show('main'); renderMain(); loadGames();
+    STATE.user = res.user;
+    hide('register'); show('main');
+    renderMain(); loadGames(); loadBanners();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
@@ -96,16 +129,19 @@ $('loginBtn').addEventListener('click', async () => {
   if (!phone || !password) return toast('ဖုန်းနှင့် စကားဝှက် ထည့်ပါ', 'error');
   const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
   if (res.ok) {
-    STATE.user = res.user; hide('login'); show('main'); renderMain(); loadGames();
+    STATE.user = res.user;
+    hide('login'); show('main');
+    renderMain(); loadGames(); loadBanners();
+    checkUnread();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဝင်ပြီးပါပြီ ✅', 'success');
-    checkUnread();
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
 $('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
 $('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
 
+// ============ PROFILE / LOGOUT ============
 $('profileBtn').addEventListener('click', () => {
   const u = STATE.user; if (!u) return;
   $('profileInfo').innerHTML = `
@@ -119,7 +155,8 @@ $('profileBtn').addEventListener('click', () => {
 
 $('logoutBtn').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST', body: '{}' });
-  STATE.user = null; hide('profileModal'); hide('main');
+  STATE.user = null;
+  hide('profileModal'); hide('main');
   $('loginPhone').value = ''; $('loginPassword').value = '';
   $('phoneInput').value = ''; $('nameInput').value = ''; $('passwordInput').value = ''; $('passwordInput2').value = '';
   show('login'); toast('ထွက်ပြီးပါပြီ', 'success');
@@ -134,7 +171,36 @@ async function refreshMe() {
   if (me.user) { STATE.user = me.user; renderMain(); }
 }
 
-// ============ GAMES (with skeleton) ============
+// ============ BANNERS ============
+let bannerTimer = null;
+async function loadBanners() {
+  const res = await api('/api/banners');
+  STATE.banners = res.banners || [];
+  if (!STATE.banners.length) { hide('bannerSlider'); return; }
+  const track = $('bannerTrack');
+  const dots = $('bannerDots');
+  track.innerHTML = '';
+  dots.innerHTML = '';
+  STATE.banners.forEach((b, i) => {
+    const div = document.createElement('div');
+    div.className = 'banner';
+    div.style.background = `linear-gradient(135deg,${b.color1},${b.color2})`;
+    div.innerHTML = `<h3>${b.title}</h3><p>${b.subtitle || ''}</p>`;
+    track.appendChild(div);
+    const dot = document.createElement('span');
+    if (i === 0) dot.classList.add('active');
+    dots.appendChild(dot);
+  });
+  let idx = 0;
+  if (bannerTimer) clearInterval(bannerTimer);
+  bannerTimer = setInterval(() => {
+    idx = (idx + 1) % STATE.banners.length;
+    track.style.transform = `translateX(-${idx * 100}%)`;
+    dots.querySelectorAll('span').forEach((s, i) => s.classList.toggle('active', i === idx));
+  }, 3500);
+}
+
+// ============ GAMES ============
 async function loadGames() {
   const grid = $('gamesGrid');
   grid.innerHTML = '';
@@ -155,10 +221,11 @@ async function loadGames() {
   });
 }
 
-// ============ ITEMS (with skeleton) ============
+// ============ ITEMS ============
 async function openItems(game) {
   STATE.selectedGame = game;
   $('itemsTitle').textContent = game.name;
+  $('itemSearch').value = '';
   const box = $('itemsList');
   box.innerHTML = '';
   const skGrid = document.createElement('div');
@@ -171,15 +238,24 @@ async function openItems(game) {
   box.appendChild(skGrid);
   show('itemsModal');
   const res = await api(`/api/items/${game.id}`);
-  const items = res.items || [];
+  STATE.items = res.items || [];
+  renderItems('');
+}
+
+function renderItems(query) {
+  const box = $('itemsList');
   box.innerHTML = '';
-  if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
+  let items = STATE.items;
+  if (query) items = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+  if (!items.length) { box.innerHTML = '<p class="hint" style="text-align:center;padding:20px">Item မရှိပါ။</p>'; return; }
+  const game = STATE.selectedGame;
   if (game.id === 'app-premium') {
     const groups = {};
     items.forEach(it => { const cat = it.category || '📦 အခြား'; if (!groups[cat]) groups[cat] = []; groups[cat].push(it); });
     Object.entries(groups).forEach(([cat, list]) => {
       const title = document.createElement('div');
-      title.className = 'category-title'; title.textContent = cat;
+      title.className = 'category-title';
+      title.textContent = cat;
       box.appendChild(title);
       const grid = document.createElement('div');
       grid.className = 'items-grid';
@@ -193,15 +269,23 @@ async function openItems(game) {
     box.appendChild(grid);
   }
 }
+$('itemSearch').addEventListener('input', (e) => renderItems(e.target.value));
 
 function makeItemCard(it) {
   const card = document.createElement('div');
   card.className = 'item-card';
+  const inWish = STATE.wishlist.some(w => w.id === it.id);
   card.innerHTML = `
+    <button class="wish-heart">${inWish ? '❤️' : '🤍'}</button>
     <div class="item-name">${it.name}</div>
     <div class="item-price">${it.price > 0 ? Number(it.price).toLocaleString() + ' Ks' : 'စျေးမသတ်ရသေး'}</div>
     <button ${it.price>0?'':'disabled'} class="item-buy">ဝယ်မယ်</button>`;
-  card.querySelector('button').addEventListener('click', () => openBuy(it));
+  card.querySelector('.item-buy').addEventListener('click', () => openBuy(it));
+  card.querySelector('.wish-heart').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleWishlist(it);
+    renderItems($('itemSearch').value);
+  });
   return card;
 }
 
@@ -213,11 +297,14 @@ function openBuy(item) {
   $('buyServerId').value = '';
   const gameId = item.game_id;
   const isAppPremium = gameId === 'app-premium';
-  hide('fieldServerId'); hide('fieldNote'); show('fieldGameId');
+  hide('fieldServerId');
+  hide('fieldNote');
+  show('fieldGameId');
   if (isAppPremium) { hide('fieldGameId'); show('fieldNote'); }
   else if (gameId === 'mlbb' || gameId === 'magic-chess') { show('fieldServerId'); $('gameIdLabel').textContent = 'Game ID'; $('buyGameAccount').placeholder = 'Game ID ထည့်ပါ'; }
   else if (gameId === 'pubg') { $('gameIdLabel').textContent = 'PUBG ID'; $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ'; }
-  hide('itemsModal'); show('buyModal');
+  hide('itemsModal');
+  show('buyModal');
 }
 
 $('confirmBuy').addEventListener('click', async () => {
@@ -228,23 +315,32 @@ $('confirmBuy').addEventListener('click', async () => {
   if (!isAppPremium) {
     account = $('buyGameAccount').value.trim();
     if (account.length < 3) return toast('Game ID ထည့်ပါ', 'error');
-    if (needsServer) { serverId = $('buyServerId').value.trim(); if (serverId.length < 1) return toast('Server ID ထည့်ပါ', 'error'); }
+    if (needsServer) {
+      serverId = $('buyServerId').value.trim();
+      if (serverId.length < 1) return toast('Server ID ထည့်ပါ', 'error');
+    }
   }
   const res = await api('/api/purchase', { method: 'POST', body: JSON.stringify({ item_id: item.id, game_account: account, server_id: serverId }) });
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
-    hide('buyModal'); await refreshMe();
+    hide('buyModal');
+    await refreshMe();
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
+// ============ DEPOSIT ============
 $('depositBtn').addEventListener('click', () => {
-  $('depAmount').value = ''; $('receiptInput').value = '';
+  $('depAmount').value = '';
+  $('receiptInput').value = '';
   STATE.selectedMethod = null;
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
-  hide('payInfo'); show('depositModal');
+  hide('payInfo');
+  show('depositModal');
 });
-
+document.querySelectorAll('.qa-btn').forEach(b => {
+  b.addEventListener('click', () => { $('depAmount').value = b.dataset.amt; });
+});
 document.querySelectorAll('.pay-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
@@ -255,7 +351,6 @@ document.querySelectorAll('.pay-btn').forEach(btn => {
     show('payInfo');
   });
 });
-
 $('submitDeposit').addEventListener('click', async () => {
   const amount = Number($('depAmount').value);
   const file = $('receiptInput').files[0];
@@ -263,19 +358,23 @@ $('submitDeposit').addEventListener('click', async () => {
   if (!STATE.selectedMethod) return toast('နည်းလမ်း ရွေးပါ', 'error');
   if (!file) return toast('ပြေစာပုံ တင်ပါ', 'error');
   const fd = new FormData();
-  fd.append('amount', amount); fd.append('method', STATE.selectedMethod); fd.append('receipt', file);
+  fd.append('amount', amount);
+  fd.append('method', STATE.selectedMethod);
+  fd.append('receipt', file);
   const res = await fetch('/api/deposit', { method: 'POST', headers: { 'X-Init-Data': initData }, body: fd }).then(r => r.json());
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('Admin ထံ ပို့ပြီးပါပြီ ⏳', 'success');
-    hide('depositModal'); await refreshMe();
+    hide('depositModal');
+    await refreshMe();
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
+// ============ HISTORY + TRACKING ============
 $('historyBtn').addEventListener('click', async () => {
   show('historyModal');
   const box = $('historyList');
-  box.innerHTML = '<p class="hint">ခဏစောင့်ပါ...</p>';
+  box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
   const [txs, orders, deps] = await Promise.all([api('/api/my-tx'), api('/api/my-orders'), api('/api/deposits')]);
   let html = '<h3 style="margin:10px 0 6px">💳 Transactions</h3>';
   if ((txs.txs||[]).length) html += txs.txs.map(t => `<div class="item-row" style="margin-bottom:6px"><div>${t.type}<div class="hint">${new Date(t.created_at*1000).toLocaleString()}</div></div><div class="price">${t.amount>0?'+':''}${t.amount} → ${t.balance_after}</div></div>`).join('');
@@ -284,10 +383,34 @@ $('historyBtn').addEventListener('click', async () => {
   if ((deps.deposits||[]).length) html += deps.deposits.map(d => `<div class="item-row" style="margin-bottom:6px"><div>${d.method} #${d.id}<div class="hint">${new Date(d.created_at*1000).toLocaleString()}</div></div><div class="price">${d.amount} <small>${d.status}</small></div></div>`).join('');
   else html += '<p class="hint">မရှိပါ</p>';
   html += '<h3 style="margin:16px 0 6px">🛒 Orders</h3>';
-  if ((orders.orders||[]).length) html += orders.orders.map(o => `<div class="item-row" style="margin-bottom:6px"><div>${o.item_name}<div class="hint">#${o.id} • ${o.game_id} • ${o.status}</div></div><div class="price">${o.price}</div></div>`).join('');
+  if ((orders.orders||[]).length) html += orders.orders.map(o => `
+    <div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTrack(${o.id})">
+      <div>${o.item_name}<div class="hint">#${o.id} • ${o.game_id} • ${o.status}</div></div>
+      <div class="price">${o.price} 📍</div>
+    </div>`).join('');
   else html += '<p class="hint">မရှိပါ</p>';
   box.innerHTML = html;
 });
+
+window.openTrack = async (orderId) => {
+  hide('historyModal');
+  show('trackModal');
+  const box = $('trackContent');
+  box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
+  const res = await api(`/api/order/${orderId}`);
+  if (!res.ok) { box.innerHTML = '<p class="hint" style="text-align:center">Order မတွေ့ပါ။</p>'; return; }
+  const { order, timeline } = res;
+  let html = `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:15px">#${order.id} ${order.item_name}</div><div class="hint" style="margin-top:4px">${order.price} Ks • ${order.game_id}</div></div>`;
+  timeline.forEach(t => {
+    html += `<div class="track-step ${t.done ? 'done' : ''}">
+      <div class="track-dot">${t.done ? '✓' : '○'}</div>
+      <div class="track-info">
+        <div class="track-label">${t.label}</div>
+        ${t.at ? `<div class="track-time">${new Date(t.at * 1000).toLocaleString()}</div>` : ''}
+      </div></div>`;
+  });
+  box.innerHTML = html;
+};
 
 // ============ CHAT ============
 $('chatBtn').addEventListener('click', async () => {
@@ -314,13 +437,11 @@ async function loadChat(scrollBottom) {
     box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။ Admin ကို စာ ပို့ပါ။</p>';
     return;
   }
-  // အသစ်ရောက်လား စစ်
   if (CHAT.open && msgs.length > CHAT.lastCount && CHAT.lastCount > 0) {
     const newAdmin = msgs.slice(CHAT.lastCount).filter(m => m.from === 'admin');
     if (newAdmin.length > 0) notifySound('message');
   }
   CHAT.lastCount = msgs.length;
-
   let lastDate = '';
   let html = '';
   msgs.forEach(m => {
@@ -339,7 +460,6 @@ async function loadChat(scrollBottom) {
 
 $('chatSendBtn').addEventListener('click', sendChat);
 $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
-
 async function sendChat() {
   const text = $('chatInput').value.trim();
   if (!text) return;
@@ -350,17 +470,18 @@ async function sendChat() {
   if (res.ok) {
     try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
     await loadChat(true);
-  } else { toast(res.error || 'မပို့နိုင်ပါ', 'error'); $('chatInput').value = text; }
+  } else {
+    toast(res.error || 'မပို့နိုင်ပါ', 'error');
+    $('chatInput').value = text;
+  }
 }
 
 async function checkUnread() {
   if (CHAT.open || !STATE.user) return;
   try {
     const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
-    if (res.count > 0) {
-      $('chatBadge').textContent = res.count;
-      $('chatBadge').style.display = 'inline-block';
-    } else { $('chatBadge').style.display = 'none'; }
+    if (res.count > 0) { $('chatBadge').textContent = res.count; $('chatBadge').style.display = 'inline-block'; }
+    else { $('chatBadge').style.display = 'none'; }
   } catch(e) {}
 }
 setInterval(checkUnread, 15000);
@@ -386,10 +507,11 @@ async function autoRefresh() {
 }
 setInterval(autoRefresh, 8000);
 
+// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => {
-    const modal = e.target.closest('.modal');
-    if (modal) { modal.classList.add('hidden'); if (modal.id === 'chatModal') closeChat(); }
+    const m = e.target.closest('.modal');
+    if (m) { m.classList.add('hidden'); if (m.id === 'chatModal') closeChat(); }
   });
 });
 document.querySelectorAll('.modal').forEach(m => {
@@ -398,4 +520,5 @@ document.querySelectorAll('.modal').forEach(m => {
   });
 });
 
+updateWishBadge();
 init();

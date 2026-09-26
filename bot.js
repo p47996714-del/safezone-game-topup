@@ -7,7 +7,6 @@ const path = require('path');
 const { Telegraf, Markup } = require('telegraf');
 const FAQ = require('./faq');
 
-// ============ CONFIG ============
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ADMIN_ID = String(process.env.ADMIN_ID || '');
 const PORT = process.env.PORT || 3000;
@@ -20,19 +19,17 @@ const AUTO_REPLY_TIMEOUT = 180;
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
-// ============ STRUCTURED LOGGER ============
 const LOG = {
   ts: () => new Date().toISOString().slice(11, 19),
-  info: (...args) => console.log(`[${LOG.ts()}] ℹ️`, ...args),
-  ok: (...args) => console.log(`[${LOG.ts()}] ✅`, ...args),
-  warn: (...args) => console.warn(`[${LOG.ts()}] ⚠️`, ...args),
-  error: (...args) => console.error(`[${LOG.ts()}] ❌`, ...args),
-  money: (...args) => console.log(`[${LOG.ts()}] 💰`, ...args),
-  order: (...args) => console.log(`[${LOG.ts()}] 🛒`, ...args),
-  user: (...args) => console.log(`[${LOG.ts()}] 👤`, ...args)
+  info: (...a) => console.log(`[${LOG.ts()}] ℹ️`, ...a),
+  ok: (...a) => console.log(`[${LOG.ts()}] ✅`, ...a),
+  warn: (...a) => console.warn(`[${LOG.ts()}] ⚠️`, ...a),
+  error: (...a) => console.error(`[${LOG.ts()}] ❌`, ...a),
+  money: (...a) => console.log(`[${LOG.ts()}] 💰`, ...a),
+  order: (...a) => console.log(`[${LOG.ts()}] 🛒`, ...a),
+  user: (...a) => console.log(`[${LOG.ts()}] 👤`, ...a)
 };
 
-// ============ STORAGE ============
 const USE_DISK = fs.existsSync('/data');
 const DATA_ROOT = USE_DISK ? '/data' : __dirname;
 const DATA_DIR = path.join(DATA_ROOT, 'data');
@@ -45,7 +42,6 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 LOG.ok(`Storage: ${USE_DISK ? '/data (Persistent)' : 'Local (Ephemeral)'}`);
 
-// ============ DATABASE ============
 function defaultDB() {
   return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], banners: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
 }
@@ -65,7 +61,6 @@ function fixImagePaths() {
   if (changed) { LOG.ok('Migrated image paths'); saveDB(); }
 }
 
-// ============ BACKUP SYSTEM ============
 function saveLocalBackup(reason = 'auto') {
   try {
     const data = { exported_at: new Date().toISOString(), reason, ...dbData };
@@ -92,18 +87,14 @@ function restoreFromLocalBackup() {
         if (!dbData.messages) dbData.messages = [];
         if (!dbData.banners) dbData.banners = [];
         if (!dbData._seq.messages) dbData._seq.messages = 1;
-        fixImagePaths();
-        saveDB();
-        return true;
+        fixImagePaths(); saveDB(); return true;
       } catch (e) {}
     }
     return false;
   } catch (e) { return false; }
 }
-
 setInterval(() => saveLocalBackup('hourly'), 60 * 60 * 1000);
 
-// ============ GAMES ============
 if (!dbData.games.length) {
   dbData.games = [
     { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
@@ -114,7 +105,6 @@ if (!dbData.games.length) {
 }
 fixImagePaths();
 
-// ============ BANNERS ============
 if (!dbData.banners || !dbData.banners.length) {
   dbData.banners = [
     { id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 },
@@ -124,7 +114,6 @@ if (!dbData.banners || !dbData.banners.length) {
   saveDB();
 }
 
-// ============ ITEMS ============
 const SEED_ITEMS = [
   { g: 'mlbb', n: 'Weekly Pass', p: 6650 }, { g: 'mlbb', n: 'Miya Twilight Pass', p: 35000 },
   { g: 'mlbb', n: '86 Diamonds', p: 5500 }, { g: 'mlbb', n: '172 Diamonds', p: 11500 },
@@ -176,7 +165,6 @@ const SEED_ITEMS = [
   { g: 'app-premium', n: 'Gemini 3 Month (Family)', p: 21000, c: '🤖 AI Tools' },
   { g: 'app-premium', n: 'Gemini 18 Month (Own Mail)', p: 385000, c: '🤖 AI Tools' }
 ];
-
 (function autoSeedItems() {
   let added = 0;
   for (const it of SEED_ITEMS) {
@@ -188,7 +176,6 @@ const SEED_ITEMS = [
   if (added > 0) { LOG.ok(`Auto-seed: ${added} items`); saveDB(); }
 })();
 
-// ============ SETTINGS ============
 const defaultSettings = {
   miniapp_enabled: '1',
   payment_kbz: '09763442881 (Pyae Phyo Kyaw)',
@@ -199,7 +186,6 @@ const defaultSettings = {
 Object.entries(defaultSettings).forEach(([k, v]) => { if (dbData.settings[k] === undefined) dbData.settings[k] = v; });
 saveDB();
 
-// ============ HELPERS ============
 const H = {
   now,
   getSetting: (k, d = null) => dbData.settings[k] ?? d,
@@ -221,50 +207,30 @@ const H = {
   listItems: (gameId = null) => dbData.items.filter(i => i.active && (!gameId || i.game_id === gameId)).sort((a, b) => a.id - b.id),
   listAllItems: () => dbData.items.slice(),
   getItem: (id) => dbData.items.find(i => i.id === Number(id)) || null,
-  addItem: ({ game_id, name, price, category = null }) => {
-    const it = { id: dbData._seq.items++, game_id, name, price: Number(price), category, image: null, active: 1, sort_order: 0 };
-    dbData.items.push(it); saveDB(); return it.id;
-  },
+  addItem: ({ game_id, name, price, category = null }) => { const it = { id: dbData._seq.items++, game_id, name, price: Number(price), category, image: null, active: 1, sort_order: 0 }; dbData.items.push(it); saveDB(); return it.id; },
   setItemPrice: (id, price) => { const it = H.getItem(id); if (it) { it.price = Number(price); saveDB(); } },
   toggleItem: (id) => { const it = H.getItem(id); if (it) { it.active = it.active ? 0 : 1; saveDB(); } },
   removeItem: (id) => { dbData.items = dbData.items.filter(i => i.id !== Number(id)); saveDB(); },
-  createDeposit: ({ user_id, amount, method, receipt_file_id, receipt_local }) => {
-    const d = { id: dbData._seq.deposits++, user_id, amount: Number(amount), method, receipt_file_id: receipt_file_id || null, receipt_local: receipt_local || null, status: 'pending', created_at: now(), processed_at: null, processed_by: null, note: null };
-    dbData.deposits.push(d); saveDB(); return d.id;
-  },
+  createDeposit: ({ user_id, amount, method, receipt_file_id, receipt_local }) => { const d = { id: dbData._seq.deposits++, user_id, amount: Number(amount), method, receipt_file_id: receipt_file_id || null, receipt_local: receipt_local || null, status: 'pending', created_at: now(), processed_at: null, processed_by: null, note: null }; dbData.deposits.push(d); saveDB(); return d.id; },
   getDeposit: (id) => dbData.deposits.find(d => d.id === Number(id)) || null,
   listDeposits: (status = null, limit = 50) => dbData.deposits.filter(d => !status || d.status === status).slice(-limit).reverse(),
   updateDeposit: (id, status, processed_by, note = null) => { const d = H.getDeposit(id); if (d) { d.status = status; d.processed_at = now(); d.processed_by = processed_by; d.note = note; saveDB(); } },
-  createOrder: ({ user_id, item_id, item_name, game_id, price, game_account, server_id, needs_account }) => {
-    const o = { id: dbData._seq.orders++, user_id, item_id, item_name, game_id, price: Number(price), game_account, server_id: server_id || null, needs_account: !!needs_account, status: 'pending', created_at: now(), processed_at: null, note: null, admin_msg_id: null };
-    dbData.orders.push(o); saveDB(); return o.id;
-  },
+  createOrder: ({ user_id, item_id, item_name, game_id, price, game_account, server_id, needs_account }) => { const o = { id: dbData._seq.orders++, user_id, item_id, item_name, game_id, price: Number(price), game_account, server_id: server_id || null, needs_account: !!needs_account, status: 'pending', created_at: now(), processed_at: null, note: null, admin_msg_id: null }; dbData.orders.push(o); saveDB(); return o.id; },
   getOrder: (id) => dbData.orders.find(o => o.id === Number(id)) || null,
   listOrders: (status = null, limit = 50) => dbData.orders.filter(o => !status || o.status === status).slice(-limit).reverse(),
   updateOrder: (id, status, note = null) => { const o = H.getOrder(id); if (o) { o.status = status; o.processed_at = now(); o.note = note; saveDB(); } },
   listUserOrders: (userId, limit = 20) => dbData.orders.filter(o => o.user_id === userId).slice(-limit).reverse(),
   listUserTx: (userId, limit = 20) => dbData.transactions.filter(t => t.user_id === userId).slice(-limit).reverse(),
   listUserDeposits: (userId, limit = 20) => dbData.deposits.filter(d => d.user_id === userId).slice(-limit).reverse(),
-  addLog: (actor, action, target = null, details = null) => {
-    dbData.logs.push({ id: dbData._seq.logs++, actor, action, target, details, created_at: now() });
-    if (dbData.logs.length > 5000) dbData.logs = dbData.logs.slice(-5000);
-    saveDB();
-  },
+  addLog: (actor, action, target = null, details = null) => { dbData.logs.push({ id: dbData._seq.logs++, actor, action, target, details, created_at: now() }); if (dbData.logs.length > 5000) dbData.logs = dbData.logs.slice(-5000); saveDB(); },
   listLogs: (limit = 100) => dbData.logs.slice(-limit).reverse(),
   listAllUsers: () => dbData.users.slice().reverse(),
-  stats: () => ({
-    users: dbData.users.length,
-    pendingDeposits: dbData.deposits.filter(d => d.status === 'pending').length,
-    pendingOrders: dbData.orders.filter(o => o.status === 'pending').length,
-    totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0),
-    totalSales: dbData.orders.reduce((s, o) => s + o.price, 0)
-  }),
+  stats: () => ({ users: dbData.users.length, pendingDeposits: dbData.deposits.filter(d => d.status === 'pending').length, pendingOrders: dbData.orders.filter(o => o.status === 'pending').length, totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0), totalSales: dbData.orders.reduce((s, o) => s + o.price, 0) }),
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
   replaceData: (newData) => { dbData = newData; if (!dbData.messages) dbData.messages = []; if (!dbData.banners || !dbData.banners.length) dbData.banners = [{ id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 }]; if (!dbData._seq.messages) dbData._seq.messages = 1; fixImagePaths(); saveDB(); }
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
-
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 * 1024 } });
 
 // ============ EXPRESS ============
@@ -273,7 +239,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ============ HEALTH CHECK ============
+// ============ HEALTH ============
 app.get('/health', (req, res) => {
   const uptime = Math.floor((Date.now() - START_TIME) / 1000);
   const mem = process.memoryUsage();
@@ -282,7 +248,9 @@ app.get('/health', (req, res) => {
     uptimeHuman: `${Math.floor(uptime/3600)}h ${Math.floor((uptime%3600)/60)}m ${uptime%60}s`,
     memory: { rss: Math.round(mem.rss / 1024 / 1024) + ' MB', heap: Math.round(mem.heapUsed / 1024 / 1024) + ' MB' },
     storage: USE_DISK ? 'persistent' : 'ephemeral',
-    users: dbData.users.length, items: dbData.items.length, orders: dbData.orders.length, deposits: dbData.deposits.length,
+    users: dbData.users.length, items: dbData.items.length,
+    orders: dbData.orders.length, deposits: dbData.deposits.length,
+    banners: (dbData.banners || []).length,
     timestamp: new Date().toISOString()
   });
 });
@@ -313,8 +281,14 @@ function adminAuth(req, res, next) {
   next();
 }
 
+// ============ CONFIG ============
 app.get('/api/config', (req, res) => {
-  res.json({ ok: true, enabled: H.getSetting('miniapp_enabled', '1') === '1', payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') }, adminContact: ADMIN_CONTACT });
+  res.json({
+    ok: true,
+    enabled: H.getSetting('miniapp_enabled', '1') === '1',
+    payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') },
+    adminContact: ADMIN_CONTACT
+  });
 });
 
 app.post('/api/me', auth, (req, res) => {
@@ -329,6 +303,7 @@ app.post('/api/logout', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ REGISTER / LOGIN ============
 app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2 } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
@@ -360,7 +335,7 @@ app.post('/api/login', auth, (req, res) => {
   res.json({ ok: true, user });
 });
 
-// ============ BANNERS API ============
+// ============ BANNERS ============
 app.get('/api/banners', auth, (req, res) => {
   const list = (dbData.banners || []).filter(b => b.active);
   res.json({ ok: true, banners: list });
@@ -399,8 +374,17 @@ app.post('/api/deposit', auth, upload.single('receipt'), async (req, res) => {
     LOG.money(`Deposit request #${depId}: ${amount} MMK ${method} by ${u.name}`);
     const cap = `📥 Deposit Request #${depId}\n👤 ${u.name || u.first_name || ''}\n📱 ${u.phone}\n💵 ${amount} MMK\n🏦 ${method}`;
     try {
-      const msg = await bot.telegram.sendPhoto(ADMIN_ID, { source: req.file.path }, { caption: cap, reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: `dep:ok:${depId}` }, { text: '❌ Reject', callback_data: `dep:no:${depId}` }]] } });
-      if (msg.photo?.length) { const fid = msg.photo[msg.photo.length - 1].file_id; const d = H.getDeposit(depId); if (d) { d.receipt_file_id = fid; saveDB(); } }
+      const msg = await bot.telegram.sendPhoto(ADMIN_ID, { source: req.file.path }, {
+        caption: cap,
+        reply_markup: { inline_keyboard: [[
+          { text: '✅ Approve', callback_data: `dep:ok:${depId}` },
+          { text: '❌ Reject', callback_data: `dep:no:${depId}` }
+        ]] }
+      });
+      if (msg.photo?.length) {
+        const fid = msg.photo[msg.photo.length - 1].file_id;
+        const d = H.getDeposit(depId); if (d) { d.receipt_file_id = fid; saveDB(); }
+      }
     } catch (e) { LOG.error('Admin notify failed:', e.message); }
     res.json({ ok: true, deposit_id: depId });
   } catch (e) { LOG.error('Deposit error:', e.message); res.status(500).json({ ok: false, error: 'server error' }); }
@@ -471,7 +455,10 @@ app.post('/api/purchase', auth, async (req, res) => {
   if (needsAccount) { cap += `\n⚠️ App Premium`; }
   else { cap += `🆔 ${game_account}`; if (server_id) cap += `\n🌐 Server: ${server_id}`; }
   try {
-    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
+    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[
+      { text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` },
+      { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }
+    ]] } });
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { LOG.error('Order notify failed:', e.message); }
 
@@ -479,7 +466,10 @@ app.post('/api/purchase', auth, async (req, res) => {
     try {
       const contactLink = `https://t.me/${ADMIN_CONTACT_CLEAN}`;
       const newBal = Number(H.getUserById(u.id).balance).toLocaleString();
-      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 Admin ကို ဆက်သွယ်ပါ 📌`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] } });
+      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 Admin ကို ဆက်သွယ်ပါ 📌`, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] }
+      });
     } catch (e) {}
   }
   res.json({ ok: true, order_id: orderId });
@@ -536,17 +526,13 @@ app.post('/api/admin/user/ban', adminAuth, (req, res) => {
   u.banned = u.banned ? 0 : 1;
   saveDB();
   H.addLog('admin-panel', u.banned ? 'ban' : 'unban', `user#${user_id}`, null);
-  LOG.warn(`User ${u.banned ? 'banned' : 'unbanned'}: #${user_id}`);
   res.json({ ok: true, banned: !!u.banned });
 });
 
 app.get('/api/admin/deposits', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.deposits.slice().reverse().slice(0, 100) : H.listDeposits(status, 100);
-  const enriched = list.map(d => {
-    const u = H.getUserById(d.user_id);
-    return { ...d, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' };
-  });
+  const enriched = list.map(d => { const u = H.getUserById(d.user_id); return { ...d, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' }; });
   res.json({ ok: true, deposits: enriched });
 });
 
@@ -557,7 +543,6 @@ app.post('/api/admin/deposit/approve', adminAuth, async (req, res) => {
   const newBal = H.addBalance(d.user_id, d.amount, `dep#${d.id}`, 'Approved via web', 'deposit');
   H.updateDeposit(d.id, 'approved', 'admin-web');
   H.addLog('admin-panel', 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
-  LOG.money(`Deposit approved #${d.id}: ${d.amount} MMK`);
   saveLocalBackup('deposit-approved');
   const u = H.getUserById(d.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 ${Number(newBal).toLocaleString()} MMK`); } catch(e){}
@@ -570,7 +555,6 @@ app.post('/api/admin/deposit/reject', adminAuth, async (req, res) => {
   if (!d || d.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
   H.updateDeposit(d.id, 'rejected', 'admin-web');
   H.addLog('admin-panel', 'deposit_reject', `dep#${d.id}`, `${d.amount} MMK`);
-  LOG.warn(`Deposit rejected #${d.id}: ${d.amount} MMK`);
   const u = H.getUserById(d.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `❌ Deposit ပယ်လိုက်ပါသည်။`); } catch(e){}
   res.json({ ok: true });
@@ -579,10 +563,7 @@ app.post('/api/admin/deposit/reject', adminAuth, async (req, res) => {
 app.get('/api/admin/orders', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.orders.slice().reverse().slice(0, 100) : H.listOrders(status, 100);
-  const enriched = list.map(o => {
-    const u = H.getUserById(o.user_id);
-    return { ...o, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' };
-  });
+  const enriched = list.map(o => { const u = H.getUserById(o.user_id); return { ...o, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-', user_tg: u?.telegram_id || '-' }; });
   res.json({ ok: true, orders: enriched });
 });
 
@@ -592,7 +573,6 @@ app.post('/api/admin/order/complete', adminAuth, async (req, res) => {
   if (!o || o.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
   H.updateOrder(o.id, 'completed');
   H.addLog('admin-panel', 'order_complete', `ord#${o.id}`, o.item_name);
-  LOG.order(`Order completed #${o.id}: ${o.item_name}`);
   const u = H.getUserById(o.user_id);
   if (account_info) {
     try { await bot.telegram.sendMessage(u.telegram_id, `🎉 Order #${o.id}\n\n📦 ${o.item_name}\n\n━━━━━━━━━━━━━━━\n${account_info}\n━━━━━━━━━━━━━━━\n\n⚠️ password ကို ချက်ချင်း ပြောင်းပါ။`); } catch(e){}
@@ -609,7 +589,6 @@ app.post('/api/admin/order/refund', adminAuth, async (req, res) => {
   H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund via web', 'refund');
   H.updateOrder(o.id, 'rejected');
   H.addLog('admin-panel', 'order_refund', `ord#${o.id}`, `${o.price} MMK`);
-  LOG.money(`Order refunded #${o.id}: ${o.price} MMK`);
   saveLocalBackup('order-refunded');
   const u = H.getUserById(o.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch(e){}
@@ -625,7 +604,6 @@ app.post('/api/admin/item/add', adminAuth, (req, res) => {
   if (!game_id || !name || !price) return res.status(400).json({ ok: false, error: 'Invalid' });
   const id = H.addItem({ game_id, name, price: Number(price), category: category || null });
   H.addLog('admin-panel', 'additem', `item#${id}`, `${game_id} ${name}`);
-  LOG.ok(`Item added #${id}: ${name}`);
   res.json({ ok: true, id });
 });
 
@@ -657,7 +635,6 @@ app.post('/api/admin/toggle-miniapp', adminAuth, (req, res) => {
   const cur = H.getSetting('miniapp_enabled', '1') === '1';
   H.setSetting('miniapp_enabled', cur ? '0' : '1');
   H.addLog('admin-panel', 'toggle_miniapp', null, cur ? 'OFF' : 'ON');
-  LOG.warn(`Mini App ${cur ? 'OFF' : 'ON'}`);
   res.json({ ok: true, enabled: !cur });
 });
 
@@ -668,10 +645,7 @@ app.post('/api/admin/backup', adminAuth, async (req, res) => {
 
 app.get('/api/admin/chats', adminAuth, (req, res) => {
   const msgs = (dbData.messages || []).filter(m => m.from === 'user').slice(-50).reverse();
-  const enriched = msgs.map(m => {
-    const u = H.getUserById(m.user_id);
-    return { ...m, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-' };
-  });
+  const enriched = msgs.map(m => { const u = H.getUserById(m.user_id); return { ...m, user_name: u?.name || u?.first_name || '-', user_phone: u?.phone || '-' }; });
   res.json({ ok: true, messages: enriched });
 });
 
@@ -690,15 +664,28 @@ bot.start(async (ctx) => {
   await ctx.reply(welcome, Markup.keyboard([['💰 Balance', '📜 History', '👤 အကောင့်']]).resize());
 });
 
-bot.hears('💰 Balance', async (ctx) => { const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။'); ctx.reply(`💰 ${Number(u.balance).toLocaleString()} MMK\n👤 ${u.name || '-'}\n📱 ${u.phone || '-'}`); });
+bot.hears('💰 Balance', async (ctx) => {
+  const u = H.getUserByTg(ctx.from.id);
+  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
+  ctx.reply(`💰 ${Number(u.balance).toLocaleString()} MMK\n👤 ${u.name || '-'}\n📱 ${u.phone || '-'}`);
+});
+
 bot.hears('📜 History', async (ctx) => {
-  const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
-  const txs = H.listUserTx(u.id, 10); if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိပါ။');
+  const u = H.getUserByTg(ctx.from.id);
+  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
+  const txs = H.listUserTx(u.id, 10);
+  if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိပါ။');
   const text = txs.map(t => `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} (${t.balance_after})`).join('\n');
   ctx.reply('📜 မှတ်တမ်း:\n\n' + text);
 });
-bot.hears('👤 အကောင့်', async (ctx) => { const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။'); ctx.reply(`👤 ${u.name || '-'}\n📱 ${u.phone || '-'}\n💰 ${Number(u.balance).toLocaleString()} MMK\n🆔 #${u.id}`); });
 
+bot.hears('👤 အကောင့်', async (ctx) => {
+  const u = H.getUserByTg(ctx.from.id);
+  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
+  ctx.reply(`👤 ${u.name || '-'}\n📱 ${u.phone || '-'}\n💰 ${Number(u.balance).toLocaleString()} MMK\n🆔 #${u.id}`);
+});
+
+// Admin reply handler (orders + chat)
 bot.on('message', async (ctx, next) => {
   if (!isAdmin(ctx.from.id)) return next();
   if (!ctx.message.reply_to_message) return next();
@@ -727,13 +714,14 @@ bot.on('message', async (ctx, next) => {
     try {
       const adminMsg = { id: dbData._seq.messages++, user_id: userById.id, from: 'admin', text: text.slice(0, 2000), created_at: now(), read_by_admin: true, read_by_user: false, admin_msg_id: null };
       dbData.messages.push(adminMsg); saveDB();
-      await ctx.reply(`✅ ${userById.name || userById.first_name || ''} ဆီ ပို့ပြီး (Mini App ထဲမှာပဲ မြင်ရမည်)`);
+      await ctx.reply(`✅ ${userById.name || userById.first_name || ''} ဆီ ပို့ပြီး`);
     } catch (e) { ctx.reply('❌ ' + e.message); }
     return;
   }
   return next();
 });
 
+// FAQ + Auto Reply
 bot.on('text', async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   const text = ctx.message.text || '';
@@ -791,6 +779,7 @@ bot.action('adm:panel', async (ctx) => { ctx.answerCbQuery(); await sendAdminPan
 bot.action('adm:toggle', async (ctx) => { if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌'); const cur = H.getSetting('miniapp_enabled', '1') === '1'; H.setSetting('miniapp_enabled', cur ? '0' : '1'); await ctx.answerCbQuery(cur ? 'ပိတ်ပြီ' : 'ဖွင့်ပြီ'); await sendAdminPanel(ctx); });
 bot.action('adm:stats', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const s = H.stats(); await ctx.answerCbQuery(); await ctx.reply(`📊 Users: ${s.users}\n📥 ${s.pendingDeposits}\n🛒 ${s.pendingOrders}\n💰 ${s.totalDeposit} MMK\n📦 ${dbData.items.length}`); });
 bot.action('adm:logs', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const logs = H.listLogs(30); await ctx.answerCbQuery(); if (!logs.length) return ctx.reply('Log မရှိပါ။'); await ctx.reply('📜\n\n' + logs.map(l => `[${new Date(l.created_at*1000).toLocaleString()}] ${l.action}`).join('\n')); });
+
 bot.action('adm:chats', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await ctx.answerCbQuery();
@@ -802,6 +791,7 @@ bot.action('adm:chats', async (ctx) => {
     try { const sent = await bot.telegram.sendMessage(ctx.from.id, cap); const o = dbData.messages.find(x => x.id === m.id); if (o) { o.admin_msg_id = sent.message_id; saveDB(); } } catch (e) {}
   }
 });
+
 bot.action('adm:deposits', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listDeposits('pending', 20);
@@ -811,16 +801,20 @@ bot.action('adm:deposits', async (ctx) => {
     const u = H.getUserById(d.user_id);
     const cap = `📥 Deposit #${d.id}\n👤 ${u?.name || ''}\n📱 ${u?.phone || ''}\n💵 ${d.amount} MMK\n🏦 ${d.method}`;
     const kb = Markup.inlineKeyboard([[Markup.button.callback('✅', `dep:ok:${d.id}`), Markup.button.callback('❌', `dep:no:${d.id}`)]]);
-    try { if (d.receipt_file_id) await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb }); else if (d.receipt_local && fs.existsSync(d.receipt_local)) await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb }); else await ctx.reply(cap, kb); } catch (e) { await ctx.reply(cap, kb); }
+    try {
+      if (d.receipt_file_id) await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb });
+      else if (d.receipt_local && fs.existsSync(d.receipt_local)) await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb });
+      else await ctx.reply(cap, kb);
+    } catch (e) { await ctx.reply(cap, kb); }
   }
 });
+
 bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const d = H.getDeposit(id);
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already');
   const newBal = H.addBalance(d.user_id, d.amount, `dep#${d.id}`, 'Approved', 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
-  LOG.money(`Deposit approved #${d.id}: ${d.amount} MMK`);
   saveLocalBackup('deposit-approved');
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(d.user_id);
@@ -828,18 +822,19 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   await ctx.editMessageCaption(`✅ APPROVED #${d.id}`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
+
 bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const d = H.getDeposit(id);
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already');
   H.updateDeposit(d.id, 'rejected', String(ctx.from.id));
-  LOG.warn(`Deposit rejected #${d.id}`);
   await ctx.answerCbQuery('❌');
   const u = H.getUserById(d.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Deposit ပယ်လိုက်ပါသည်။`); } catch {}
   await ctx.editMessageCaption(`❌ REJECTED #${d.id}`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
+
 bot.action('adm:orders', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listOrders('pending', 20);
@@ -855,30 +850,38 @@ bot.action('adm:orders', async (ctx) => {
     const order = H.getOrder(o.id); if (order && !order.admin_msg_id) { order.admin_msg_id = sent.message_id; saveDB(); }
   }
 });
+
 bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const o = H.getOrder(id);
   if (!o || o.status !== 'pending') return ctx.answerCbQuery('Already');
   H.updateOrder(id, 'completed');
-  LOG.order(`Order completed #${id}: ${o.item_name}`);
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(o.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Order #${o.id} ပို့ပြီး`); } catch {}
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
+
 bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const o = H.getOrder(id);
   if (!o || o.status !== 'pending') return ctx.answerCbQuery('Already');
   H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund', 'refund');
   H.updateOrder(id, 'rejected');
-  LOG.money(`Order refunded #${id}: ${o.price} MMK`);
   await ctx.answerCbQuery('❌ Refunded');
   const u = H.getUserById(o.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch {}
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
-bot.action('adm:users', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const users = H.listAllUsers().slice(0, 30); await ctx.answerCbQuery(); if (!users.length) return ctx.reply('User မရှိပါ။'); await ctx.reply('👥\n\n' + users.map(u => `#${u.id} ${u.name || u.first_name || ''}\n📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n')); });
+
+bot.action('adm:users', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const users = H.listAllUsers().slice(0, 30);
+  await ctx.answerCbQuery();
+  if (!users.length) return ctx.reply('User မရှိပါ။');
+  await ctx.reply('👥\n\n' + users.map(u => `#${u.id} ${u.name || u.first_name || ''}\n📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n'));
+});
+
 bot.action('adm:items', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const items = H.listAllItems(); await ctx.answerCbQuery();
@@ -889,6 +892,7 @@ bot.action('adm:items', async (ctx) => {
   const chunks = text.match(/[\s\S]{1,4000}/g) || [text];
   for (const c of chunks) await ctx.reply(c);
 });
+
 bot.command('setprice', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id, price] = ctx.message.text.split(/\s+/); if (!id || !price) return ctx.reply('Usage: /setprice <id> <price>'); H.setItemPrice(Number(id), Number(price)); ctx.reply(`✅ #${id} → ${price}`); });
 bot.command('toggleitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id] = ctx.message.text.split(/\s+/); if (!id) return ctx.reply('Usage: /toggleitem <id>'); H.toggleItem(Number(id)); ctx.reply(`🔁 #${id}`); });
 bot.command('delitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id] = ctx.message.text.split(/\s+/); if (!id) return ctx.reply('Usage: /delitem <id>'); H.removeItem(Number(id)); ctx.reply(`🗑️ #${id}`); });
@@ -902,12 +906,14 @@ bot.command('status', async (ctx) => {
   const timeLeft = Math.max(0, AUTO_REPLY_TIMEOUT - (now() - lastSeen));
   await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n⏱ Auto Reply ဖြစ်ဖို့: ${timeLeft > 0 ? timeLeft + ' စက္ကန့် ကျန်' : 'ပို့မည်'}\n⏱ Timeout: ${AUTO_REPLY_TIMEOUT}s`, { parse_mode: 'Markdown' });
 });
+
 bot.command('faqlist', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   let text = '📚 *FAQ Keywords*\n\n';
   FAQ.FAQ_DB.forEach((f, i) => { text += `${i + 1}. ${f.k.join(', ')}\n`; });
   await ctx.reply(text, { parse_mode: 'Markdown' });
 });
+
 bot.command('faqtest', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const args = ctx.message.text.replace('/faqtest', '').trim();
@@ -918,12 +924,14 @@ bot.command('faqtest', async (ctx) => {
 
 bot.action('adm:backup', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.answerCbQuery('💾'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.reply('💾 ...'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
+
 bot.command('backupstatus', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse() : [];
   const s = H.stats();
   await ctx.reply(`💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s`);
 });
+
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const reply = ctx.message.reply_to_message;
@@ -952,14 +960,14 @@ app.listen(PORT, () => {
   console.log(`  💾 Storage:    ${USE_DISK ? '/data (Persistent)' : 'Local (Ephemeral)'}`);
   console.log(`  📦 Items:      ${dbData.items.length}`);
   console.log(`  👥 Users:      ${dbData.users.length}`);
-  console.log(`  🎨 Banners:    ${dbData.banners.length}`);
+  console.log(`  🎨 Banners:    ${(dbData.banners || []).length}`);
   console.log(`  ⏱ Auto Reply:  ${AUTO_REPLY_TIMEOUT}s`);
   console.log(`  🔐 Admin:      /admin.html`);
   console.log(`  💚 Health:     /health`);
   console.log(`${border}\n`);
 });
 
-// ============ BOT LAUNCH WITH RETRY ============
+// ============ BOT LAUNCH ============
 async function launchBot(retries = 5) {
   for (let i = 1; i <= retries; i++) {
     try {

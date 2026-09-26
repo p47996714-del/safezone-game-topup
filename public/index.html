@@ -9,13 +9,10 @@
 </head>
 <body>
 <div id="app">
-  <div id="loading" class="center">
-    <div class="loading-dots"><span></span><span></span><span></span></div>
-    <p>ခဏစောင့်ပါ...</p>
-  </div>
+  <div id="loading" class="center"><div class="loading-dots"><span></span><span></span><span></span></div><p>ခဏစောင့်ပါ...</p></div>
   <div id="maintenance" class="center hidden"><div class="big-icon">🛠️</div><h2>ခေတ္တပိတ်ထားပါသည်</h2><p class="hint">Admin မှ ပြန်ဖွင့်သည်အထိ စောင့်ပါ။</p></div>
 
-  <div id="login" class="hidden">
+  <div id="login" class="hidden fade-in">
     <div class="app-header">
       <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
       <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
@@ -31,7 +28,7 @@
     </div>
   </div>
 
-  <div id="register" class="hidden">
+  <div id="register" class="hidden fade-in">
     <div class="app-header">
       <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
       <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
@@ -53,12 +50,19 @@
 
   <div id="main" class="hidden">
     <div class="theme-toggle-bar">
-      <button id="themeToggle" class="theme-btn" title="Theme ပြောင်း">🌙</button>
+      <button id="wishlistBtn" class="theme-btn" title="Wishlist">❤️<span id="wishBadge" class="badge hidden">0</span></button>
+      <button id="themeToggle" class="theme-btn" title="Theme">🌙</button>
     </div>
     <div class="app-header">
       <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
       <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
     </div>
+
+    <div id="bannerSlider" class="banner-slider">
+      <div class="banner-track" id="bannerTrack"></div>
+      <div class="banner-dots" id="bannerDots"></div>
+    </div>
+
     <div class="card balance-card">
       <div class="balance-label">💰 Wallet Balance</div>
       <div class="balance-amount"><span id="balanceVal">0</span> <small>MMK</small></div>
@@ -72,16 +76,25 @@
       </div>
       <div class="hint" id="userLabel" style="margin-top:8px"></div>
     </div>
+
     <h2 class="section-title">🎮 ဂိမ်းများ</h2>
     <div id="gamesGrid" class="games-grid"></div>
   </div>
 
   <div id="depositModal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content fade-in-up">
       <button class="modal-close" data-close>&times;</button>
       <h2>💰 ငွေဖြည့်</h2>
       <label class="label">ပမာဏ (MMK)</label>
       <input id="depAmount" type="number" placeholder="5000" />
+      <div class="quick-amounts">
+        <button class="qa-btn" data-amt="1000">1K</button>
+        <button class="qa-btn" data-amt="5000">5K</button>
+        <button class="qa-btn" data-amt="10000">10K</button>
+        <button class="qa-btn" data-amt="20000">20K</button>
+        <button class="qa-btn" data-amt="50000">50K</button>
+        <button class="qa-btn" data-amt="100000">100K</button>
+      </div>
       <label class="label">နည်းလမ်း</label>
       <div class="pay-grid" id="payGrid">
         <button class="pay-btn" data-method="KBZ">KBZ Pay</button>
@@ -97,15 +110,18 @@
   </div>
 
   <div id="itemsModal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content fade-in-up">
       <button class="modal-close" data-close>&times;</button>
       <h2 id="itemsTitle">Items</h2>
+      <div class="search-bar">
+        <input id="itemSearch" type="text" placeholder="🔍 Item ရှာ..." />
+      </div>
       <div id="itemsList" class="items-list"></div>
     </div>
   </div>
 
   <div id="buyModal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content fade-in-up">
       <button class="modal-close" data-close>&times;</button>
       <h2>🛒 အတည်ပြုပါ</h2>
       <p id="buyItemName" class="buy-item"></p>
@@ -126,15 +142,31 @@
   </div>
 
   <div id="historyModal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content fade-in-up">
       <button class="modal-close" data-close>&times;</button>
       <h2>📜 မှတ်တမ်း</h2>
       <div id="historyList"></div>
     </div>
   </div>
 
+  <div id="trackModal" class="modal hidden">
+    <div class="modal-content fade-in-up">
+      <button class="modal-close" data-close>&times;</button>
+      <h2>📍 Order Tracking</h2>
+      <div id="trackContent"></div>
+    </div>
+  </div>
+
+  <div id="wishlistModal" class="modal hidden">
+    <div class="modal-content fade-in-up">
+      <button class="modal-close" data-close>&times;</button>
+      <h2>❤️ Wishlist</h2>
+      <div id="wishlistContent"></div>
+    </div>
+  </div>
+
   <div id="profileModal" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content fade-in-up">
       <button class="modal-close" data-close>&times;</button>
       <h2>👤 အကောင့်</h2>
       <div id="profileInfo" style="margin-top:12px"></div>
@@ -143,7 +175,7 @@
   </div>
 
   <div id="chatModal" class="modal hidden">
-    <div class="modal-content" style="height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div class="modal-content fade-in-up" style="height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
       <div class="chat-header">
         <div class="chat-header-left">
           <div class="chat-avatar">🛡️</div>
