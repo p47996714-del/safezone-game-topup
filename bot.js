@@ -69,7 +69,7 @@ const H = {
   getUserById: (id) => dbData.users.find(u => u.id === Number(id)) || null,
   getUserByPhone: (phone) => dbData.users.find(u => u.phone === phone) || null,
   createUser: ({ telegram_id, username, first_name, phone, name, password_salt, password_hash }) => {
-    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, session_active: true, created_at: now() };
+    const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, session_active: false, created_at: now() };
     dbData.users.push(u); saveDB(); return u;
   },
   updateUserPhone: (userId, phone) => { const u = H.getUserById(userId); if (u) { u.phone = phone; saveDB(); } },
@@ -121,7 +121,8 @@ const H = {
     totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0),
     totalSales: dbData.orders.reduce((s, o) => s + o.price, 0)
   }),
-  backup: () => ({ exported_at: new Date().toISOString(), ...dbData })
+  backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
+  replaceData: (newData) => { dbData = newData; saveDB(); }
 };
 
 function hashPassword(password, salt) {
@@ -172,14 +173,18 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// ============ ME (Telegram ID နဲ့ချိတ်) ============
 app.post('/api/me', auth, (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
-  // session_active = false ဖြစ်ရင် user မပြဘူး (logout လုပ်ပြီးသား)
   if (u && u.session_active === false) {
     return res.json({ ok: true, user: null, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
   }
   res.json({ ok: true, user: u, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
+});
+
+app.post('/api/logout', auth, (req, res) => {
+  const u = H.getUserByTg(req.tgUser.id);
+  if (u) { u.session_active = false; saveDB(); H.addLog(req.tgUser.id, 'logout', `user#${u.id}`, null); }
+  res.json({ ok: true });
 });
 
 // ============ REGISTER ============
@@ -213,7 +218,7 @@ app.post('/api/register', auth, (req, res) => {
   res.json({ ok: true, user: u });
 });
 
-// ============ LOGIN (phone + password) ============
+// ============ LOGIN ============
 app.post('/api/login', auth, (req, res) => {
   const { phone, password } = req.body;
   if (!phone || !password) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် နှင့် စကားဝှက် ထည့်ပါ' });
@@ -222,28 +227,10 @@ app.post('/api/login', auth, (req, res) => {
   const hash = hashPassword(password, user.password_salt || '');
   if (hash !== user.password_hash) return res.status(400).json({ ok: false, error: 'စကားဝှက် မှားနေပါသည်' });
   if (user.banned) return res.status(400).json({ ok: false, error: 'ဒီအကောင့်ကို ပိတ်ထားပါသည်' });
-
-  // Login လုပ်တဲ့ Telegram ID နဲ့ ချိတ်
-  if (String(user.telegram_id) !== String(req.tgUser.id)) {
-    // အရင် Telegram ID ကို update (ဖုန်းပြောင်းရင်)
-    user.telegram_id = String(req.tgUser.id);
-  }
   user.session_active = true;
   saveDB();
-
   H.addLog(req.tgUser.id, 'login', `user#${user.id}`, phone);
   res.json({ ok: true, user });
-});
-
-// ============ LOGOUT ============
-app.post('/api/logout', auth, (req, res) => {
-  const u = H.getUserByTg(req.tgUser.id);
-  if (u) {
-    u.session_active = false;
-    saveDB();
-    H.addLog(req.tgUser.id, 'logout', `user#${u.id}`, null);
-  }
-  res.json({ ok: true });
 });
 
 app.get('/api/games', auth, (req, res) => res.json({ ok: true, games: H.listGames() }));
@@ -352,6 +339,48 @@ bot.hears('👤 အကောင့်', async (ctx) => {
   ctx.reply(`👤 အကောင့်အချက်အလက်\n\n📛 နာမည်: ${u.name || '-'}\n📱 ဖုန်း: ${u.phone || '-'}\n💰 Balance: ${u.balance} MMK\n🆔 User ID: ${u.id}`);
 });
 
+// ============ AUTO BACKUP ============
+async function sendBackupToAdmin(reason = 'auto') {
+  try {
+    const data = H.backup();
+    const json = JSON.stringify(data, null, 2);
+    const stats = H.stats();
+    const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const caption = `💾 Auto Backup (${reason})\n\n👥 Users: ${stats.users}\n📥 Pending Deposits: ${stats.pendingDeposits}\n🛒 Pending Orders: ${stats.pendingOrders}\n💰 Total Deposits: ${stats.totalDeposit} MMK\n🧾 Total Sales: ${stats.totalSales} MMK\n⏰ ${new Date().toLocaleString()}`;
+    const msg = await bot.telegram.sendDocument(ADMIN_ID, { source: Buffer.from(json), filename }, { caption });
+    if (msg.document?.file_id) {
+      H.setSetting('last_backup_file_id', msg.document.file_id);
+      H.setSetting('last_backup_at', String(now()));
+    }
+    console.log('💾 Backup sent to admin:', filename);
+  } catch (e) {
+    console.error('Backup failed:', e.message);
+  }
+}
+
+async function restoreFromTelegramBackup() {
+  try {
+    const fid = H.getSetting('last_backup_file_id');
+    if (!fid) { console.log('ℹ️ No backup file_id found, starting fresh.'); return false; }
+    console.log('📥 Restoring from Telegram backup...');
+    const link = await bot.telegram.getFileLink(fid);
+    const res = await fetch(link.href);
+    const text = await res.text();
+    const parsed = JSON.parse(text);
+    if (!parsed.users || !parsed._seq) { console.log('⚠️ Backup file invalid.'); return false; }
+    H.replaceData(parsed);
+    console.log(`✅ Restored ${parsed.users.length} users, ${parsed.deposits?.length || 0} deposits`);
+    return true;
+  } catch (e) {
+    console.error('Restore failed:', e.message);
+    return false;
+  }
+}
+
+// Auto backup ကို ၃ နာရီ တစ်ခါ
+setInterval(() => { sendBackupToAdmin('scheduled-3h'); }, 3 * 60 * 60 * 1000);
+
+// ============ ADMIN PANEL ============
 bot.command('admin', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await sendAdminPanel(ctx);
@@ -555,14 +584,47 @@ bot.command('additem', async (ctx) => {
 
 bot.action('adm:backup', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
-  const data = H.backup();
-  const json = JSON.stringify(data, null, 2);
-  const filename = `backup-${new Date().toISOString().slice(0,10)}.json`;
   await ctx.answerCbQuery('💾 Backup ပို့နေသည်');
-  await ctx.replyWithDocument({ source: Buffer.from(json), filename });
-  const dir = path.join(__dirname, 'backups');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, filename), json);
+  await sendBackupToAdmin('manual-button');
+  await ctx.reply('✅ Backup ပို့ပြီးပါပြီ');
+});
+
+// ============ BACKUP/RESTORE COMMANDS ============
+bot.command('backupnow', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  await ctx.reply('💾 Backup ပို့နေသည်...');
+  await sendBackupToAdmin('manual');
+  await ctx.reply('✅ Backup ပို့ပြီးပါပြီ');
+});
+
+bot.command('restore', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const reply = ctx.message.reply_to_message;
+  if (!reply || !reply.document) {
+    return ctx.reply('⚠️ Backup JSON ဖိုင်ကို reply လုပ်ပြီး /restore ပို့ပါ');
+  }
+  try {
+    const fileId = reply.document.file_id;
+    const link = await bot.telegram.getFileLink(fileId);
+    const res = await fetch(link.href);
+    const text = await res.text();
+    const parsed = JSON.parse(text);
+    if (!parsed.users || !parsed._seq) return ctx.reply('❌ ဖိုင်မှာ user data မပါပါ');
+    H.replaceData(parsed);
+    H.setSetting('last_backup_file_id', fileId);
+    H.setSetting('last_backup_at', String(now()));
+    await ctx.reply(`✅ Restore အောင်မြင်ပါပြီ\n👥 Users: ${parsed.users.length}\n💰 Deposits: ${parsed.deposits?.length || 0}\n🛒 Orders: ${parsed.orders?.length || 0}`);
+  } catch (e) {
+    ctx.reply('❌ Restore မအောင်မြင်ပါ: ' + e.message);
+  }
+});
+
+bot.command('backupinfo', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const at = H.getSetting('last_backup_at');
+  const fid = H.getSetting('last_backup_file_id');
+  const stats = H.stats();
+  ctx.reply(`💾 Backup Status\n\n👥 Users: ${stats.users}\n💰 Total Deposit: ${stats.totalDeposit} MMK\n🧾 Total Sales: ${stats.totalSales} MMK\n\n⏰ နောက်ဆုံး backup: ${at ? new Date(Number(at) * 1000).toLocaleString() : 'မရှိ'}\n🆔 File ID: ${fid ? fid.slice(0, 20) + '...' : 'မရှိ'}`);
 });
 
 // ============ START SERVER ============
@@ -573,7 +635,13 @@ app.listen(PORT, () => {
 
 // ============ START BOT ============
 bot.launch()
-  .then(() => console.log('🤖 Bot started'))
+  .then(async () => {
+    console.log('🤖 Bot started');
+    if (!fs.existsSync(DB_FILE) || !dbData.users.length) {
+      await restoreFromTelegramBackup();
+    }
+    setTimeout(() => sendBackupToAdmin('startup'), 5000);
+  })
   .catch(err => console.error('Bot launch error:', err));
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
