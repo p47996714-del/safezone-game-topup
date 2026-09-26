@@ -1,13 +1,4 @@
-:root{
-  --bg: var(--tg-theme-bg-color,#0f1117);
-  --bg2: var(--tg-theme-secondary-bg-color,#1a1d26);
-  --text: var(--tg-theme-text-color,#ffffff);
-  --hint: var(--tg-theme-hint-color,#8a90a0);
-  --btn: var(--tg-theme-button-color,#2ea6ff);
-  --btnText: var(--tg-theme-button-text-color,#fff);
-  --danger:#e74c3c;
-  --success:#27ae60;
-}
+:root{--bg:var(--tg-theme-bg-color,#0f1117);--bg2:var(--tg-theme-secondary-bg-color,#1a1d26);--text:var(--tg-theme-text-color,#ffffff);--hint:var(--tg-theme-hint-color,#8a90a0);--btn:var(--tg-theme-button-color,#2ea6ff);--btnText:var(--tg-theme-button-text-color,#fff);--danger:#e74c3c;--success:#27ae60}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;font-size:15px}
 #app{padding:14px;max-width:640px;margin:0 auto}
@@ -26,9 +17,9 @@ button:active{transform:scale(.97)}
 .primary{background:var(--btn);color:var(--btnText);font-weight:700}
 .ghost{background:rgba(255,255,255,.15);color:#fff;flex:1}
 .full{width:100%;margin-top:12px}
-.section-title{font-size:16px;margin:16px 4px 10px;color:var(--text)}
+.section-title{font-size:16px;margin:16px 4px 10px}
 .games-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.game-card{background:var(--bg2);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .1s}
+.game-card{background:var(--bg2);border-radius:14px;overflow:hidden;cursor:pointer}
 .game-card:active{transform:scale(.97)}
 .game-card img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:#222}
 .game-card .name{padding:10px;font-weight:600;font-size:14px;text-align:center}
@@ -36,58 +27,20 @@ input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #333;ba
 input[type=file]{padding:8px}
 .label{display:block;font-size:13px;color:var(--hint);margin:14px 0 6px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;z-index:100}
-.modal-content{background:var(--bg2);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:20px;max-height:90vh;overflow-y:auto;position:relative;animation:slideUp .25s ease}
-@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-content{background:var(--bg2);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:20px;max-height:90vh;overflow-y:auto;position:relative}
 .modal-close{position:absolute;top:10px;right:12px;background:transparent;color:var(--hint);font-size:26px;padding:4px 10px}
 .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
 .pay-btn{background:#22252f;color:var(--text);padding:12px;border-radius:10px;border:2px solid transparent}
 .pay-btn.active{border-color:var(--btn);background:rgba(46,166,255,.15)}
 .pay-info{background:rgba(46,166,255,.12);border:1px dashed var(--btn);padding:12px;border-radius:10px;margin-top:12px;font-size:14px;line-height:1.6}
 
-/* ============ ITEMS 2-COLUMN GRID ============ */
-.items-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
-}
-.item-card {
-  background: #0d0f15;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border: 1px solid rgba(255,255,255,0.05);
-}
-.item-card .item-name {
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 1.3;
-  margin-bottom: 6px;
-  min-height: 34px;
-}
-.item-card .item-price {
-  color: #2ea6ff;
-  font-weight: 700;
-  font-size: 14px;
-  margin-bottom: 10px;
-}
-.item-card .item-buy {
-  background: var(--btn);
-  color: var(--btnText);
-  padding: 8px 10px;
-  font-size: 13px;
-  border-radius: 8px;
-  width: 100%;
-  font-weight: 600;
-}
-.item-card .item-buy:disabled {
-  background: #333;
-  cursor: not-allowed;
-}
-/* =========================================== */
-
+.category-title{margin:18px 0 8px;font-size:15px;font-weight:700;color:var(--text);padding-left:4px;border-left:3px solid var(--btn);padding:4px 0 4px 8px}
+.items-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.item-card{background:#0d0f15;border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,0.05)}
+.item-card .item-name{font-weight:600;font-size:13px;line-height:1.3;margin-bottom:6px;min-height:34px}
+.item-card .item-price{color:#2ea6ff;font-weight:700;font-size:14px;margin-bottom:10px}
+.item-card .item-buy{background:var(--btn);color:var(--btnText);padding:8px 10px;font-size:13px;border-radius:8px;width:100%;font-weight:600}
+.item-card .item-buy:disabled{background:#333;cursor:not-allowed}
 .item-row{display:flex;justify-content:space-between;align-items:center;background:#0d0f15;padding:12px;border-radius:10px;gap:10px}
 .item-row .price{color:#2ea6ff;font-weight:700;white-space:nowrap}
 .buy-item{font-weight:700;font-size:17px;margin:8px 0}

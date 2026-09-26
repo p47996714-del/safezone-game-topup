@@ -9,24 +9,15 @@
 </head>
 <body>
 <div id="app">
-  <div id="loading" class="center">
-    <div class="spinner"></div>
-    <p>ခဏစောင့်ပါ...</p>
-  </div>
-
-  <div id="maintenance" class="center hidden">
-    <div class="big-icon">🛠️</div>
-    <h2>ခေတ္တပိတ်ထားပါသည်</h2>
-    <p class="hint">Admin မှ ပြန်ဖွင့်ပေးသည်အထိ စောင့်ပါ။</p>
-  </div>
+  <div id="loading" class="center"><div class="spinner"></div><p>ခဏစောင့်ပါ...</p></div>
+  <div id="maintenance" class="center hidden"><div class="big-icon">🛠️</div><h2>ခေတ္တပိတ်ထားပါသည်</h2><p class="hint">Admin မှ ပြန်ဖွင့်သည်အထိ စောင့်ပါ။</p></div>
 
   <div id="login" class="hidden">
     <div class="card">
       <h1>အကောင့်ဝင်ပါ</h1>
-      <p class="hint">ဖုန်းနံပါတ်နှင့် စကားဝှက် ထည့်ပါ။</p>
       <label class="label">ဖုန်းနံပါတ်</label>
       <input id="loginPhone" type="tel" placeholder="09xxxxxxxxx" />
-      <label class="label">စကားဝှက် (Password)</label>
+      <label class="label">စကားဝှက်</label>
       <input id="loginPassword" type="password" placeholder="စကားဝှက်" />
       <button id="loginBtn" class="primary full">🔓 အကောင့်ဝင်မယ်</button>
       <button id="showRegisterBtn" class="ghost full" style="margin-top:8px">📝 အကောင့်အသစ် ဖွင့်မယ်</button>
@@ -36,15 +27,14 @@
   <div id="register" class="hidden">
     <div class="card">
       <h1>အကောင့်ဖွင့်ပါ</h1>
-      <p class="hint">ဆက်လုပ်ရန် အချက်အလက်များ ဖြည့်ပါ။</p>
       <label class="label">နာမည်</label>
       <input id="nameInput" type="text" placeholder="သင့်နာမည်" />
       <label class="label">ဖုန်းနံပါတ်</label>
       <input id="phoneInput" type="tel" placeholder="09xxxxxxxxx" />
-      <label class="label">စကားဝှက် (Password)</label>
-      <input id="passwordInput" type="password" placeholder="အနည်းဆုံး 4 လုံး" />
-      <label class="label">စကားဝှက် အတည်ပြုပါ</label>
-      <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ထည့်ပါ" />
+      <label class="label">စကားဝှက်</label>
+      <input id="passwordInput" type="password" placeholder="4 လုံး+" />
+      <label class="label">စကားဝှက် အတည်ပြု</label>
+      <input id="passwordInput2" type="password" placeholder="ပြန်ထည့်ပါ" />
       <button id="registerBtn" class="primary full">✅ အကောင့်ဖွင့်မယ်</button>
       <button id="showLoginBtn" class="ghost full" style="margin-top:8px">🔓 အကောင့်ရှိပြီးသား ဝင်မယ်</button>
     </div>
@@ -61,7 +51,6 @@
       <button id="profileBtn" class="ghost full" style="margin-top:8px">👤 ကျွန်ုပ်၏ အကောင့်</button>
       <div class="hint" id="userLabel" style="margin-top:8px"></div>
     </div>
-
     <h2 class="section-title">🎮 ဂိမ်းများ</h2>
     <div id="gamesGrid" class="games-grid"></div>
   </div>
@@ -70,9 +59,9 @@
     <div class="modal-content">
       <button class="modal-close" data-close>&times;</button>
       <h2>💰 ငွေဖြည့်</h2>
-      <label class="label">ဖြည့်မည့် ပမာဏ (MMK)</label>
-      <input id="depAmount" type="number" placeholder="ဥပမာ 5000" />
-      <label class="label">ငွေလွှဲမည့် နည်းလမ်း</label>
+      <label class="label">ပမာဏ (MMK)</label>
+      <input id="depAmount" type="number" placeholder="5000" />
+      <label class="label">နည်းလမ်း</label>
       <div class="pay-grid" id="payGrid">
         <button class="pay-btn" data-method="KBZ">KBZ Pay</button>
         <button class="pay-btn" data-method="WAVE">Wave Money</button>
@@ -80,7 +69,7 @@
         <button class="pay-btn" data-method="AYA">AYA Pay</button>
       </div>
       <div id="payInfo" class="pay-info hidden"></div>
-      <label class="label">ပြေစာ (Receipt) ပုံ</label>
+      <label class="label">ပြေစာပုံ</label>
       <input id="receiptInput" type="file" accept="image/*" />
       <button id="submitDeposit" class="primary full">📤 Admin ထံပို့မယ်</button>
     </div>
@@ -97,11 +86,20 @@
   <div id="buyModal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" data-close>&times;</button>
-      <h2>🛒 ဝယ်ယူရန် အတည်ပြုပါ</h2>
+      <h2>🛒 အတည်ပြုပါ</h2>
       <p id="buyItemName" class="buy-item"></p>
-      <p class="buy-price">💰 <span id="buyItemPrice"></span> MMK</p>
-      <label class="label">သင့် Game ID / Account</label>
-      <input id="buyGameAccount" placeholder="Game ID ထည့်ပါ" />
+      <p class="buy-price">💰 <span id="buyItemPrice"></span> Ks</p>
+      <div id="fieldGameId">
+        <label class="label" id="gameIdLabel">Game ID</label>
+        <input id="buyGameAccount" placeholder="Game ID ထည့်ပါ" />
+      </div>
+      <div id="fieldServerId" class="hidden">
+        <label class="label">Server ID</label>
+        <input id="buyServerId" placeholder="Server ID ထည့်ပါ" />
+      </div>
+      <div id="fieldNote" class="hidden">
+        <div class="pay-info"><b>📌 မှတ်ချက်</b><div style="margin-top:6px">ငွေဖြတ်ပြီးပါက Admin မှ သင့်အကောင့်ကို Bot Chat မှတစ်ဆင့် ပေးပို့ပါမည်။</div></div>
+      </div>
       <button id="confirmBuy" class="primary full">✅ အတည်ပြု ဝယ်မယ်</button>
     </div>
   </div>
@@ -117,9 +115,9 @@
   <div id="profileModal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" data-close>&times;</button>
-      <h2>👤 ကျွန်ုပ်၏ အကောင့်</h2>
+      <h2>👤 အကောင့်</h2>
       <div id="profileInfo" style="margin-top:12px"></div>
-      <button id="logoutBtn" class="primary full" style="background:#e74c3c;margin-top:16px">🚪 အကောင့်မှ ထွက်မယ်</button>
+      <button id="logoutBtn" class="primary full" style="background:#e74c3c;margin-top:16px">🚪 ထွက်မယ်</button>
     </div>
   </div>
 
