@@ -23,6 +23,7 @@ function toast(msg, type = '') {
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 
+// ============ INIT ============
 async function init() {
   try {
     const cfg = await (await fetch('/api/config')).json();
@@ -33,17 +34,30 @@ async function init() {
     toast('Server မချိတ်နိုင်ပါ', 'error');
     return;
   }
+  // localStorage session စစ်
+  const saved = localStorage.getItem('miniapp_user');
+  if (saved) {
+    try {
+      STATE.user = JSON.parse(saved);
+      hide('loading'); show('main');
+      renderMain(); loadGames();
+      return;
+    } catch(e) { localStorage.removeItem('miniapp_user'); }
+  }
+  // Telegram ID နဲ့ auto-login စစ်
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
-  if (!me.user) { show('register'); }
+  if (!me.user) { show('login'); }
   else {
     STATE.user = me.user;
+    localStorage.setItem('miniapp_user', JSON.stringify(me.user));
     show('main');
     renderMain();
     loadGames();
   }
 }
 
+// ============ REGISTER ============
 $('registerBtn').addEventListener('click', async () => {
   const name = $('nameInput').value.trim();
   const phone = $('phoneInput').value.trim();
@@ -62,6 +76,7 @@ $('registerBtn').addEventListener('click', async () => {
 
   if (res.ok) {
     STATE.user = res.user;
+    localStorage.setItem('miniapp_user', JSON.stringify(res.user));
     hide('register'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -71,15 +86,66 @@ $('registerBtn').addEventListener('click', async () => {
   }
 });
 
+// ============ LOGIN ============
+$('loginBtn').addEventListener('click', async () => {
+  const phone = $('loginPhone').value.trim();
+  const password = $('loginPassword').value;
+  if (!phone || !password) return toast('ဖုန်းနံပါတ်နှင့် စကားဝှက် ထည့်ပါ', 'error');
+  const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+  if (res.ok) {
+    STATE.user = res.user;
+    localStorage.setItem('miniapp_user', JSON.stringify(res.user));
+    hide('login'); show('main');
+    renderMain(); loadGames();
+    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    toast('အကောင့်ဝင်ပြီးပါပြီ ✅', 'success');
+  } else {
+    toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  }
+});
+
+// ============ SWITCH LOGIN/REGISTER ============
+$('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
+$('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
+
+// ============ PROFILE ============
+$('profileBtn').addEventListener('click', () => {
+  const u = STATE.user;
+  if (!u) return;
+  $('profileInfo').innerHTML = `
+    <div class="item-row" style="margin-bottom:8px"><div>📛 နာမည်</div><div class="price">${u.name || u.first_name || '-'}</div></div>
+    <div class="item-row" style="margin-bottom:8px"><div>📱 ဖုန်း</div><div class="price">${u.phone || '-'}</div></div>
+    <div class="item-row" style="margin-bottom:8px"><div>🆔 User ID</div><div class="price">#${u.id}</div></div>
+    <div class="item-row" style="margin-bottom:8px"><div>💰 Balance</div><div class="price">${Number(u.balance || 0).toLocaleString()} MMK</div></div>
+    <div class="item-row" style="margin-bottom:8px"><div>📅 မှတ်ပုံတင်ရက်</div><div class="price">${new Date((u.created_at || 0) * 1000).toLocaleDateString()}</div></div>`;
+  show('profileModal');
+});
+
+// ============ LOGOUT ============
+$('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('miniapp_user');
+  STATE.user = null;
+  hide('profileModal'); hide('main');
+  $('loginPhone').value = ''; $('loginPassword').value = '';
+  show('login');
+  toast('အကောင့်မှ ထွက်ပြီးပါပြီ', 'success');
+});
+
+// ============ MAIN RENDER ============
 function renderMain() {
   $('balanceVal').textContent = Number(STATE.user.balance || 0).toLocaleString();
   $('userLabel').textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
 }
 async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
-  if (me.user) { STATE.user = me.user; renderMain(); }
+  if (me.user) {
+    STATE.user = me.user;
+    localStorage.setItem('miniapp_user', JSON.stringify(me.user));
+    renderMain();
+  }
 }
 
+// ============ GAMES ============
 async function loadGames() {
   const res = await api('/api/games');
   STATE.games = res.games || [];
@@ -95,6 +161,7 @@ async function loadGames() {
   });
 }
 
+// ============ ITEMS ============
 async function openItems(game) {
   $('itemsTitle').textContent = game.name;
   $('itemsList').innerHTML = '<p class="hint">ခဏစောင့်ပါ...</p>';
@@ -145,6 +212,7 @@ $('confirmBuy').addEventListener('click', async () => {
   } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
+// ============ DEPOSIT ============
 $('depositBtn').addEventListener('click', () => {
   $('depAmount').value = '';
   $('receiptInput').value = '';
@@ -192,6 +260,7 @@ $('submitDeposit').addEventListener('click', async () => {
   } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
+// ============ HISTORY ============
 $('historyBtn').addEventListener('click', async () => {
   show('historyModal');
   const box = $('historyList');
@@ -226,6 +295,7 @@ $('historyBtn').addEventListener('click', async () => {
   box.innerHTML = html;
 });
 
+// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => { e.target.closest('.modal').classList.add('hidden'); });
 });

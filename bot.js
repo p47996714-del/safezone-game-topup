@@ -1,4 +1,3 @@
-cat > bot.js << 'BOTEOF'
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -68,6 +67,7 @@ const H = {
   setSetting: (k, v) => { dbData.settings[k] = String(v); saveDB(); },
   getUserByTg: (tgId) => dbData.users.find(u => String(u.telegram_id) === String(tgId)) || null,
   getUserById: (id) => dbData.users.find(u => u.id === Number(id)) || null,
+  getUserByPhone: (phone) => dbData.users.find(u => u.phone === phone) || null,
   createUser: ({ telegram_id, username, first_name, phone, name, password_salt, password_hash }) => {
     const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, created_at: now() };
     dbData.users.push(u); saveDB(); return u;
@@ -124,6 +124,10 @@ const H = {
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData })
 };
 
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+}
+
 // ============ UPLOAD ============
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -173,19 +177,20 @@ app.post('/api/me', auth, (req, res) => {
   res.json({ ok: true, user: u, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
 });
 
-// ============ REGISTER (Name + Phone + Password) ============
+// ============ REGISTER ============
 app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2 } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
   if (!phone || phone.length < 6) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် မှန်ကန်စွာထည့်ပါ' });
   if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'စကားဝှက် အနည်းဆုံး 4 လုံး ထည့်ပါ' });
   if (password !== password2) return res.status(400).json({ ok: false, error: 'စကားဝှက် နှစ်ခု မတူညီပါ' });
+  if (H.getUserByPhone(phone)) return res.status(400).json({ ok: false, error: 'ဒီဖုန်းနံပါတ်နဲ့ အကောင့်ရှိပြီးသားပါ' });
 
   let u = H.getUserByTg(req.tgUser.id);
-  if (u) return res.status(400).json({ ok: false, error: 'ဒီအကောင့် ရှိပြီးသားဖြစ်ပါသည်' });
+  if (u) return res.status(400).json({ ok: false, error: 'ဒီ Telegram အကောင့်နဲ့ register လုပ်ပြီးသားပါ' });
 
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  const hash = hashPassword(password, salt);
 
   u = H.createUser({
     telegram_id: req.tgUser.id,
@@ -199,6 +204,19 @@ app.post('/api/register', auth, (req, res) => {
 
   H.addLog(req.tgUser.id, 'register', `user#${u.id}`, `${name} | ${phone}`);
   res.json({ ok: true, user: u });
+});
+
+// ============ LOGIN (phone + password) ============
+app.post('/api/login', auth, (req, res) => {
+  const { phone, password } = req.body;
+  if (!phone || !password) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် နှင့် စကားဝှက် ထည့်ပါ' });
+  const user = H.getUserByPhone(phone);
+  if (!user) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် မှားနေပါသည်' });
+  const hash = hashPassword(password, user.password_salt || '');
+  if (hash !== user.password_hash) return res.status(400).json({ ok: false, error: 'စကားဝှက် မှားနေပါသည်' });
+  if (user.banned) return res.status(400).json({ ok: false, error: 'ဒီအကောင့်ကို ပိတ်ထားပါသည်' });
+  H.addLog(req.tgUser.id, 'login', `user#${user.id}`, phone);
+  res.json({ ok: true, user });
 });
 
 app.get('/api/games', auth, (req, res) => res.json({ ok: true, games: H.listGames() }));
@@ -281,10 +299,8 @@ const isAdmin = (id) => String(id) === ADMIN_ID;
 
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
-  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ ကျွန်ုပ်တို့ Mini App မှာ ဂိမ်း Items နှင့် App Premium များ ဝယ်ယူနိုင်ပါတယ်။\n\n${u ? `💰 Balance: ${u.balance} MMK` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}`;
-  const kb = [];
-  if (PUBLIC_URL) kb.push([Markup.button.webApp('🛍️ Mini App ဖွင့်', PUBLIC_URL)]);
-  kb.push(['💰 Balance', '📜 History']);
+  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup မှ ကြိုဆိုပါတယ်။\n\n${u ? `💰 Balance: ${u.balance} MMK\n📱 Phone: ${u.phone}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}\n\n👇 Mini App ကို အောက်ဘယ်ထောင့် Menu Button ကနေ ဖွင့်ပါ။`;
+  const kb = [['💰 Balance', '📜 History', '👤 အကောင့်']];
   await ctx.reply(welcome, Markup.keyboard(kb).resize());
 });
 
@@ -301,6 +317,12 @@ bot.hears('📜 History', async (ctx) => {
   if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိသေးပါ။');
   const text = txs.map(t => `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} MMK (${t.balance_after})\n  ${new Date(t.created_at * 1000).toLocaleString()}`).join('\n\n');
   ctx.reply(`📜 နောက်ဆုံး မှတ်တမ်း:\n\n${text}`);
+});
+
+bot.hears('👤 အကောင့်', async (ctx) => {
+  const u = H.getUserByTg(ctx.from.id);
+  if (!u) return ctx.reply('Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
+  ctx.reply(`👤 အကောင့်အချက်အလက်\n\n📛 နာမည်: ${u.name || '-'}\n📱 ဖုန်း: ${u.phone || '-'}\n💰 Balance: ${u.balance} MMK\n🆔 User ID: ${u.id}`);
 });
 
 bot.command('admin', async (ctx) => {

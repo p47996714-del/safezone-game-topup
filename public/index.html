@@ -20,6 +20,19 @@
     <p class="hint">Admin မှ ပြန်ဖွင့်ပေးသည်အထိ စောင့်ပါ။</p>
   </div>
 
+  <div id="login" class="hidden">
+    <div class="card">
+      <h1>အကောင့်ဝင်ပါ</h1>
+      <p class="hint">ဖုန်းနံပါတ်နှင့် စကားဝှက် ထည့်ပါ။</p>
+      <label class="label">ဖုန်းနံပါတ်</label>
+      <input id="loginPhone" type="tel" placeholder="09xxxxxxxxx" />
+      <label class="label">စကားဝှက် (Password)</label>
+      <input id="loginPassword" type="password" placeholder="စကားဝှက်" />
+      <button id="loginBtn" class="primary full">🔓 အကောင့်ဝင်မယ်</button>
+      <button id="showRegisterBtn" class="ghost full" style="margin-top:8px">📝 အကောင့်အသစ် ဖွင့်မယ်</button>
+    </div>
+  </div>
+
   <div id="register" class="hidden">
     <div class="card">
       <h1>အကောင့်ဖွင့်ပါ</h1>
@@ -33,6 +46,7 @@
       <label class="label">စကားဝှက် အတည်ပြုပါ</label>
       <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ထည့်ပါ" />
       <button id="registerBtn" class="primary full">✅ အကောင့်ဖွင့်မယ်</button>
+      <button id="showLoginBtn" class="ghost full" style="margin-top:8px">🔓 အကောင့်ရှိပြီးသား ဝင်မယ်</button>
     </div>
   </div>
 
@@ -44,7 +58,8 @@
         <button id="depositBtn" class="ghost">➕ ငွေဖြည့်</button>
         <button id="historyBtn" class="ghost">📜 မှတ်တမ်း</button>
       </div>
-      <div class="hint" id="userLabel"></div>
+      <button id="profileBtn" class="ghost full" style="margin-top:8px">👤 ကျွန်ုပ်၏ အကောင့်</button>
+      <div class="hint" id="userLabel" style="margin-top:8px"></div>
     </div>
 
     <h2 class="section-title">🎮 ဂိမ်းများ</h2>
@@ -96,6 +111,15 @@
       <button class="modal-close" data-close>&times;</button>
       <h2>📜 မှတ်တမ်း</h2>
       <div id="historyList"></div>
+    </div>
+  </div>
+
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" data-close>&times;</button>
+      <h2>👤 ကျွန်ုပ်၏ အကောင့်</h2>
+      <div id="profileInfo" style="margin-top:12px"></div>
+      <button id="logoutBtn" class="primary full" style="background:#e74c3c;margin-top:16px">🚪 အကောင့်မှ ထွက်မယ်</button>
     </div>
   </div>
 
