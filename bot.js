@@ -15,7 +15,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@pyae_phyo_12327';
 const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '218401';
-const AUTO_REPLY_TIMEOUT = 180; // 3 minutes
+const AUTO_REPLY_TIMEOUT = 180;
 
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
@@ -47,11 +47,11 @@ LOG.ok(`Storage: ${USE_DISK ? '/data (Persistent)' : 'Local (Ephemeral)'}`);
 
 // ============ DATABASE ============
 function defaultDB() {
-  return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
+  return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], banners: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
 }
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) return defaultDB();
-  try { const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); if (!d.messages) d.messages = []; if (!d._seq.messages) d._seq.messages = 1; return d; }
+  try { const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); if (!d.messages) d.messages = []; if (!d.banners) d.banners = []; if (!d._seq.messages) d._seq.messages = 1; return d; }
   catch { return defaultDB(); }
 }
 let dbData = loadDB();
@@ -90,6 +90,7 @@ function restoreFromLocalBackup() {
         if (!data.users || !data._seq) continue;
         dbData = data;
         if (!dbData.messages) dbData.messages = [];
+        if (!dbData.banners) dbData.banners = [];
         if (!dbData._seq.messages) dbData._seq.messages = 1;
         fixImagePaths();
         saveDB();
@@ -112,6 +113,16 @@ if (!dbData.games.length) {
   ];
 }
 fixImagePaths();
+
+// ============ BANNERS ============
+if (!dbData.banners || !dbData.banners.length) {
+  dbData.banners = [
+    { id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 },
+    { id: 2, title: '💎 MLBB Diamonds', subtitle: '5000 Ks မှစ၍', color1: '#27ae60', color2: '#2ea6ff', active: 1 },
+    { id: 3, title: '🎮 PUBG UC', subtitle: 'Instant Delivery', color1: '#f39c12', color2: '#e74c3c', active: 1 }
+  ];
+  saveDB();
+}
 
 // ============ ITEMS ============
 const SEED_ITEMS = [
@@ -249,7 +260,7 @@ const H = {
     totalSales: dbData.orders.reduce((s, o) => s + o.price, 0)
   }),
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
-  replaceData: (newData) => { dbData = newData; if (!dbData.messages) dbData.messages = []; if (!dbData._seq.messages) dbData._seq.messages = 1; fixImagePaths(); saveDB(); }
+  replaceData: (newData) => { dbData = newData; if (!dbData.messages) dbData.messages = []; if (!dbData.banners || !dbData.banners.length) dbData.banners = [{ id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 }]; if (!dbData._seq.messages) dbData._seq.messages = 1; fixImagePaths(); saveDB(); }
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
@@ -267,16 +278,11 @@ app.get('/health', (req, res) => {
   const uptime = Math.floor((Date.now() - START_TIME) / 1000);
   const mem = process.memoryUsage();
   res.json({
-    ok: true,
-    status: 'healthy',
-    uptime,
+    ok: true, status: 'healthy', uptime,
     uptimeHuman: `${Math.floor(uptime/3600)}h ${Math.floor((uptime%3600)/60)}m ${uptime%60}s`,
     memory: { rss: Math.round(mem.rss / 1024 / 1024) + ' MB', heap: Math.round(mem.heapUsed / 1024 / 1024) + ' MB' },
     storage: USE_DISK ? 'persistent' : 'ephemeral',
-    users: dbData.users.length,
-    items: dbData.items.length,
-    orders: dbData.orders.length,
-    deposits: dbData.deposits.length,
+    users: dbData.users.length, items: dbData.items.length, orders: dbData.orders.length, deposits: dbData.deposits.length,
     timestamp: new Date().toISOString()
   });
 });
@@ -354,9 +360,32 @@ app.post('/api/login', auth, (req, res) => {
   res.json({ ok: true, user });
 });
 
+// ============ BANNERS API ============
+app.get('/api/banners', auth, (req, res) => {
+  const list = (dbData.banners || []).filter(b => b.active);
+  res.json({ ok: true, banners: list });
+});
+
+// ============ GAMES & ITEMS ============
 app.get('/api/games', auth, (req, res) => res.json({ ok: true, games: H.listGames() }));
 app.get('/api/items/:gameId', auth, (req, res) => res.json({ ok: true, items: H.listItems(req.params.gameId) }));
 
+// ============ ORDER TRACKING ============
+app.get('/api/order/:id', auth, (req, res) => {
+  const u = H.getUserByTg(req.tgUser.id);
+  if (!u) return res.status(401).json({ ok: false, error: 'no user' });
+  const o = H.getOrder(Number(req.params.id));
+  if (!o || o.user_id !== u.id) return res.status(404).json({ ok: false, error: 'not found' });
+  const timeline = [
+    { step: 'created', label: 'Order တင်ပြီး', at: o.created_at, done: true },
+    { step: 'pending', label: 'Admin စစ်ဆေးနေသည်', at: o.created_at, done: o.status !== 'pending' },
+    { step: 'processing', label: 'ဆောင်ရွက်နေသည်', at: null, done: o.status === 'completed' },
+    { step: 'completed', label: 'ပြီးစီးပြီ', at: o.processed_at, done: o.status === 'completed' }
+  ];
+  res.json({ ok: true, order: o, timeline });
+});
+
+// ============ DEPOSIT ============
 app.post('/api/deposit', auth, upload.single('receipt'), async (req, res) => {
   try {
     const u = H.getUserByTg(req.tgUser.id);
@@ -384,6 +413,7 @@ app.get('/api/deposits', auth, (req, res) => {
   res.json({ ok: true, deposits: list });
 });
 
+// ============ CHAT ============
 app.post('/api/chat/send', auth, async (req, res) => {
   try {
     const u = H.getUserByTg(req.tgUser.id);
@@ -418,6 +448,7 @@ app.post('/api/chat/unread', auth, (req, res) => {
   res.json({ ok: true, count });
 });
 
+// ============ PURCHASE ============
 app.post('/api/purchase', auth, async (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
   if (!u) return res.status(400).json({ ok: false, error: 'register first' });
@@ -703,7 +734,6 @@ bot.on('message', async (ctx, next) => {
   return next();
 });
 
-// FAQ Bot + Auto Reply
 bot.on('text', async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   const text = ctx.message.text || '';
@@ -870,7 +900,7 @@ bot.command('status', async (ctx) => {
   const isOnline = (now() - lastSeen) < AUTO_REPLY_TIMEOUT;
   const lastSeenStr = lastSeen ? new Date(lastSeen * 1000).toLocaleString() : 'မရှိ';
   const timeLeft = Math.max(0, AUTO_REPLY_TIMEOUT - (now() - lastSeen));
-  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n⏱ Auto Reply ဖြစ်ဖို့: ${timeLeft > 0 ? timeLeft + ' စက္ကန့် ကျန်' : 'ပို့မည်'}\n⏱ Timeout: ${AUTO_REPLY_TIMEOUT}s (${AUTO_REPLY_TIMEOUT/60} min)`, { parse_mode: 'Markdown' });
+  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n⏱ Auto Reply ဖြစ်ဖို့: ${timeLeft > 0 ? timeLeft + ' စက္ကန့် ကျန်' : 'ပို့မည်'}\n⏱ Timeout: ${AUTO_REPLY_TIMEOUT}s`, { parse_mode: 'Markdown' });
 });
 bot.command('faqlist', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
@@ -922,7 +952,8 @@ app.listen(PORT, () => {
   console.log(`  💾 Storage:    ${USE_DISK ? '/data (Persistent)' : 'Local (Ephemeral)'}`);
   console.log(`  📦 Items:      ${dbData.items.length}`);
   console.log(`  👥 Users:      ${dbData.users.length}`);
-  console.log(`  ⏱ Auto Reply:  ${AUTO_REPLY_TIMEOUT}s (${AUTO_REPLY_TIMEOUT/60} min)`);
+  console.log(`  🎨 Banners:    ${dbData.banners.length}`);
+  console.log(`  ⏱ Auto Reply:  ${AUTO_REPLY_TIMEOUT}s`);
   console.log(`  🔐 Admin:      /admin.html`);
   console.log(`  💚 Health:     /health`);
   console.log(`${border}\n`);
@@ -938,11 +969,7 @@ async function launchBot(retries = 5) {
       return true;
     } catch (err) {
       LOG.error(`Launch attempt ${i} failed:`, err.message);
-      if (i < retries) {
-        const wait = i * 3000;
-        LOG.warn(`Retrying in ${wait/1000}s...`);
-        await new Promise(r => setTimeout(r, wait));
-      }
+      if (i < retries) { const wait = i * 3000; LOG.warn(`Retrying in ${wait/1000}s...`); await new Promise(r => setTimeout(r, wait)); }
     }
   }
   LOG.error('All launch attempts failed');
@@ -973,24 +1000,12 @@ async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   LOG.warn(`[${signal}] Shutdown signal received...`);
-  try { saveLocalBackup('shutdown'); LOG.ok('Backup saved'); }
-  catch (e) { LOG.error('Backup failed:', e.message); }
-  try {
-    if (bot && typeof bot.stop === 'function') {
-      await bot.stop(signal);
-      LOG.ok('Bot stopped cleanly');
-    }
-  } catch (e) { LOG.info('Bot stop skipped:', e.message); }
+  try { saveLocalBackup('shutdown'); LOG.ok('Backup saved'); } catch (e) { LOG.error('Backup failed:', e.message); }
+  try { if (bot && typeof bot.stop === 'function') { await bot.stop(signal); LOG.ok('Bot stopped cleanly'); } } catch (e) { LOG.info('Bot stop skipped:', e.message); }
   LOG.ok('Shutdown complete');
   process.exit(0);
 }
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('uncaughtException', (err) => {
-  LOG.error('Uncaught Exception:', err.message);
-  LOG.error(err.stack);
-  if (!isShuttingDown) gracefulShutdown('uncaughtException');
-});
-process.on('unhandledRejection', (reason) => {
-  LOG.warn('Unhandled Rejection:', reason);
-});
+process.on('uncaughtException', (err) => { LOG.error('Uncaught Exception:', err.message); LOG.error(err.stack); if (!isShuttingDown) gracefulShutdown('uncaughtException'); });
+process.on('unhandledRejection', (reason) => { LOG.warn('Unhandled Rejection:', reason); });
