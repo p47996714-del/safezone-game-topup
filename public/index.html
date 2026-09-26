@@ -9,7 +9,10 @@
 </head>
 <body>
 <div id="app">
-  <div id="loading" class="center"><div class="spinner"></div><p>ခဏစောင့်ပါ...</p></div>
+  <div id="loading" class="center">
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <p>ခဏစောင့်ပါ...</p>
+  </div>
   <div id="maintenance" class="center hidden"><div class="big-icon">🛠️</div><h2>ခေတ္တပိတ်ထားပါသည်</h2><p class="hint">Admin မှ ပြန်ဖွင့်သည်အထိ စောင့်ပါ။</p></div>
 
   <div id="login" class="hidden">
@@ -49,6 +52,9 @@
   </div>
 
   <div id="main" class="hidden">
+    <div class="theme-toggle-bar">
+      <button id="themeToggle" class="theme-btn" title="Theme ပြောင်း">🌙</button>
+    </div>
     <div class="app-header">
       <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
       <div class="app-tagline">SAFE ZONE GAME TOPUP</div>

@@ -5,7 +5,8 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
 let STATE = { user: null, games: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {} };
-let CHAT = { open: false, timer: null };
+let CHAT = { open: false, timer: null, lastCount: 0 };
+let AUDIO_CTX = null;
 
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers||{}) };
@@ -15,10 +16,51 @@ async function api(path, opts = {}) {
 function toast(msg, type = '') {
   const t = $('toast'); t.textContent = msg; t.className = 'toast ' + type; t.classList.remove('hidden');
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.add('hidden'), 3000);
+  if (type === 'success') notifySound('success');
+  else if (type === 'error') notifySound('error');
 }
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 
+// ============ THEME ============
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('miniapp_theme', theme);
+  const btn = $('themeToggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+}
+(function initTheme() {
+  const saved = localStorage.getItem('miniapp_theme') || 'dark';
+  applyTheme(saved);
+})();
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'themeToggle') {
+    const cur = document.body.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+    try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
+  }
+});
+
+// ============ SOUND ============
+function playBeep(freq = 800, duration = 150) {
+  try {
+    if (!AUDIO_CTX) AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = AUDIO_CTX.createOscillator();
+    const gain = AUDIO_CTX.createGain();
+    osc.connect(gain); gain.connect(AUDIO_CTX.destination);
+    osc.frequency.value = freq; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.15, AUDIO_CTX.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, AUDIO_CTX.currentTime + duration / 1000);
+    osc.start(); osc.stop(AUDIO_CTX.currentTime + duration / 1000);
+  } catch(e) {}
+}
+function notifySound(type = 'message') {
+  if (type === 'message') { playBeep(900, 100); setTimeout(() => playBeep(1200, 100), 120); }
+  else if (type === 'success') { playBeep(800, 80); setTimeout(() => playBeep(1000, 80), 90); setTimeout(() => playBeep(1300, 120), 180); }
+  else if (type === 'error') { playBeep(400, 200); }
+}
+
+// ============ INIT ============
 async function init() {
   try {
     const cfg = await (await fetch('/api/config')).json();
@@ -92,10 +134,18 @@ async function refreshMe() {
   if (me.user) { STATE.user = me.user; renderMain(); }
 }
 
+// ============ GAMES (with skeleton) ============
 async function loadGames() {
+  const grid = $('gamesGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const sk = document.createElement('div');
+    sk.className = 'skeleton skeleton-game';
+    grid.appendChild(sk);
+  }
   const res = await api('/api/games');
   STATE.games = res.games || [];
-  const grid = $('gamesGrid'); grid.innerHTML = '';
+  grid.innerHTML = '';
   STATE.games.forEach(g => {
     const div = document.createElement('div');
     div.className = 'game-card';
@@ -105,23 +155,31 @@ async function loadGames() {
   });
 }
 
+// ============ ITEMS (with skeleton) ============
 async function openItems(game) {
   STATE.selectedGame = game;
   $('itemsTitle').textContent = game.name;
-  $('itemsList').innerHTML = '<p class="hint">ခဏစောင့်ပါ...</p>';
+  const box = $('itemsList');
+  box.innerHTML = '';
+  const skGrid = document.createElement('div');
+  skGrid.className = 'items-grid';
+  for (let i = 0; i < 6; i++) {
+    const sk = document.createElement('div');
+    sk.className = 'skeleton skeleton-item';
+    skGrid.appendChild(sk);
+  }
+  box.appendChild(skGrid);
   show('itemsModal');
   const res = await api(`/api/items/${game.id}`);
   const items = res.items || [];
-  const box = $('itemsList');
-  if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
   box.innerHTML = '';
+  if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
   if (game.id === 'app-premium') {
     const groups = {};
     items.forEach(it => { const cat = it.category || '📦 အခြား'; if (!groups[cat]) groups[cat] = []; groups[cat].push(it); });
     Object.entries(groups).forEach(([cat, list]) => {
       const title = document.createElement('div');
-      title.className = 'category-title';
-      title.textContent = cat;
+      title.className = 'category-title'; title.textContent = cat;
       box.appendChild(title);
       const grid = document.createElement('div');
       grid.className = 'items-grid';
@@ -256,6 +314,13 @@ async function loadChat(scrollBottom) {
     box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။ Admin ကို စာ ပို့ပါ။</p>';
     return;
   }
+  // အသစ်ရောက်လား စစ်
+  if (CHAT.open && msgs.length > CHAT.lastCount && CHAT.lastCount > 0) {
+    const newAdmin = msgs.slice(CHAT.lastCount).filter(m => m.from === 'admin');
+    if (newAdmin.length > 0) notifySound('message');
+  }
+  CHAT.lastCount = msgs.length;
+
   let lastDate = '';
   let html = '';
   msgs.forEach(m => {
@@ -292,13 +357,15 @@ async function checkUnread() {
   if (CHAT.open || !STATE.user) return;
   try {
     const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
-    if (res.count > 0) { $('chatBadge').textContent = res.count; $('chatBadge').style.display = 'inline-block'; }
-    else { $('chatBadge').style.display = 'none'; }
+    if (res.count > 0) {
+      $('chatBadge').textContent = res.count;
+      $('chatBadge').style.display = 'inline-block';
+    } else { $('chatBadge').style.display = 'none'; }
   } catch(e) {}
 }
 setInterval(checkUnread, 15000);
 
-// ============ AUTO REFRESH (balance + orders) ============
+// ============ AUTO REFRESH ============
 async function autoRefresh() {
   if (!STATE.user || CHAT.open) return;
   if ($('main').classList.contains('hidden')) return;
@@ -319,7 +386,6 @@ async function autoRefresh() {
 }
 setInterval(autoRefresh, 8000);
 
-// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => {
     const modal = e.target.closest('.modal');
