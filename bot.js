@@ -16,10 +16,15 @@ const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
-// ============ DATA ============
-const DATA_DIR = path.join(__dirname, 'data');
+// ============ PERSISTENT DATA DIR ============
+const USE_DISK = fs.existsSync('/data');
+const DATA_ROOT = USE_DISK ? '/data' : __dirname;
+const DATA_DIR = path.join(DATA_ROOT, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'app.json');
+const BACKUP_DIR = path.join(DATA_ROOT, 'backups');
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+console.log(`💾 Storage: ${USE_DISK ? 'Render Persistent Disk (/data)' : 'Local filesystem'}`);
 
 function defaultDB() {
   return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
@@ -33,6 +38,51 @@ let dbData = loadDB();
 function saveDB() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(dbData, null, 2)); fs.renameSync(tmp, DB_FILE); }
 const now = () => Math.floor(Date.now() / 1000);
 
+// ============ LOCAL BACKUP (silent) ============
+function saveLocalBackup(reason = 'auto') {
+  try {
+    const data = { exported_at: new Date().toISOString(), reason, ...dbData };
+    const json = JSON.stringify(data, null, 2);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `backup-${ts}.json`;
+    fs.writeFileSync(path.join(BACKUP_DIR, filename), json);
+
+    // နောက်ဆုံး 24 backup ပဲ သိမ်း (၂၄ နာရီ)
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse();
+    if (files.length > 24) {
+      files.slice(24).forEach(f => { try { fs.unlinkSync(path.join(BACKUP_DIR, f)); } catch(e){} });
+    }
+    console.log(`💾 [${reason}] ${filename} — ${dbData.users.length} users, ${dbData.items.length} items, ${dbData.orders.length} orders`);
+    return true;
+  } catch (e) { console.error('Local backup failed:', e.message); return false; }
+}
+
+function restoreFromLocalBackup() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) return false;
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse();
+    if (!files.length) { console.log('ℹ️ Local backup မရှိ'); return false; }
+    console.log(`📥 Local backup ${files.length} ခု တွေ့သည် — စမ်းကြည့်မည်`);
+    for (const f of files) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, f), 'utf8'));
+        if (!data.users || !data._seq) continue;
+        dbData = data;
+        if (!dbData.messages) dbData.messages = [];
+        if (!dbData._seq.messages) dbData._seq.messages = 1;
+        saveDB();
+        console.log(`✅ Restored from ${f}: ${data.users.length} users, ${data.items?.length || 0} items`);
+        return true;
+      } catch (e) { console.error(`Backup ${f} fail:`, e.message); }
+    }
+    return false;
+  } catch (e) { console.error('Local restore failed:', e.message); return false; }
+}
+
+// ၁ နာရီ တစ်ခါ — silent (Bot chat မှာ မပေါ်)
+setInterval(() => saveLocalBackup('hourly'), 60 * 60 * 1000);
+
+// ============ GAMES ============
 if (!dbData.games.length) {
   dbData.games = [
     { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
@@ -180,7 +230,7 @@ const H = {
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
 
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_DIR = path.join(DATA_ROOT, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 * 1024 } });
 
@@ -342,12 +392,13 @@ app.post('/api/purchase', auth, async (req, res) => {
   H.addBalance(u.id, -item.price, 'order', item.name, 'purchase');
   const orderId = H.createOrder({ user_id: u.id, item_id: item.id, item_name: item.name, game_id: item.game_id, price: item.price, game_account: game_account || null, server_id: server_id || null, needs_account: needsAccount });
   H.addLog(req.tgUser.id, 'order_create', `ord#${orderId}`, `${item.name} ${item.price}`);
+  // Order တိုင်း local backup
+  saveLocalBackup('order-created');
 
   let cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n📱 ${u.phone}\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n`;
   if (needsAccount) {
     cap += `\n⚠️ App Premium — Account ပေးရန် လိုအပ်သည်`;
     cap += `\n\n📩 ဒီ message ကို **Reply** လုပ်ပြီး account (mail/pw) ရိုက်ပို့ပါ → User ဆီ တိုက်ရိုက် ရောက်ပါမည်။`;
-    cap += `\n\n💡 User က သင့် TG (${ADMIN_CONTACT}) ကို ဆက်သွယ်ပါမည်။`;
   } else {
     cap += `🆔 Game ID: ${game_account}`;
     if (server_id) cap += `\n🌐 Server ID: ${server_id}`;
@@ -357,14 +408,13 @@ app.post('/api/purchase', auth, async (req, res) => {
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { console.error('send admin failed', e.message); }
 
-  // App Premium — User ဆီ Admin contact link ပို့
   if (needsAccount) {
     try {
       const contactLink = `https://t.me/${ADMIN_CONTACT_CLEAN}`;
       const newBal = Number(H.getUserById(u.id).balance).toLocaleString();
       await bot.telegram.sendMessage(
         u.telegram_id,
-        `✅ *Order #${orderId} လက်ခံပြီးပါပြီ*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 *ဆက်လုပ်ရန်* 📌\n\nAdmin ကို ဆက်သွယ်ပြီး Order ID (*#${orderId}*) ကို ပြောပြီး Account တောင်းပါ။\n\n👇 ဒီ button ကို နှိပ်ပါ 👇`,
+        `✅ *Order #${orderId} လက်ခံပြီးပါပြီ*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 *ဆက်လုပ်ရန်* 📌\n\nAdmin ကို ဆက်သွယ်ပြီး Order ID (*#${orderId}*) ကို ပြောပြီး Account တောင်းပါ။`,
         { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန် (${ADMIN_CONTACT})`, url: contactLink }]] } }
       );
     } catch (e) { console.error('notify user failed', e.message); }
@@ -425,7 +475,6 @@ bot.on('message', async (ctx, next) => {
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return next();
 
-  // 1) Order reply — User ဆီ Bot notification ပို့ (account info ပါတာမို့)
   const order = dbData.orders.find(o => o.admin_msg_id === replyId);
   if (order) {
     const user = H.getUserById(order.user_id);
@@ -439,10 +488,8 @@ bot.on('message', async (ctx, next) => {
     return;
   }
 
-  // 2) Chat reply — Mini App ထဲမှာပဲ ပေါ်မယ် (Bot notification မပို့)
   const chatMsg = (dbData.messages || []).find(m => m.admin_msg_id === replyId);
   if (chatMsg) {
-    const user = H.getUserByTg(chatMsg.user_id);
     const userById = H.getUserById(chatMsg.user_id);
     if (!userById) return ctx.reply('❌ User မတွေ့ပါ');
     try {
@@ -457,8 +504,8 @@ bot.on('message', async (ctx, next) => {
   return next();
 });
 
-// ============ BACKUP ============
-async function sendBackupToAdmin(reason = 'auto') {
+// ============ MANUAL BACKUP TO ADMIN (only /backupnow) ============
+async function sendBackupToAdmin(reason = 'manual') {
   try {
     const data = H.backup();
     const json = JSON.stringify(data, null, 2);
@@ -466,27 +513,10 @@ async function sendBackupToAdmin(reason = 'auto') {
     const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     const caption = `💾 Backup (${reason})\n\n👥 Users: ${stats.users}\n📥 Pending Dep: ${stats.pendingDeposits}\n🛒 Pending Ord: ${stats.pendingOrders}\n💰 Total: ${stats.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n⏰ ${new Date().toLocaleString()}`;
     const msg = await bot.telegram.sendDocument(ADMIN_ID, { source: Buffer.from(json), filename }, { caption });
-    if (msg.document?.file_id) { H.setSetting('last_backup_file_id', msg.document.file_id); H.setSetting('last_backup_at', String(now())); }
-    console.log('💾 Backup sent:', filename);
-  } catch (e) { console.error('Backup failed:', e.message); }
+    if (msg.document?.file_id) { H.setSetting('last_manual_backup_file_id', msg.document.file_id); H.setSetting('last_manual_backup_at', String(now())); }
+    console.log('💾 Manual backup sent:', filename);
+  } catch (e) { console.error('Manual backup failed:', e.message); }
 }
-
-async function restoreFromTelegramBackup() {
-  try {
-    const fid = H.getSetting('last_backup_file_id');
-    if (!fid) return false;
-    console.log('📥 Restoring...');
-    const link = await bot.telegram.getFileLink(fid);
-    const res = await fetch(link.href);
-    const parsed = JSON.parse(await res.text());
-    if (!parsed.users || !parsed._seq) return false;
-    H.replaceData(parsed);
-    console.log(`✅ Restored ${parsed.users.length} users`);
-    return true;
-  } catch (e) { console.error('Restore failed:', e.message); return false; }
-}
-
-setInterval(() => sendBackupToAdmin('scheduled-3h'), 3 * 60 * 60 * 1000);
 
 // ============ ADMIN PANEL ============
 bot.command('admin', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await sendAdminPanel(ctx); });
@@ -503,7 +533,7 @@ async function sendAdminPanel(ctx) {
     [Markup.button.callback('👥 Users', 'adm:users'), Markup.button.callback('🧾 Items', 'adm:items')],
     [Markup.button.callback('📊 Stats', 'adm:stats'), Markup.button.callback('📜 Logs', 'adm:logs')],
     [Markup.button.callback(enabled ? '🔴 Mini App ပိတ်' : '🟢 Mini App ဖွင့်', 'adm:toggle')],
-    [Markup.button.callback('💾 Backup', 'adm:backup')]
+    [Markup.button.callback('💾 Backup (manual)', 'adm:backup')]
   ]);
   if (ctx.callbackQuery) { try { await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb }); } catch { await ctx.reply(text, { parse_mode: 'Markdown', ...kb }); } }
   else { await ctx.reply(text, { parse_mode: 'Markdown', ...kb }); }
@@ -578,6 +608,7 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   const newBal = H.addBalance(d.user_id, d.amount, `deposit#${d.id}`, 'Approved', 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
   H.addLog(ctx.from.id, 'deposit_approve', `dep#${d.id}`, `${d.amount} MMK`);
+  saveLocalBackup('deposit-approved');
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(d.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 Balance အသစ်: ${Number(newBal).toLocaleString()} MMK`); } catch {}
@@ -637,6 +668,7 @@ bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund', 'refund');
   H.updateOrder(id, 'rejected');
   H.addLog(ctx.from.id, 'order_reject', `ord#${id}`, `refund ${o.price}`);
+  saveLocalBackup('order-refunded');
   await ctx.answerCbQuery('❌ + Refunded');
   const u = H.getUserById(o.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ဖျက်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch {}
@@ -699,18 +731,35 @@ bot.command('additem', async (ctx) => {
   ctx.reply(`✅ Item #${id} ထည့်ပြီး`);
 });
 
+// ============ BACKUP COMMANDS ============
 bot.action('adm:backup', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await ctx.answerCbQuery('💾');
   await sendBackupToAdmin('manual');
   await ctx.reply('✅ Backup ပို့ပြီ');
 });
+
 bot.command('backupnow', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
-  await ctx.reply('💾 ...');
+  await ctx.reply('💾 Backup ပို့နေသည်...');
   await sendBackupToAdmin('manual');
   await ctx.reply('✅ Backup ပို့ပြီ');
 });
+
+bot.command('backupstatus', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse() : [];
+  const s = H.stats();
+  let text = `💾 *Backup Status*\n\n📂 Storage: ${USE_DISK ? '/data (Persistent)' : 'Local'}\n📁 Backup files: ${files.length}\n\n`;
+  if (files.length) {
+    const newest = files[0];
+    const stat = fs.statSync(path.join(BACKUP_DIR, newest));
+    text += `📄 နောက်ဆုံး: ${newest}\n📦 Size: ${(stat.size/1024).toFixed(1)} KB\n⏰ ${stat.mtime.toLocaleString()}\n\n`;
+  }
+  text += `📊 Data:\n👥 Users: ${s.users}\n💰 Balance Total: ${dbData.users.reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString()} MMK\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}\n📥 Deposits: ${dbData.deposits.length}\n\n⏱ ၁ နာရီတစ်ခါ auto backup (silent)`;
+  await ctx.reply(text, { parse_mode: 'Markdown' });
+});
+
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const reply = ctx.message.reply_to_message;
@@ -722,17 +771,9 @@ bot.command('restore', async (ctx) => {
     const parsed = JSON.parse(await res.text());
     if (!parsed.users || !parsed._seq) return ctx.reply('❌ Invalid');
     H.replaceData(parsed);
-    H.setSetting('last_backup_file_id', fileId);
-    H.setSetting('last_backup_at', String(now()));
+    saveLocalBackup('manual-restore');
     await ctx.reply(`✅ Restored\n👥 ${parsed.users.length}\n📦 ${parsed.items?.length || 0}`);
   } catch (e) { ctx.reply('❌ ' + e.message); }
-});
-bot.command('backupinfo', async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  const at = H.getSetting('last_backup_at');
-  const fid = H.getSetting('last_backup_file_id');
-  const s = H.stats();
-  ctx.reply(`💾 Backup\n👥 ${s.users}\n💰 ${s.totalDeposit} MMK\n🧾 ${s.totalSales} MMK\n📦 ${dbData.items.length}\n⏰ ${at ? new Date(Number(at)*1000).toLocaleString() : 'မရှိ'}\n🆔 ${fid ? fid.slice(0,20)+'...' : 'မရှိ'}`);
 });
 
 // ============ START ============
@@ -746,10 +787,18 @@ app.listen(PORT, () => {
 bot.launch()
   .then(async () => {
     console.log('🤖 Bot started');
-    if (!fs.existsSync(DB_FILE) || !dbData.users.length) await restoreFromTelegramBackup();
-    setTimeout(() => sendBackupToAdmin('startup'), 5000);
+    const needsRestore = !fs.existsSync(DB_FILE) || !dbData.users.length;
+    if (needsRestore) {
+      console.log('📥 Data မရှိ — Local backup ကနေ ပြန်ယူမည်...');
+      const ok = restoreFromLocalBackup();
+      if (ok) console.log(`📊 Restored: ${dbData.users.length} users, ${dbData.items.length} items`);
+      else console.log('⚠️ Backup မရှိ — data အသစ်စတင်');
+    } else {
+      console.log(`📊 Loaded: ${dbData.users.length} users, ${dbData.items.length} items`);
+      saveLocalBackup('startup');
+    }
   })
   .catch(err => console.error('Bot launch error:', err));
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => { saveLocalBackup('shutdown'); bot.stop('SIGINT'); });
+process.once('SIGTERM', () => { saveLocalBackup('shutdown'); bot.stop('SIGTERM'); });
