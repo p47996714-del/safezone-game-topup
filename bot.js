@@ -233,13 +233,11 @@ const H = {
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 * 1024 } });
 
-// ============ EXPRESS ============
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ============ HEALTH ============
 app.get('/health', (req, res) => {
   const uptime = Math.floor((Date.now() - START_TIME) / 1000);
   const mem = process.memoryUsage();
@@ -281,14 +279,8 @@ function adminAuth(req, res, next) {
   next();
 }
 
-// ============ CONFIG ============
 app.get('/api/config', (req, res) => {
-  res.json({
-    ok: true,
-    enabled: H.getSetting('miniapp_enabled', '1') === '1',
-    payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') },
-    adminContact: ADMIN_CONTACT
-  });
+  res.json({ ok: true, enabled: H.getSetting('miniapp_enabled', '1') === '1', payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') }, adminContact: ADMIN_CONTACT });
 });
 
 app.post('/api/me', auth, (req, res) => {
@@ -303,7 +295,6 @@ app.post('/api/logout', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ============ REGISTER / LOGIN ============
 app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2 } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
@@ -335,17 +326,14 @@ app.post('/api/login', auth, (req, res) => {
   res.json({ ok: true, user });
 });
 
-// ============ BANNERS ============
 app.get('/api/banners', auth, (req, res) => {
   const list = (dbData.banners || []).filter(b => b.active);
   res.json({ ok: true, banners: list });
 });
 
-// ============ GAMES & ITEMS ============
 app.get('/api/games', auth, (req, res) => res.json({ ok: true, games: H.listGames() }));
 app.get('/api/items/:gameId', auth, (req, res) => res.json({ ok: true, items: H.listItems(req.params.gameId) }));
 
-// ============ ORDER TRACKING ============
 app.get('/api/order/:id', auth, (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
   if (!u) return res.status(401).json({ ok: false, error: 'no user' });
@@ -360,7 +348,6 @@ app.get('/api/order/:id', auth, (req, res) => {
   res.json({ ok: true, order: o, timeline });
 });
 
-// ============ DEPOSIT ============
 app.post('/api/deposit', auth, upload.single('receipt'), async (req, res) => {
   try {
     const u = H.getUserByTg(req.tgUser.id);
@@ -376,15 +363,9 @@ app.post('/api/deposit', auth, upload.single('receipt'), async (req, res) => {
     try {
       const msg = await bot.telegram.sendPhoto(ADMIN_ID, { source: req.file.path }, {
         caption: cap,
-        reply_markup: { inline_keyboard: [[
-          { text: '✅ Approve', callback_data: `dep:ok:${depId}` },
-          { text: '❌ Reject', callback_data: `dep:no:${depId}` }
-        ]] }
+        reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: `dep:ok:${depId}` }, { text: '❌ Reject', callback_data: `dep:no:${depId}` }]] }
       });
-      if (msg.photo?.length) {
-        const fid = msg.photo[msg.photo.length - 1].file_id;
-        const d = H.getDeposit(depId); if (d) { d.receipt_file_id = fid; saveDB(); }
-      }
+      if (msg.photo?.length) { const fid = msg.photo[msg.photo.length - 1].file_id; const d = H.getDeposit(depId); if (d) { d.receipt_file_id = fid; saveDB(); } }
     } catch (e) { LOG.error('Admin notify failed:', e.message); }
     res.json({ ok: true, deposit_id: depId });
   } catch (e) { LOG.error('Deposit error:', e.message); res.status(500).json({ ok: false, error: 'server error' }); }
@@ -397,7 +378,6 @@ app.get('/api/deposits', auth, (req, res) => {
   res.json({ ok: true, deposits: list });
 });
 
-// ============ CHAT ============
 app.post('/api/chat/send', auth, async (req, res) => {
   try {
     const u = H.getUserByTg(req.tgUser.id);
@@ -432,7 +412,6 @@ app.post('/api/chat/unread', auth, (req, res) => {
   res.json({ ok: true, count });
 });
 
-// ============ PURCHASE ============
 app.post('/api/purchase', auth, async (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
   if (!u) return res.status(400).json({ ok: false, error: 'register first' });
@@ -455,10 +434,7 @@ app.post('/api/purchase', auth, async (req, res) => {
   if (needsAccount) { cap += `\n⚠️ App Premium`; }
   else { cap += `🆔 ${game_account}`; if (server_id) cap += `\n🌐 Server: ${server_id}`; }
   try {
-    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[
-      { text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` },
-      { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }
-    ]] } });
+    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { LOG.error('Order notify failed:', e.message); }
 
@@ -466,10 +442,7 @@ app.post('/api/purchase', auth, async (req, res) => {
     try {
       const contactLink = `https://t.me/${ADMIN_CONTACT_CLEAN}`;
       const newBal = Number(H.getUserById(u.id).balance).toLocaleString();
-      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 Admin ကို ဆက်သွယ်ပါ 📌`, {
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] }
-      });
+      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 Admin ကို ဆက်သွယ်ပါ 📌`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] } });
     } catch (e) {}
   }
   res.json({ ok: true, order_id: orderId });
@@ -514,7 +487,6 @@ app.post('/api/admin/user/balance', adminAuth, (req, res) => {
   if (!user_id || isNaN(amt)) return res.status(400).json({ ok: false, error: 'Invalid' });
   const newBal = H.addBalance(Number(user_id), amt, 'admin', note || 'Admin adjustment', amt > 0 ? 'admin_credit' : 'admin_debit');
   H.addLog('admin-panel', 'balance_adjust', `user#${user_id}`, `${amt} → ${newBal}`);
-  LOG.money(`Admin balance adjust: user#${user_id} ${amt > 0 ? '+' : ''}${amt} → ${newBal}`);
   saveLocalBackup('admin-adjust');
   res.json({ ok: true, newBalance: newBal });
 });
@@ -649,6 +621,89 @@ app.get('/api/admin/chats', adminAuth, (req, res) => {
   res.json({ ok: true, messages: enriched });
 });
 
+// ============ BATCH B: ANALYTICS / REVENUE / QUICK REPLIES ============
+app.get('/api/admin/analytics', adminAuth, (req, res) => {
+  const users = dbData.users;
+  const orders = dbData.orders;
+  const deposits = dbData.deposits;
+  const topUsers = users.slice().sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0)).slice(0, 10).map(u => ({
+    id: u.id, name: u.name || u.first_name || '-', phone: u.phone || '-',
+    balance: Number(u.balance || 0),
+    totalSpent: orders.filter(o => o.user_id === u.id).reduce((s, o) => s + o.price, 0),
+    orderCount: orders.filter(o => o.user_id === u.id).length
+  }));
+  const itemStats = {};
+  orders.forEach(o => {
+    const key = o.item_name;
+    if (!itemStats[key]) itemStats[key] = { name: key, game_id: o.game_id, count: 0, revenue: 0 };
+    itemStats[key].count++;
+    itemStats[key].revenue += o.price;
+  });
+  const topItems = Object.values(itemStats).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+  const gameStats = {};
+  orders.forEach(o => {
+    if (!gameStats[o.game_id]) gameStats[o.game_id] = { game_id: o.game_id, count: 0, revenue: 0 };
+    gameStats[o.game_id].count++;
+    gameStats[o.game_id].revenue += o.price;
+  });
+  const topGames = Object.values(gameStats).sort((a, b) => b.revenue - a.revenue);
+  const dailyReg = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const dayStart = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000);
+    const dayEnd = dayStart + 86400;
+    const count = users.filter(u => u.created_at >= dayStart && u.created_at < dayEnd).length;
+    dailyReg.push({ date: d.toISOString().slice(5, 10), count });
+  }
+  res.json({
+    ok: true,
+    totalUsers: users.length,
+    activeUsers: users.filter(u => orders.some(o => o.user_id === u.id)).length,
+    topUsers, topItems, topGames, dailyReg,
+    totalOrders: orders.length,
+    completedOrders: orders.filter(o => o.status === 'completed').length,
+    totalDeposits: deposits.length,
+    approvedDeposits: deposits.filter(d => d.status === 'approved').length
+  });
+});
+
+app.get('/api/admin/revenue', adminAuth, (req, res) => {
+  const days = Number(req.query.days) || 7;
+  const data = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const dayStart = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000);
+    const dayEnd = dayStart + 86400;
+    const dayOrders = dbData.orders.filter(o => o.created_at >= dayStart && o.created_at < dayEnd);
+    const dayDeposits = dbData.deposits.filter(x => x.created_at >= dayStart && x.created_at < dayEnd && x.status === 'approved');
+    data.push({
+      date: d.toISOString().slice(5, 10),
+      sales: dayOrders.reduce((s, o) => s + o.price, 0),
+      orders: dayOrders.length,
+      deposits: dayDeposits.reduce((s, x) => s + x.amount, 0),
+      depositCount: dayDeposits.length
+    });
+  }
+  const totalSales = data.reduce((s, d) => s + d.sales, 0);
+  const totalDeposits = data.reduce((s, d) => s + d.deposits, 0);
+  const totalOrders = data.reduce((s, d) => s + d.orders, 0);
+  res.json({ ok: true, data, totalSales, totalDeposits, totalOrders, days });
+});
+
+app.get('/api/admin/quick-replies', adminAuth, (req, res) => {
+  const replies = H.getSetting('quick_replies', '[]');
+  try { res.json({ ok: true, replies: JSON.parse(replies) }); }
+  catch { res.json({ ok: true, replies: [] }); }
+});
+
+app.post('/api/admin/quick-replies', adminAuth, (req, res) => {
+  const { replies } = req.body;
+  if (!Array.isArray(replies)) return res.status(400).json({ ok: false, error: 'Invalid' });
+  H.setSetting('quick_replies', JSON.stringify(replies));
+  H.addLog('admin-panel', 'update_quick_replies', null, `${replies.length} items`);
+  res.json({ ok: true });
+});
+
 // ============ BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
@@ -664,28 +719,10 @@ bot.start(async (ctx) => {
   await ctx.reply(welcome, Markup.keyboard([['💰 Balance', '📜 History', '👤 အကောင့်']]).resize());
 });
 
-bot.hears('💰 Balance', async (ctx) => {
-  const u = H.getUserByTg(ctx.from.id);
-  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
-  ctx.reply(`💰 ${Number(u.balance).toLocaleString()} MMK\n👤 ${u.name || '-'}\n📱 ${u.phone || '-'}`);
-});
+bot.hears('💰 Balance', async (ctx) => { const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။'); ctx.reply(`💰 ${Number(u.balance).toLocaleString()} MMK\n👤 ${u.name || '-'}\n📱 ${u.phone || '-'}`); });
+bot.hears('📜 History', async (ctx) => { const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။'); const txs = H.listUserTx(u.id, 10); if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိပါ။'); const text = txs.map(t => `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} (${t.balance_after})`).join('\n'); ctx.reply('📜 မှတ်တမ်း:\n\n' + text); });
+bot.hears('👤 အကောင့်', async (ctx) => { const u = H.getUserByTg(ctx.from.id); if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။'); ctx.reply(`👤 ${u.name || '-'}\n📱 ${u.phone || '-'}\n💰 ${Number(u.balance).toLocaleString()} MMK\n🆔 #${u.id}`); });
 
-bot.hears('📜 History', async (ctx) => {
-  const u = H.getUserByTg(ctx.from.id);
-  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
-  const txs = H.listUserTx(u.id, 10);
-  if (!txs.length) return ctx.reply('မှတ်တမ်းမရှိပါ။');
-  const text = txs.map(t => `${t.type === 'deposit' ? '➕' : t.type === 'purchase' ? '➖' : '•'} ${t.amount} (${t.balance_after})`).join('\n');
-  ctx.reply('📜 မှတ်တမ်း:\n\n' + text);
-});
-
-bot.hears('👤 အကောင့်', async (ctx) => {
-  const u = H.getUserByTg(ctx.from.id);
-  if (!u) return ctx.reply('Mini App ထဲဝင်ပါ။');
-  ctx.reply(`👤 ${u.name || '-'}\n📱 ${u.phone || '-'}\n💰 ${Number(u.balance).toLocaleString()} MMK\n🆔 #${u.id}`);
-});
-
-// Admin reply handler (orders + chat)
 bot.on('message', async (ctx, next) => {
   if (!isAdmin(ctx.from.id)) return next();
   if (!ctx.message.reply_to_message) return next();
@@ -693,7 +730,6 @@ bot.on('message', async (ctx, next) => {
   const replyId = ctx.message.reply_to_message.message_id;
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return next();
-
   const order = dbData.orders.find(o => o.admin_msg_id === replyId);
   if (order) {
     const user = H.getUserById(order.user_id);
@@ -701,12 +737,10 @@ bot.on('message', async (ctx, next) => {
     try {
       await bot.telegram.sendMessage(user.telegram_id, `🎉 Order #${order.id}\n\n📦 ${order.item_name}\n💵 ${order.price} Ks\n\n━━━━━━━━━━━━━━━\n${text}\n━━━━━━━━━━━━━━━\n\n⚠️ password ကို ချက်ချင်း ပြောင်းပါ။`);
       if (order.status === 'pending') H.updateOrder(order.id, 'completed');
-      LOG.order(`Admin replied to order #${order.id}`);
       await ctx.reply(`✅ ${user.name || user.first_name || ''} ဆီ ပို့ပြီး`);
     } catch (e) { ctx.reply('❌ ' + e.message); }
     return;
   }
-
   const chatMsg = (dbData.messages || []).find(m => m.admin_msg_id === replyId);
   if (chatMsg) {
     const userById = H.getUserById(chatMsg.user_id);
@@ -721,22 +755,17 @@ bot.on('message', async (ctx, next) => {
   return next();
 });
 
-// FAQ + Auto Reply
 bot.on('text', async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   const text = ctx.message.text || '';
   if (text.startsWith('/')) return next();
   if (ctx.message.reply_to_message) return next();
-
   const answer = FAQ.findAnswer(text);
   if (answer) {
-    const kb = PUBLIC_URL
-      ? { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🛍️ Mini App ဖွင့်', web_app: { url: PUBLIC_URL } }]] } }
-      : { parse_mode: 'Markdown' };
+    const kb = PUBLIC_URL ? { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🛍️ Mini App ဖွင့်', web_app: { url: PUBLIC_URL } }]] } } : { parse_mode: 'Markdown' };
     try { await ctx.reply(answer, kb); } catch (e) { await ctx.reply(answer); }
     return;
   }
-
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
   if (now() - lastSeen > AUTO_REPLY_TIMEOUT) {
     await ctx.reply(`🤖 Admin သည် ယခုအချိန် offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`);
@@ -779,7 +808,6 @@ bot.action('adm:panel', async (ctx) => { ctx.answerCbQuery(); await sendAdminPan
 bot.action('adm:toggle', async (ctx) => { if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌'); const cur = H.getSetting('miniapp_enabled', '1') === '1'; H.setSetting('miniapp_enabled', cur ? '0' : '1'); await ctx.answerCbQuery(cur ? 'ပိတ်ပြီ' : 'ဖွင့်ပြီ'); await sendAdminPanel(ctx); });
 bot.action('adm:stats', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const s = H.stats(); await ctx.answerCbQuery(); await ctx.reply(`📊 Users: ${s.users}\n📥 ${s.pendingDeposits}\n🛒 ${s.pendingOrders}\n💰 ${s.totalDeposit} MMK\n📦 ${dbData.items.length}`); });
 bot.action('adm:logs', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const logs = H.listLogs(30); await ctx.answerCbQuery(); if (!logs.length) return ctx.reply('Log မရှိပါ။'); await ctx.reply('📜\n\n' + logs.map(l => `[${new Date(l.created_at*1000).toLocaleString()}] ${l.action}`).join('\n')); });
-
 bot.action('adm:chats', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await ctx.answerCbQuery();
@@ -791,7 +819,6 @@ bot.action('adm:chats', async (ctx) => {
     try { const sent = await bot.telegram.sendMessage(ctx.from.id, cap); const o = dbData.messages.find(x => x.id === m.id); if (o) { o.admin_msg_id = sent.message_id; saveDB(); } } catch (e) {}
   }
 });
-
 bot.action('adm:deposits', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listDeposits('pending', 20);
@@ -801,14 +828,9 @@ bot.action('adm:deposits', async (ctx) => {
     const u = H.getUserById(d.user_id);
     const cap = `📥 Deposit #${d.id}\n👤 ${u?.name || ''}\n📱 ${u?.phone || ''}\n💵 ${d.amount} MMK\n🏦 ${d.method}`;
     const kb = Markup.inlineKeyboard([[Markup.button.callback('✅', `dep:ok:${d.id}`), Markup.button.callback('❌', `dep:no:${d.id}`)]]);
-    try {
-      if (d.receipt_file_id) await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb });
-      else if (d.receipt_local && fs.existsSync(d.receipt_local)) await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb });
-      else await ctx.reply(cap, kb);
-    } catch (e) { await ctx.reply(cap, kb); }
+    try { if (d.receipt_file_id) await ctx.telegram.sendPhoto(ctx.from.id, d.receipt_file_id, { caption: cap, ...kb }); else if (d.receipt_local && fs.existsSync(d.receipt_local)) await ctx.telegram.sendPhoto(ctx.from.id, { source: d.receipt_local }, { caption: cap, ...kb }); else await ctx.reply(cap, kb); } catch (e) { await ctx.reply(cap, kb); }
   }
 });
-
 bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const d = H.getDeposit(id);
@@ -822,7 +844,6 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   await ctx.editMessageCaption(`✅ APPROVED #${d.id}`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
-
 bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const d = H.getDeposit(id);
@@ -834,7 +855,6 @@ bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   await ctx.editMessageCaption(`❌ REJECTED #${d.id}`).catch(()=>{});
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
-
 bot.action('adm:orders', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const list = H.listOrders('pending', 20);
@@ -850,7 +870,6 @@ bot.action('adm:orders', async (ctx) => {
     const order = H.getOrder(o.id); if (order && !order.admin_msg_id) { order.admin_msg_id = sent.message_id; saveDB(); }
   }
 });
-
 bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const o = H.getOrder(id);
@@ -861,7 +880,6 @@ bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Order #${o.id} ပို့ပြီး`); } catch {}
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
-
 bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]); const o = H.getOrder(id);
@@ -873,15 +891,7 @@ bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch {}
   await ctx.editMessageReplyMarkup(undefined).catch(()=>{});
 });
-
-bot.action('adm:users', async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  const users = H.listAllUsers().slice(0, 30);
-  await ctx.answerCbQuery();
-  if (!users.length) return ctx.reply('User မရှိပါ။');
-  await ctx.reply('👥\n\n' + users.map(u => `#${u.id} ${u.name || u.first_name || ''}\n📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n'));
-});
-
+bot.action('adm:users', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const users = H.listAllUsers().slice(0, 30); await ctx.answerCbQuery(); if (!users.length) return ctx.reply('User မရှိပါ။'); await ctx.reply('👥\n\n' + users.map(u => `#${u.id} ${u.name || u.first_name || ''}\n📱${u.phone || '-'} | 💰${u.balance}`).join('\n\n')); });
 bot.action('adm:items', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const items = H.listAllItems(); await ctx.answerCbQuery();
@@ -892,7 +902,6 @@ bot.action('adm:items', async (ctx) => {
   const chunks = text.match(/[\s\S]{1,4000}/g) || [text];
   for (const c of chunks) await ctx.reply(c);
 });
-
 bot.command('setprice', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id, price] = ctx.message.text.split(/\s+/); if (!id || !price) return ctx.reply('Usage: /setprice <id> <price>'); H.setItemPrice(Number(id), Number(price)); ctx.reply(`✅ #${id} → ${price}`); });
 bot.command('toggleitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id] = ctx.message.text.split(/\s+/); if (!id) return ctx.reply('Usage: /toggleitem <id>'); H.toggleItem(Number(id)); ctx.reply(`🔁 #${id}`); });
 bot.command('delitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id] = ctx.message.text.split(/\s+/); if (!id) return ctx.reply('Usage: /delitem <id>'); H.removeItem(Number(id)); ctx.reply(`🗑️ #${id}`); });
@@ -906,32 +915,17 @@ bot.command('status', async (ctx) => {
   const timeLeft = Math.max(0, AUTO_REPLY_TIMEOUT - (now() - lastSeen));
   await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n⏱ Auto Reply ဖြစ်ဖို့: ${timeLeft > 0 ? timeLeft + ' စက္ကန့် ကျန်' : 'ပို့မည်'}\n⏱ Timeout: ${AUTO_REPLY_TIMEOUT}s`, { parse_mode: 'Markdown' });
 });
-
-bot.command('faqlist', async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  let text = '📚 *FAQ Keywords*\n\n';
-  FAQ.FAQ_DB.forEach((f, i) => { text += `${i + 1}. ${f.k.join(', ')}\n`; });
-  await ctx.reply(text, { parse_mode: 'Markdown' });
-});
-
-bot.command('faqtest', async (ctx) => {
-  if (!isAdmin(ctx.from.id)) return;
-  const args = ctx.message.text.replace('/faqtest', '').trim();
-  if (!args) return ctx.reply('Usage: /faqtest ငွေဖြည့်');
-  const ans = FAQ.findAnswer(args);
-  await ctx.reply(ans || `❌ "${args}" FAQ မရှိပါ။`);
-});
+bot.command('faqlist', async (ctx) => { if (!isAdmin(ctx.from.id)) return; let text = '📚 *FAQ Keywords*\n\n'; FAQ.FAQ_DB.forEach((f, i) => { text += `${i + 1}. ${f.k.join(', ')}\n`; }); await ctx.reply(text, { parse_mode: 'Markdown' }); });
+bot.command('faqtest', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const args = ctx.message.text.replace('/faqtest', '').trim(); if (!args) return ctx.reply('Usage: /faqtest ငွေဖြည့်'); const ans = FAQ.findAnswer(args); await ctx.reply(ans || `❌ "${args}" FAQ မရှိပါ။`); });
 
 bot.action('adm:backup', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.answerCbQuery('💾'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.reply('💾 ...'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
-
 bot.command('backupstatus', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse() : [];
   const s = H.stats();
   await ctx.reply(`💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s`);
 });
-
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const reply = ctx.message.reply_to_message;
@@ -948,7 +942,6 @@ bot.command('restore', async (ctx) => {
   } catch (e) { ctx.reply('❌ ' + e.message); }
 });
 
-// ============ START SERVER ============
 app.listen(PORT, () => {
   const border = '═'.repeat(54);
   console.log(`\n${border}`);
@@ -967,7 +960,6 @@ app.listen(PORT, () => {
   console.log(`${border}\n`);
 });
 
-// ============ BOT LAUNCH ============
 async function launchBot(retries = 5) {
   for (let i = 1; i <= retries; i++) {
     try {
@@ -1002,7 +994,6 @@ launchBot().then(async (success) => {
   }
 });
 
-// ============ GRACEFUL SHUTDOWN ============
 let isShuttingDown = false;
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
