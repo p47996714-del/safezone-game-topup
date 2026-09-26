@@ -39,14 +39,130 @@ function saveDB() {
   fs.renameSync(tmp, DB_FILE);
 }
 
+const now = () => Math.floor(Date.now() / 1000);
+
+// ============ SEED GAMES ============
 if (!dbData.games.length) {
   dbData.games = [
     { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
-    { id: 'pubg', name: 'PUBG Mobile', image: '/images/pubg.png', active: 1, sort_order: 2 },
-    { id: 'magic-chess', name: 'Magic Chess Go Go', image: '/images/magic-chess.png', active: 1, sort_order: 3 },
+    { id: 'magic-chess', name: 'Magic Chess Go Go', image: '/images/magic-chess.png', active: 1, sort_order: 2 },
+    { id: 'pubg', name: 'PUBG Mobile', image: '/images/pubg.png', active: 1, sort_order: 3 },
     { id: 'app-premium', name: 'App Premium', image: '/images/app-premium.png', active: 1, sort_order: 4 }
   ];
 }
+
+// ============ SEED ITEMS ============
+const SEED_ITEMS = [
+  // ===== Mobile Legends =====
+  { g: 'mlbb', n: 'Weekly Pass', p: 6650 },
+  { g: 'mlbb', n: 'Miya Twilight Pass', p: 35000 },
+  { g: 'mlbb', n: '86 Diamonds', p: 5500 },
+  { g: 'mlbb', n: '172 Diamonds', p: 11500 },
+  { g: 'mlbb', n: '257 Diamonds', p: 16300 },
+  { g: 'mlbb', n: '343 Diamonds', p: 21500 },
+  { g: 'mlbb', n: '429 Diamonds', p: 26800 },
+  { g: 'mlbb', n: '514 Diamonds', p: 31800 },
+  { g: 'mlbb', n: '600 Diamonds', p: 37000 },
+  { g: 'mlbb', n: '706 Diamonds', p: 42400 },
+  { g: 'mlbb', n: '878 Diamonds', p: 53000 },
+  { g: 'mlbb', n: '963 Diamonds', p: 58300 },
+  { g: 'mlbb', n: '1049 Diamonds', p: 63600 },
+  { g: 'mlbb', n: '1135 Diamonds', p: 68900 },
+  { g: 'mlbb', n: '1412 Diamonds', p: 84800 },
+  { g: 'mlbb', n: '2195 Diamonds', p: 128000 },
+  { g: 'mlbb', n: '3688 Diamonds', p: 213000 },
+  { g: 'mlbb', n: '5532 Diamonds', p: 319500 },
+  { g: 'mlbb', n: '9288 Diamonds', p: 530000 },
+  { g: 'mlbb', n: 'Double 50+50 (ID Server)', p: 4000 },
+  { g: 'mlbb', n: 'Double 150+150 (ID Server)', p: 12500 },
+  { g: 'mlbb', n: 'Double 250+250 (ID Server)', p: 17500 },
+  { g: 'mlbb', n: 'Double 500+500 (ID Server)', p: 34500 },
+  // ===== Magic Chess =====
+  { g: 'magic-chess', n: 'Weekly Pass', p: 8500 },
+  { g: 'magic-chess', n: '50+50 (တစ်ခါသာ)', p: 4000 },
+  { g: 'magic-chess', n: '150+150 (တစ်ခါသာ)', p: 11000 },
+  { g: 'magic-chess', n: '250+250 (တစ်ခါသာ)', p: 18500 },
+  { g: 'magic-chess', n: '500+500 (တစ်ခါသာ)', p: 35700 },
+  { g: 'magic-chess', n: '86 Diamonds', p: 6000 },
+  { g: 'magic-chess', n: '172 Diamonds', p: 11900 },
+  { g: 'magic-chess', n: '257 Diamonds', p: 17500 },
+  { g: 'magic-chess', n: '344 Diamonds', p: 23000 },
+  { g: 'magic-chess', n: '516 Diamonds', p: 34000 },
+  { g: 'magic-chess', n: '706 Diamonds', p: 45000 },
+  { g: 'magic-chess', n: '1346 Diamonds', p: 84200 },
+  { g: 'magic-chess', n: '1825 Diamonds', p: 111500 },
+  { g: 'magic-chess', n: '2195 Diamonds', p: 138000 },
+  { g: 'magic-chess', n: '3688 Diamonds', p: 220000 },
+  { g: 'magic-chess', n: '5532 Diamonds', p: 337500 },
+  { g: 'magic-chess', n: '9288 Diamonds', p: 530000 },
+  // ===== PUBG UC =====
+  { g: 'pubg', n: '60 UC', p: 4700 },
+  { g: 'pubg', n: '120 UC', p: 9400 },
+  { g: 'pubg', n: '180 UC', p: 13900 },
+  { g: 'pubg', n: '325 UC', p: 22700 },
+  { g: 'pubg', n: '660 UC', p: 45300 },
+  { g: 'pubg', n: '780 UC', p: 52900 },
+  { g: 'pubg', n: '1800 UC', p: 114000 },
+  { g: 'pubg', n: '3850 UC', p: 226000 },
+  { g: 'pubg', n: '8100 UC', p: 440000 },
+  // ===== PUBG Packs =====
+  { g: 'pubg', n: 'Growth Pack - First Purchase', p: 5950 },
+  { g: 'pubg', n: 'Growth Pack - Firearm Materials', p: 14000 },
+  { g: 'pubg', n: 'Growth Pack - Mythic Emblem', p: 22750 },
+  { g: 'pubg', n: 'Elite Pass Lv1-50', p: 26000 },
+  { g: 'pubg', n: 'Elite Pass Lv1-100', p: 52000 },
+  { g: 'pubg', n: 'Elite Pass Plus Lv1-100', p: 112500 },
+  { g: 'pubg', n: 'Weekly Mythic Emblem', p: 17000 },
+  { g: 'pubg', n: 'Weekly Deal Pack 1', p: 6000 },
+  { g: 'pubg', n: 'Weekly Deal Pack 2', p: 14500 },
+  { g: 'pubg', n: 'Prime 1 Month', p: 6000 },
+  { g: 'pubg', n: 'Prime 3 Month', p: 15000 },
+  { g: 'pubg', n: 'Prime 6 Month', p: 27000 },
+  { g: 'pubg', n: 'Prime 12 Month', p: 51000 },
+  { g: 'pubg', n: 'Prime Plus 1 Month', p: 46000 },
+  { g: 'pubg', n: 'Prime Plus 3 Month', p: 126000 },
+  { g: 'pubg', n: 'Prime Plus 6 Month', p: 245000 },
+  { g: 'pubg', n: 'Prime Plus 12 Month', p: 482000 },
+  // ===== App Premium =====
+  { g: 'app-premium', n: 'TG SMS Free (Unlimited)', p: 8000 },
+  { g: 'app-premium', n: 'Telegram Premium 1 Month', p: 19500 },
+  { g: 'app-premium', n: 'Telegram Premium 3 Month', p: 59000 },
+  { g: 'app-premium', n: 'Telegram Premium 6 Month', p: 77000 },
+  { g: 'app-premium', n: 'Telegram Premium 12 Month', p: 135000 },
+  { g: 'app-premium', n: 'Alight Motion 1 Year', p: 5000 },
+  { g: 'app-premium', n: 'Capcut Pro 1 Month (Mobile)', p: 8500 },
+  { g: 'app-premium', n: 'Capcut Pro 1 Month (PC)', p: 18000 },
+  { g: 'app-premium', n: 'Canva Lifetime', p: 6500 },
+  { g: 'app-premium', n: 'ChatGPT Plus 1 Month (Share)', p: 28000 },
+  { g: 'app-premium', n: 'ChatGPT Plus 1 Month (Private)', p: 103000 },
+  { g: 'app-premium', n: 'Gemini 1 Month (Family)', p: 13000 },
+  { g: 'app-premium', n: 'Gemini 3 Month (Family)', p: 21000 },
+  { g: 'app-premium', n: 'Gemini 18 Month (Own Mail)', p: 385000 }
+];
+
+(function autoSeedItems() {
+  let added = 0;
+  for (const it of SEED_ITEMS) {
+    const exists = dbData.items.find(x => x.game_id === it.g && x.name === it.n);
+    if (!exists) {
+      dbData.items.push({
+        id: dbData._seq.items++,
+        game_id: it.g,
+        name: it.n,
+        price: it.p,
+        image: null,
+        active: 1,
+        sort_order: 0
+      });
+      added++;
+    }
+  }
+  if (added > 0) {
+    console.log(`✅ Auto-seed: ${added} items added (total ${dbData.items.length})`);
+    saveDB();
+  }
+})();
+
 const defaultSettings = {
   miniapp_enabled: '1',
   payment_kbz: '09763442881 (Pyae Phyo Kyaw)',
@@ -59,8 +175,6 @@ Object.entries(defaultSettings).forEach(([k, v]) => {
 });
 saveDB();
 
-const now = () => Math.floor(Date.now() / 1000);
-
 const H = {
   now,
   getSetting: (k, d = null) => dbData.settings[k] ?? d,
@@ -72,7 +186,6 @@ const H = {
     const u = { id: dbData._seq.users++, telegram_id: String(telegram_id), username: username || null, first_name: first_name || null, name: name || first_name || null, phone: phone || null, password_salt: password_salt || null, password_hash: password_hash || null, balance: 0, banned: 0, session_active: false, created_at: now() };
     dbData.users.push(u); saveDB(); return u;
   },
-  updateUserPhone: (userId, phone) => { const u = H.getUserById(userId); if (u) { u.phone = phone; saveDB(); } },
   addBalance: (userId, amount, ref = null, note = null, type = 'adjust') => {
     const u = H.getUserById(userId); if (!u) throw new Error('User not found');
     u.balance = +(u.balance + amount).toFixed(2);
@@ -80,11 +193,11 @@ const H = {
     saveDB(); return u.balance;
   },
   listGames: () => dbData.games.filter(g => g.active).sort((a, b) => a.sort_order - b.sort_order),
-  listItems: (gameId = null) => dbData.items.filter(i => i.active && (!gameId || i.game_id === gameId)).sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id)),
+  listItems: (gameId = null) => dbData.items.filter(i => i.active && (!gameId || i.game_id === gameId)).sort((a, b) => a.id - b.id),
   listAllItems: () => dbData.items.slice(),
   getItem: (id) => dbData.items.find(i => i.id === Number(id)) || null,
-  addItem: ({ game_id, name, price, image = null, sort_order = 0 }) => {
-    const it = { id: dbData._seq.items++, game_id, name, price: Number(price), image, active: 1, sort_order };
+  addItem: ({ game_id, name, price }) => {
+    const it = { id: dbData._seq.items++, game_id, name, price: Number(price), image: null, active: 1, sort_order: 0 };
     dbData.items.push(it); saveDB(); return it.id;
   },
   setItemPrice: (id, price) => { const it = H.getItem(id); if (it) { it.price = Number(price); saveDB(); } },
@@ -187,7 +300,6 @@ app.post('/api/logout', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ============ REGISTER ============
 app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2 } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
@@ -218,7 +330,6 @@ app.post('/api/register', auth, (req, res) => {
   res.json({ ok: true, user: u });
 });
 
-// ============ LOGIN ============
 app.post('/api/login', auth, (req, res) => {
   const { phone, password } = req.body;
   if (!phone || !password) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် နှင့် စကားဝှက် ထည့်ပါ' });
@@ -361,15 +472,16 @@ async function sendBackupToAdmin(reason = 'auto') {
 async function restoreFromTelegramBackup() {
   try {
     const fid = H.getSetting('last_backup_file_id');
-    if (!fid) { console.log('ℹ️ No backup file_id found, starting fresh.'); return false; }
+    if (!fid) { console.log('ℹ️ No backup file_id found.'); return false; }
     console.log('📥 Restoring from Telegram backup...');
     const link = await bot.telegram.getFileLink(fid);
     const res = await fetch(link.href);
     const text = await res.text();
     const parsed = JSON.parse(text);
-    if (!parsed.users || !parsed._seq) { console.log('⚠️ Backup file invalid.'); return false; }
+    if (!parsed.users || !parsed._seq) { console.log('⚠️ Invalid backup.'); return false; }
+    // Backup ထဲက data ကို ယူပေမယ့် items seed များ ရှိပြီးသား
     H.replaceData(parsed);
-    console.log(`✅ Restored ${parsed.users.length} users, ${parsed.deposits?.length || 0} deposits`);
+    console.log(`✅ Restored ${parsed.users.length} users`);
     return true;
   } catch (e) {
     console.error('Restore failed:', e.message);
@@ -377,7 +489,6 @@ async function restoreFromTelegramBackup() {
   }
 }
 
-// Auto backup ကို ၃ နာရီ တစ်ခါ
 setInterval(() => { sendBackupToAdmin('scheduled-3h'); }, 3 * 60 * 60 * 1000);
 
 // ============ ADMIN PANEL ============
@@ -389,7 +500,7 @@ bot.command('admin', async (ctx) => {
 async function sendAdminPanel(ctx) {
   const s = H.stats();
   const enabled = H.getSetting('miniapp_enabled', '1') === '1';
-  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK\n\n🔌 Mini App: ${enabled ? '✅ ON' : '❌ OFF'}`;
+  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK\n\n📦 Items: ${dbData.items.length}\n🔌 Mini App: ${enabled ? '✅ ON' : '❌ OFF'}`;
   const kb = Markup.inlineKeyboard([
     [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
     [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
@@ -421,7 +532,7 @@ bot.action('adm:stats', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const s = H.stats();
   await ctx.answerCbQuery();
-  await ctx.reply(`📊 Stats\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK`);
+  await ctx.reply(`📊 Stats\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK\n📦 Items: ${dbData.items.length}`);
 });
 
 bot.action('adm:logs', async (ctx) => {
@@ -542,9 +653,18 @@ bot.action('adm:items', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const items = H.listAllItems();
   await ctx.answerCbQuery();
-  if (!items.length) return ctx.reply('Item မရှိပါ။ /additem <game_id>|<name>|<price>');
-  const text = items.map(i => `#${i.id} [${i.game_id}] ${i.name} — ${i.price} MMK ${i.active ? '🟢' : '🔴'}`).join('\n');
-  await ctx.reply(`🧾 Items\n\n${text}\n\nCommand:\n/setprice <id> <price>\n/toggleitem <id>\n/delitem <id>\n/additem <game_id>|<name>|<price>`);
+  if (!items.length) return ctx.reply('Item မရှိပါ။');
+  const byGame = {};
+  items.forEach(i => { if (!byGame[i.game_id]) byGame[i.game_id] = []; byGame[i.game_id].push(i); });
+  let text = `🧾 Items (Total: ${items.length})\n\n`;
+  Object.entries(byGame).forEach(([g, list]) => {
+    text += `=== ${g.toUpperCase()} (${list.length}) ===\n`;
+    list.forEach(i => { text += `#${i.id} ${i.name} — ${i.price} MMK ${i.active ? '🟢' : '🔴'}\n`; });
+    text += '\n';
+  });
+  text += `Command:\n/setprice <id> <price>\n/toggleitem <id>\n/delitem <id>\n/additem <game_id>|<name>|<price>`;
+  const chunks = text.match(/[\s\S]{1,4000}/g) || [text];
+  for (const c of chunks) await ctx.reply(c);
 });
 
 bot.command('setprice', async (ctx) => {
@@ -589,7 +709,6 @@ bot.action('adm:backup', async (ctx) => {
   await ctx.reply('✅ Backup ပို့ပြီးပါပြီ');
 });
 
-// ============ BACKUP/RESTORE COMMANDS ============
 bot.command('backupnow', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   await ctx.reply('💾 Backup ပို့နေသည်...');
@@ -600,9 +719,7 @@ bot.command('backupnow', async (ctx) => {
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const reply = ctx.message.reply_to_message;
-  if (!reply || !reply.document) {
-    return ctx.reply('⚠️ Backup JSON ဖိုင်ကို reply လုပ်ပြီး /restore ပို့ပါ');
-  }
+  if (!reply || !reply.document) return ctx.reply('⚠️ Backup JSON ဖိုင်ကို reply လုပ်ပြီး /restore ပို့ပါ');
   try {
     const fileId = reply.document.file_id;
     const link = await bot.telegram.getFileLink(fileId);
@@ -613,10 +730,8 @@ bot.command('restore', async (ctx) => {
     H.replaceData(parsed);
     H.setSetting('last_backup_file_id', fileId);
     H.setSetting('last_backup_at', String(now()));
-    await ctx.reply(`✅ Restore အောင်မြင်ပါပြီ\n👥 Users: ${parsed.users.length}\n💰 Deposits: ${parsed.deposits?.length || 0}\n🛒 Orders: ${parsed.orders?.length || 0}`);
-  } catch (e) {
-    ctx.reply('❌ Restore မအောင်မြင်ပါ: ' + e.message);
-  }
+    await ctx.reply(`✅ Restore အောင်မြင်ပါပြီ\n👥 Users: ${parsed.users.length}\n💰 Deposits: ${parsed.deposits?.length || 0}\n🛒 Orders: ${parsed.orders?.length || 0}\n📦 Items: ${parsed.items?.length || 0}`);
+  } catch (e) { ctx.reply('❌ Restore မအောင်မြင်ပါ: ' + e.message); }
 });
 
 bot.command('backupinfo', async (ctx) => {
@@ -624,13 +739,14 @@ bot.command('backupinfo', async (ctx) => {
   const at = H.getSetting('last_backup_at');
   const fid = H.getSetting('last_backup_file_id');
   const stats = H.stats();
-  ctx.reply(`💾 Backup Status\n\n👥 Users: ${stats.users}\n💰 Total Deposit: ${stats.totalDeposit} MMK\n🧾 Total Sales: ${stats.totalSales} MMK\n\n⏰ နောက်ဆုံး backup: ${at ? new Date(Number(at) * 1000).toLocaleString() : 'မရှိ'}\n🆔 File ID: ${fid ? fid.slice(0, 20) + '...' : 'မရှိ'}`);
+  ctx.reply(`💾 Backup Status\n\n👥 Users: ${stats.users}\n💰 Total Deposit: ${stats.totalDeposit} MMK\n🧾 Total Sales: ${stats.totalSales} MMK\n📦 Items: ${dbData.items.length}\n\n⏰ နောက်ဆုံး backup: ${at ? new Date(Number(at) * 1000).toLocaleString() : 'မရှိ'}\n🆔 File ID: ${fid ? fid.slice(0, 20) + '...' : 'မရှိ'}`);
 });
 
 // ============ START SERVER ============
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   if (PUBLIC_URL) console.log(`🔵 Public URL: ${PUBLIC_URL}`);
+  console.log(`📦 Total items: ${dbData.items.length}`);
 });
 
 // ============ START BOT ============
