@@ -10,6 +10,8 @@ const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ADMIN_ID = String(process.env.ADMIN_ID || '');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || '';
+const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@pyae_phyo_12327';
+
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
@@ -244,7 +246,7 @@ function auth(req, res, next) {
 }
 
 app.get('/api/config', (req, res) => {
-  res.json({ ok: true, enabled: H.getSetting('miniapp_enabled', '1') === '1', payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') } });
+  res.json({ ok: true, enabled: H.getSetting('miniapp_enabled', '1') === '1', payments: { kbz: H.getSetting('payment_kbz'), wave: H.getSetting('payment_wave'), uab: H.getSetting('payment_uab'), aya: H.getSetting('payment_aya') }, adminContact: ADMIN_CONTACT });
 });
 
 app.post('/api/me', auth, (req, res) => {
@@ -375,10 +377,12 @@ app.post('/api/purchase', auth, async (req, res) => {
   H.addBalance(u.id, -item.price, 'order', item.name, 'purchase');
   const orderId = H.createOrder({ user_id: u.id, item_id: item.id, item_name: item.name, game_id: item.game_id, price: item.price, game_account: game_account || null, server_id: server_id || null, needs_account: needsAccount });
   H.addLog(req.tgUser.id, 'order_create', `ord#${orderId}`, `${item.name} ${item.price}`);
+
   let cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n📱 ${u.phone}\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n`;
   if (needsAccount) {
     cap += `\n⚠️ App Premium — Account ပေးရန် လိုအပ်သည်`;
     cap += `\n\n📩 ဒီ message ကို **Reply** လုပ်ပြီး account (mail/pw) ရိုက်ပို့ပါ → User ဆီ တိုက်ရိုက် ရောက်ပါမည်။`;
+    cap += `\n\n💡 ဒါမှမဟုတ် User က သင့် TG (${ADMIN_CONTACT}) ကို ဆက်သွယ်ပါမည်။`;
   } else {
     cap += `🆔 Game ID: ${game_account}`;
     if (server_id) cap += `\n🌐 Server ID: ${server_id}`;
@@ -387,6 +391,18 @@ app.post('/api/purchase', auth, async (req, res) => {
     const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { console.error('send admin failed', e.message); }
+
+  // App Premium ဖြစ်ရင် User ဆီ Admin TG contact ပို့
+  if (needsAccount) {
+    try {
+      await bot.telegram.sendMessage(
+        u.telegram_id,
+        `✅ *Order #${orderId} လက်ခံပြီးပါပြီ*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${H.getUserById(u.id).balance} MMK\n\n━━━━━━━━━━━━━━━\n📌 *ဆက်လုပ်ရန်* 📌\n\nAdmin ရဲ့ Telegram Account ကို ဆက်သွယ်ပါ 👇\n\n👤 ${ADMIN_CONTACT}\n\nAdmin ကို Order ID (*#${orderId}*) ကို ပြောပြီး Account တောင်းပါ။\n━━━━━━━━━━━━━━━`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) { console.error('notify user failed', e.message); }
+  }
+
   res.json({ ok: true, order_id: orderId });
 });
 
@@ -512,7 +528,7 @@ async function sendAdminPanel(ctx) {
   const s = H.stats();
   const enabled = H.getSetting('miniapp_enabled', '1') === '1';
   const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
-  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💬 Unread Chats: ${unreadChats}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK\n📦 Items: ${dbData.items.length}\n🔌 Mini App: ${enabled ? '✅ ON' : '❌ OFF'}`;
+  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Pending Deposits: ${s.pendingDeposits}\n🛒 Pending Orders: ${s.pendingOrders}\n💬 Unread Chats: ${unreadChats}\n💰 Total Deposits: ${s.totalDeposit} MMK\n🧾 Total Sales: ${s.totalSales} MMK\n📦 Items: ${dbData.items.length}\n🔌 Mini App: ${enabled ? '✅ ON' : '❌ OFF'}\n\n👤 Contact: ${ADMIN_CONTACT}`;
   const kb = Markup.inlineKeyboard([
     [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
     [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
@@ -564,7 +580,6 @@ bot.action('adm:chats', async (ctx) => {
     const cap = `💬 *Message #${m.id}*\n\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'})\n🆔 TG: ${u.telegram_id}\n📱 ${u.phone || '-'}\n⏰ ${new Date(m.created_at * 1000).toLocaleString()}\n\n━━━━━━━━━━━━━━━\n${m.text}\n━━━━━━━━━━━━━━━\n\n💡 Reply လုပ်ပြီး ပြန်စာ ပို့ပါ`;
     try {
       const sent = await bot.telegram.sendMessage(ctx.from.id, cap, { parse_mode: 'Markdown' });
-      // Update admin_msg_id ကို နောက်ဆုံး reply အတွက်
       const original = dbData.messages.find(x => x.id === m.id);
       if (original) { original.admin_msg_id = sent.message_id; saveDB(); }
     } catch (e) {}
@@ -758,6 +773,7 @@ app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   if (PUBLIC_URL) console.log(`🔵 Public URL: ${PUBLIC_URL}`);
   console.log(`📦 Items: ${dbData.items.length}`);
+  console.log(`👤 Admin Contact: ${ADMIN_CONTACT}`);
 });
 
 bot.launch()
