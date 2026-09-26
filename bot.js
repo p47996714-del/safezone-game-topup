@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { Telegraf, Markup } = require('telegraf');
+const FAQ = require('./faq');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ADMIN_ID = String(process.env.ADMIN_ID || '');
@@ -16,7 +17,6 @@ const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
-// ============ PERSISTENT DATA DIR ============
 const USE_DISK = fs.existsSync('/data');
 const DATA_ROOT = USE_DISK ? '/data' : __dirname;
 const DATA_DIR = path.join(DATA_ROOT, 'data');
@@ -38,19 +38,12 @@ let dbData = loadDB();
 function saveDB() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(dbData, null, 2)); fs.renameSync(tmp, DB_FILE); }
 const now = () => Math.floor(Date.now() / 1000);
 
-// ============ IMAGE PATH FIX (runs always) ============
 function fixImagePaths() {
   let changed = false;
-  dbData.games.forEach(g => {
-    if (g.image && g.image.includes('/images/')) {
-      g.image = g.image.replace('/images/', '/images/');
-      changed = true;
-    }
-  });
-  if (changed) { console.log('✅ Fixed image paths /images/ → /images/'); saveDB(); }
+  dbData.games.forEach(g => { if (g.image && g.image.includes('/image/') && !g.image.includes('/images/')) { g.image = g.image.replace('/image/', '/images/'); changed = true; } });
+  if (changed) { console.log('✅ Fixed image paths'); saveDB(); }
 }
 
-// ============ LOCAL BACKUP ============
 function saveLocalBackup(reason = 'auto') {
   try {
     const data = { exported_at: new Date().toISOString(), reason, ...dbData };
@@ -87,7 +80,6 @@ function restoreFromLocalBackup() {
 
 setInterval(() => saveLocalBackup('hourly'), 60 * 60 * 1000);
 
-// ============ GAMES SEED (uses /images/ singular) ============
 if (!dbData.games.length) {
   dbData.games = [
     { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
@@ -402,7 +394,7 @@ app.post('/api/purchase', auth, async (req, res) => {
     try {
       const contactLink = `https://t.me/${ADMIN_CONTACT_CLEAN}`;
       const newBal = Number(H.getUserById(u.id).balance).toLocaleString();
-      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 *Admin ကို ဆက်သွယ်ပါ* 📌`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] } });
+      await bot.telegram.sendMessage(u.telegram_id, `✅ *Order #${orderId}*\n\n📦 ${item.name}\n💵 ${item.price} Ks\n💰 Balance: ${newBal} MMK\n\n━━━━━━━━━━━━━━━\n📌 Admin ကို ဆက်သွယ်ပါ 📌`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `👤 Admin ကို ဆက်သွယ်ရန်`, url: contactLink }]] } });
     } catch (e) {}
   }
   res.json({ ok: true, order_id: orderId });
@@ -423,9 +415,17 @@ app.get('/api/my-tx', auth, (req, res) => {
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
 
+// Admin activity tracker
+bot.use(async (ctx, next) => {
+  if (ctx.from && isAdmin(ctx.from.id)) {
+    H.setSetting('admin_last_seen', String(now()));
+  }
+  return next();
+});
+
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
-  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup\n\n${u ? `💰 Balance: ${Number(u.balance).toLocaleString()} MMK\n📱 Phone: ${u.phone}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}`;
+  const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup\n\n${u ? `💰 Balance: ${Number(u.balance).toLocaleString()} MMK\n📱 Phone: ${u.phone}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}\n\n💡 ဘာမေးချင်လဲ ရိုက်ပါ — FAQ ကနေ auto ဖြေပါမယ်။`;
   await ctx.reply(welcome, Markup.keyboard([['💰 Balance', '📜 History', '👤 အကောင့်']]).resize());
 });
 
@@ -468,6 +468,33 @@ bot.on('message', async (ctx, next) => {
       await ctx.reply(`✅ ${userById.name || userById.first_name || ''} ဆီ ပို့ပြီး (Mini App ထဲမှာပဲ မြင်ရမည်)`);
     } catch (e) { ctx.reply('❌ ' + e.message); }
     return;
+  }
+  return next();
+});
+
+// ============ FAQ BOT + AUTO REPLY ============
+bot.on('text', async (ctx, next) => {
+  if (isAdmin(ctx.from.id)) return next();
+  const text = ctx.message.text || '';
+  if (text.startsWith('/')) return next();
+  if (ctx.message.reply_to_message) return next();
+
+  // FAQ answer
+  const answer = FAQ.findAnswer(text);
+  if (answer) {
+    const kb = PUBLIC_URL
+      ? { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '🛍️ Mini App ဖွင့်', web_app: { url: PUBLIC_URL } }]] } }
+      : { parse_mode: 'Markdown' };
+    try { await ctx.reply(answer, kb); } catch (e) { await ctx.reply(answer); }
+    return;
+  }
+
+  // Auto reply if admin offline > 1 hour
+  const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
+  if (now() - lastSeen > 3600) {
+    await ctx.reply(
+      `🤖 Admin သည် ယခုအချိန် offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`
+    );
   }
   return next();
 });
@@ -606,6 +633,27 @@ bot.command('toggleitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; co
 bot.command('delitem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const [, id] = ctx.message.text.split(/\s+/); if (!id) return ctx.reply('Usage: /delitem <id>'); H.removeItem(Number(id)); ctx.reply(`🗑️ #${id}`); });
 bot.command('additem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const body = ctx.message.text.replace('/additem', '').trim(); const [game_id, name, price] = body.split('|').map(s => s?.trim()); if (!game_id || !name || !price) return ctx.reply('Usage: /additem mlbb|86 Diamonds|5000'); const id = H.addItem({ game_id, name, price: Number(price) }); ctx.reply(`✅ #${id}`); });
 
+bot.command('status', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
+  const isOnline = (now() - lastSeen) < 3600;
+  const lastSeenStr = lastSeen ? new Date(lastSeen * 1000).toLocaleString() : 'မရှိ';
+  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n💡 Auto Reply: ${isOnline ? 'မပို့ပါ' : 'ပို့ပါမည်'}`, { parse_mode: 'Markdown' });
+});
+bot.command('faqlist', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  let text = '📚 *FAQ Keywords*\n\n';
+  FAQ.FAQ_DB.forEach((f, i) => { text += `${i + 1}. ${f.k.join(', ')}\n`; });
+  await ctx.reply(text, { parse_mode: 'Markdown' });
+});
+bot.command('faqtest', async (ctx) => {
+  if (!isAdmin(ctx.from.id)) return;
+  const args = ctx.message.text.replace('/faqtest', '').trim();
+  if (!args) return ctx.reply('Usage: /faqtest ငွေဖြည့်');
+  const ans = FAQ.findAnswer(args);
+  await ctx.reply(ans || `❌ "${args}" FAQ မရှိပါ။`);
+});
+
 bot.action('adm:backup', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.answerCbQuery('💾'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.reply('💾 ...'); await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup ပို့ပြီ'); });
 bot.command('backupstatus', async (ctx) => {
@@ -627,7 +675,7 @@ bot.command('restore', async (ctx) => {
     if (!parsed.users || !parsed._seq) return ctx.reply('❌ Invalid');
     H.replaceData(parsed);
     saveLocalBackup('manual-restore');
-    await ctx.reply(`✅ Restored\n👥 ${parsed.users.length}\n📦 ${parsed.items?.length || 0}\n🎮 Image paths fixed: /images/`);
+    await ctx.reply(`✅ Restored\n👥 ${parsed.users.length}\n📦 ${parsed.items?.length || 0}`);
   } catch (e) { ctx.reply('❌ ' + e.message); }
 });
 
