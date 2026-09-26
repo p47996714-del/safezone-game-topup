@@ -4,6 +4,9 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
+const TG_USER_ID = tg.initDataUnsafe?.user?.id || null;
+const SESSION_KEY = TG_USER_ID ? 'miniapp_user_' + TG_USER_ID : 'miniapp_user_guest';
+
 let STATE = { user: null, games: [], selectedMethod: null, selectedItem: null, payments: {} };
 
 async function api(path, opts = {}) {
@@ -23,6 +26,19 @@ function toast(msg, type = '') {
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 
+function saveSession(user) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch(e){}
+}
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+}
+function loadSession() {
+  try {
+    const saved = localStorage.getItem(SESSION_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch(e) { return null; }
+}
+
 // ============ INIT ============
 async function init() {
   try {
@@ -34,23 +50,21 @@ async function init() {
     toast('Server မချိတ်နိုင်ပါ', 'error');
     return;
   }
-  // localStorage session စစ်
-  const saved = localStorage.getItem('miniapp_user');
-  if (saved) {
-    try {
-      STATE.user = JSON.parse(saved);
-      hide('loading'); show('main');
-      renderMain(); loadGames();
-      return;
-    } catch(e) { localStorage.removeItem('miniapp_user'); }
+
+  const saved = loadSession();
+  if (saved && String(saved.telegram_id) === String(TG_USER_ID)) {
+    STATE.user = saved;
+    hide('loading'); show('main');
+    renderMain(); loadGames();
+    return;
   }
-  // Telegram ID နဲ့ auto-login စစ်
+
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
   if (!me.user) { show('login'); }
   else {
     STATE.user = me.user;
-    localStorage.setItem('miniapp_user', JSON.stringify(me.user));
+    saveSession(me.user);
     show('main');
     renderMain();
     loadGames();
@@ -76,7 +90,7 @@ $('registerBtn').addEventListener('click', async () => {
 
   if (res.ok) {
     STATE.user = res.user;
-    localStorage.setItem('miniapp_user', JSON.stringify(res.user));
+    saveSession(res.user);
     hide('register'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -94,7 +108,7 @@ $('loginBtn').addEventListener('click', async () => {
   const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
   if (res.ok) {
     STATE.user = res.user;
-    localStorage.setItem('miniapp_user', JSON.stringify(res.user));
+    saveSession(res.user);
     hide('login'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -104,7 +118,6 @@ $('loginBtn').addEventListener('click', async () => {
   }
 });
 
-// ============ SWITCH LOGIN/REGISTER ============
 $('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
 $('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
 
@@ -123,15 +136,16 @@ $('profileBtn').addEventListener('click', () => {
 
 // ============ LOGOUT ============
 $('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem('miniapp_user');
+  clearSession();
   STATE.user = null;
   hide('profileModal'); hide('main');
   $('loginPhone').value = ''; $('loginPassword').value = '';
+  $('phoneInput').value = ''; $('nameInput').value = ''; $('passwordInput').value = ''; $('passwordInput2').value = '';
   show('login');
   toast('အကောင့်မှ ထွက်ပြီးပါပြီ', 'success');
 });
 
-// ============ MAIN RENDER ============
+// ============ MAIN ============
 function renderMain() {
   $('balanceVal').textContent = Number(STATE.user.balance || 0).toLocaleString();
   $('userLabel').textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
@@ -140,7 +154,7 @@ async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   if (me.user) {
     STATE.user = me.user;
-    localStorage.setItem('miniapp_user', JSON.stringify(me.user));
+    saveSession(me.user);
     renderMain();
   }
 }
@@ -295,7 +309,6 @@ $('historyBtn').addEventListener('click', async () => {
   box.innerHTML = html;
 });
 
-// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => { e.target.closest('.modal').classList.add('hidden'); });
 });
