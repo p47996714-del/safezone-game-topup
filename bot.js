@@ -13,6 +13,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || '';
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
 
+// ============ DATA STORAGE ============
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'app.json');
@@ -34,6 +35,7 @@ function saveDB() {
 
 const now = () => Math.floor(Date.now() / 1000);
 
+// ============ GAMES SEED ============
 if (!dbData.games.length) {
   dbData.games = [
     { id: 'mlbb', name: 'Mobile Legends: Bang Bang', image: '/images/mlbb.png', active: 1, sort_order: 1 },
@@ -43,7 +45,9 @@ if (!dbData.games.length) {
   ];
 }
 
+// ============ ITEMS SEED ============
 const SEED_ITEMS = [
+  // Mobile Legends
   { g: 'mlbb', n: 'Weekly Pass', p: 6650 },
   { g: 'mlbb', n: 'Miya Twilight Pass', p: 35000 },
   { g: 'mlbb', n: '86 Diamonds', p: 5500 },
@@ -67,6 +71,7 @@ const SEED_ITEMS = [
   { g: 'mlbb', n: 'Double 150+150', p: 12500 },
   { g: 'mlbb', n: 'Double 250+250', p: 17500 },
   { g: 'mlbb', n: 'Double 500+500', p: 34500 },
+  // Magic Chess
   { g: 'magic-chess', n: 'Weekly Pass', p: 8500 },
   { g: 'magic-chess', n: '50+50 (တစ်ခါသာ)', p: 4000 },
   { g: 'magic-chess', n: '150+150 (တစ်ခါသာ)', p: 11000 },
@@ -84,6 +89,7 @@ const SEED_ITEMS = [
   { g: 'magic-chess', n: '3688 Diamonds', p: 220000 },
   { g: 'magic-chess', n: '5532 Diamonds', p: 337500 },
   { g: 'magic-chess', n: '9288 Diamonds', p: 530000 },
+  // PUBG UC
   { g: 'pubg', n: '60 UC', p: 4700 },
   { g: 'pubg', n: '120 UC', p: 9400 },
   { g: 'pubg', n: '180 UC', p: 13900 },
@@ -93,6 +99,7 @@ const SEED_ITEMS = [
   { g: 'pubg', n: '1800 UC', p: 114000 },
   { g: 'pubg', n: '3850 UC', p: 226000 },
   { g: 'pubg', n: '8100 UC', p: 440000 },
+  // PUBG Packs
   { g: 'pubg', n: 'Growth Pack - First Purchase', p: 5950 },
   { g: 'pubg', n: 'Growth Pack - Firearm Materials', p: 14000 },
   { g: 'pubg', n: 'Growth Pack - Mythic Emblem', p: 22750 },
@@ -110,15 +117,19 @@ const SEED_ITEMS = [
   { g: 'pubg', n: 'Prime Plus 3 Month', p: 126000 },
   { g: 'pubg', n: 'Prime Plus 6 Month', p: 245000 },
   { g: 'pubg', n: 'Prime Plus 12 Month', p: 482000 },
+  // App Premium - Telegram
   { g: 'app-premium', n: 'TG SMS Free (Unlimited)', p: 8000, c: '📱 Telegram' },
   { g: 'app-premium', n: 'Telegram Premium 1 Month', p: 19500, c: '📱 Telegram' },
   { g: 'app-premium', n: 'Telegram Premium 3 Month', p: 59000, c: '📱 Telegram' },
   { g: 'app-premium', n: 'Telegram Premium 6 Month', p: 77000, c: '📱 Telegram' },
   { g: 'app-premium', n: 'Telegram Premium 12 Month', p: 135000, c: '📱 Telegram' },
+  // App Premium - Video Editing
   { g: 'app-premium', n: 'Alight Motion 1 Year', p: 5000, c: '🎬 Video Editing' },
   { g: 'app-premium', n: 'Capcut Pro 1 Month (Mobile)', p: 8500, c: '🎬 Video Editing' },
   { g: 'app-premium', n: 'Capcut Pro 1 Month (PC)', p: 18000, c: '🎬 Video Editing' },
+  // App Premium - Design
   { g: 'app-premium', n: 'Canva Lifetime', p: 6500, c: '🎨 Design' },
+  // App Premium - AI Tools
   { g: 'app-premium', n: 'ChatGPT Plus 1 Month (Share)', p: 28000, c: '🤖 AI Tools' },
   { g: 'app-premium', n: 'ChatGPT Plus 1 Month (Private)', p: 103000, c: '🤖 AI Tools' },
   { g: 'app-premium', n: 'Gemini 1 Month (Family)', p: 13000, c: '🤖 AI Tools' },
@@ -184,7 +195,7 @@ const H = {
   listDeposits: (status = null, limit = 50) => dbData.deposits.filter(d => !status || d.status === status).slice(-limit).reverse(),
   updateDeposit: (id, status, processed_by, note = null) => { const d = H.getDeposit(id); if (d) { d.status = status; d.processed_at = now(); d.processed_by = processed_by; d.note = note; saveDB(); } },
   createOrder: ({ user_id, item_id, item_name, game_id, price, game_account, server_id, needs_account }) => {
-    const o = { id: dbData._seq.orders++, user_id, item_id, item_name, game_id, price: Number(price), game_account, server_id: server_id || null, needs_account: !!needs_account, status: 'pending', created_at: now(), processed_at: null, note: null };
+    const o = { id: dbData._seq.orders++, user_id, item_id, item_name, game_id, price: Number(price), game_account, server_id: server_id || null, needs_account: !!needs_account, status: 'pending', created_at: now(), processed_at: null, note: null, admin_msg_id: null };
     dbData.orders.push(o); saveDB(); return o.id;
   },
   getOrder: (id) => dbData.orders.find(o => o.id === Number(id)) || null,
@@ -219,6 +230,7 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 * 1024 } });
 
+// ============ EXPRESS ============
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -264,8 +276,8 @@ app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2 } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
   if (!phone || phone.length < 6) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် မှန်ကန်စွာထည့်ပါ' });
-  if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'စကားဝှက် အနည်းဆုံး 4 လုံး' });
-  if (password !== password2) return res.status(400).json({ ok: false, error: 'စကားဝှက် နှစ်ခု မတူပါ' });
+  if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'စကားဝှက် 4 လုံး+' });
+  if (password !== password2) return res.status(400).json({ ok: false, error: 'စကားဝှက် မတူပါ' });
   if (H.getUserByPhone(phone)) return res.status(400).json({ ok: false, error: 'ဒီဖုန်းနံပါတ်နဲ့ အကောင့်ရှိပြီးသား' });
   let u = H.getUserByTg(req.tgUser.id);
   if (u) return res.status(400).json({ ok: false, error: 'ဒီ Telegram အကောင့်နဲ့ register လုပ်ပြီးသား' });
@@ -280,7 +292,7 @@ app.post('/api/register', auth, (req, res) => {
 
 app.post('/api/login', auth, (req, res) => {
   const { phone, password } = req.body;
-  if (!phone || !password) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် နှင့် စကားဝှက် ထည့်ပါ' });
+  if (!phone || !password) return res.status(400).json({ ok: false, error: 'ဖုန်းနှင့် စကားဝှက် ထည့်ပါ' });
   const user = H.getUserByPhone(phone);
   if (!user) return res.status(400).json({ ok: false, error: 'ဖုန်းနံပါတ် မှားနေပါသည်' });
   const hash = hashPassword(password, user.password_salt || '');
@@ -332,11 +344,9 @@ app.post('/api/purchase', auth, async (req, res) => {
   const gameId = item.game_id;
   const needsAccount = gameId === 'app-premium';
 
-  // ID required check
   if (!needsAccount) {
     if (!game_account || game_account.length < 3) return res.status(400).json({ ok: false, error: 'Game ID ထည့်ပါ' });
   }
-  // Server ID required check (MLBB + Magic Chess)
   if ((gameId === 'mlbb' || gameId === 'magic-chess')) {
     if (!server_id || String(server_id).length < 1) return res.status(400).json({ ok: false, error: 'Server ID ထည့်ပါ' });
   }
@@ -344,21 +354,22 @@ app.post('/api/purchase', auth, async (req, res) => {
   const fresh = H.getUserById(u.id);
   if (fresh.balance < item.price) return res.status(400).json({ ok: false, error: 'ငွေမလုံလောက်ပါ' });
 
-  // Deduct
   H.addBalance(u.id, -item.price, 'order', item.name, 'purchase');
   const orderId = H.createOrder({ user_id: u.id, item_id: item.id, item_name: item.name, game_id: item.game_id, price: item.price, game_account: game_account || null, server_id: server_id || null, needs_account: needsAccount });
   H.addLog(req.tgUser.id, 'order_create', `ord#${orderId}`, `${item.name} ${item.price}`);
 
-  // Admin notification
   let cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''} (@${u.username || '-'}) [${u.telegram_id}]\n📱 ${u.phone}\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n`;
-  if (needsAccount) cap += `\n⚠️ App Premium — Admin မှ account ပေးရန် လိုအပ်သည်`;
-  else {
+  if (needsAccount) {
+    cap += `\n⚠️ App Premium — Account ပေးရန် လိုအပ်သည်`;
+    cap += `\n\n📩 ဒီ message ကို **Reply** လုပ်ပြီး account (mail/pw) ရိုက်ပို့ပါ → User ဆီ တိုက်ရိုက် ရောက်ပါမည်။`;
+  } else {
     cap += `🆔 Game ID: ${game_account}`;
     if (server_id) cap += `\n🌐 Server ID: ${server_id}`;
   }
 
   try {
-    await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
+    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
+    const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) { console.error('send admin failed', e.message); }
 
   res.json({ ok: true, order_id: orderId });
@@ -376,6 +387,7 @@ app.get('/api/my-tx', auth, (req, res) => {
   res.json({ ok: true, txs: H.listUserTx(u.id, 30) });
 });
 
+// ============ BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
 
@@ -406,6 +418,33 @@ bot.hears('👤 အကောင့်', async (ctx) => {
   ctx.reply(`👤 အကောင့်\n\n📛 နာမည်: ${u.name || '-'}\n📱 ဖုန်း: ${u.phone || '-'}\n💰 Balance: ${u.balance} MMK\n🆔 User ID: ${u.id}`);
 });
 
+// ============ ADMIN REPLY TO ORDER (Account ပို့) ============
+bot.on('message', async (ctx, next) => {
+  if (!isAdmin(ctx.from.id)) return next();
+  if (!ctx.message.reply_to_message) return next();
+  if (ctx.message.text && ctx.message.text.startsWith('/')) return next();
+  const replyId = ctx.message.reply_to_message.message_id;
+  const order = dbData.orders.find(o => o.admin_msg_id === replyId);
+  if (!order) return next();
+
+  const user = H.getUserById(order.user_id);
+  if (!user) return ctx.reply('❌ User မတွေ့ပါ');
+
+  const text = ctx.message.text || ctx.message.caption || '';
+  if (!text) return next();
+
+  try {
+    await bot.telegram.sendMessage(
+      user.telegram_id,
+      `🎉 သင့် Order #${order.id} အတွက် Account ရောက်ပါပြီ!\n\n📦 ${order.item_name}\n💵 ${order.price} Ks\n\n━━━━━━━━━━━━━━━\n${text}\n━━━━━━━━━━━━━━━\n\n⚠️ ကျေးဇူးပြု၍ password ကို ချက်ချင်း ပြောင်းလဲပါ။`
+    );
+    if (order.status === 'pending') H.updateOrder(order.id, 'completed');
+    H.addLog(ctx.from.id, 'order_reply', `ord#${order.id}`, text.slice(0, 50));
+    await ctx.reply(`✅ User (${user.name || user.first_name || ''}) ဆီ ပို့ပြီးပါပြီ\n📦 ${order.item_name}`);
+  } catch (e) { ctx.reply('❌ မပို့နိုင်ပါ: ' + e.message); }
+});
+
+// ============ BACKUP ============
 async function sendBackupToAdmin(reason = 'auto') {
   try {
     const data = H.backup();
@@ -414,10 +453,7 @@ async function sendBackupToAdmin(reason = 'auto') {
     const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     const caption = `💾 Backup (${reason})\n\n👥 Users: ${stats.users}\n📥 Pending Dep: ${stats.pendingDeposits}\n🛒 Pending Ord: ${stats.pendingOrders}\n💰 Total: ${stats.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n⏰ ${new Date().toLocaleString()}`;
     const msg = await bot.telegram.sendDocument(ADMIN_ID, { source: Buffer.from(json), filename }, { caption });
-    if (msg.document?.file_id) {
-      H.setSetting('last_backup_file_id', msg.document.file_id);
-      H.setSetting('last_backup_at', String(now()));
-    }
+    if (msg.document?.file_id) { H.setSetting('last_backup_file_id', msg.document.file_id); H.setSetting('last_backup_at', String(now())); }
     console.log('💾 Backup sent:', filename);
   } catch (e) { console.error('Backup failed:', e.message); }
 }
@@ -429,8 +465,7 @@ async function restoreFromTelegramBackup() {
     console.log('📥 Restoring...');
     const link = await bot.telegram.getFileLink(fid);
     const res = await fetch(link.href);
-    const text = await res.text();
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(await res.text());
     if (!parsed.users || !parsed._seq) return false;
     H.replaceData(parsed);
     console.log(`✅ Restored ${parsed.users.length} users`);
@@ -440,6 +475,7 @@ async function restoreFromTelegramBackup() {
 
 setInterval(() => sendBackupToAdmin('scheduled-3h'), 3 * 60 * 60 * 1000);
 
+// ============ ADMIN PANEL ============
 bot.command('admin', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await sendAdminPanel(ctx); });
 
 async function sendAdminPanel(ctx) {
@@ -539,14 +575,15 @@ bot.action('adm:orders', async (ctx) => {
   for (const o of list) {
     const u = H.getUserById(o.user_id);
     let cap = `🛒 Order #${o.id}\n👤 ${u?.name || u?.first_name || ''} (@${u?.username || '-'}) [${u?.telegram_id}]\n📱 ${u?.phone || '-'}\n🎮 ${o.game_id}\n📦 ${o.item_name}\n💵 ${o.price} MMK\n`;
-    if (o.needs_account) cap += `\n⚠️ App Premium — Admin account ပေးရန်`;
+    if (o.needs_account) cap += `\n⚠️ App Premium — Reply လုပ်ပြီး account ပို့ပါ`;
     else {
       cap += `🆔 ${o.game_account}`;
       if (o.server_id) cap += `\n🌐 Server: ${o.server_id}`;
     }
     cap += `\n⏰ ${new Date(o.created_at * 1000).toLocaleString()}`;
     const kb = Markup.inlineKeyboard([[Markup.button.callback('✅ ပို့ပြီး', `ord:ok:${o.id}`), Markup.button.callback('❌ ပယ်', `ord:no:${o.id}`)]]);
-    await ctx.reply(cap, kb);
+    const sent = await ctx.reply(cap, kb);
+    const order = H.getOrder(o.id); if (order && !order.admin_msg_id) { order.admin_msg_id = sent.message_id; saveDB(); }
   }
 });
 
@@ -669,6 +706,7 @@ bot.command('backupinfo', async (ctx) => {
   ctx.reply(`💾 Backup\n👥 ${s.users}\n💰 ${s.totalDeposit} MMK\n🧾 ${s.totalSales} MMK\n📦 ${dbData.items.length}\n⏰ ${at ? new Date(Number(at)*1000).toLocaleString() : 'မရှိ'}\n🆔 ${fid ? fid.slice(0,20)+'...' : 'မရှိ'}`);
 });
 
+// ============ START ============
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   if (PUBLIC_URL) console.log(`🔵 Public URL: ${PUBLIC_URL}`);
