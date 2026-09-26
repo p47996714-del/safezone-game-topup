@@ -48,7 +48,10 @@
         <button id="depositBtn" class="ghost">➕ ငွေဖြည့်</button>
         <button id="historyBtn" class="ghost">📜 မှတ်တမ်း</button>
       </div>
-      <button id="profileBtn" class="ghost full" style="margin-top:8px">👤 ကျွန်ုပ်၏ အကောင့်</button>
+      <div class="row-btns" style="margin-top:8px">
+        <button id="chatBtn" class="ghost" style="position:relative">💬 Admin Chat <span id="chatBadge" style="display:none;background:#e74c3c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px">0</span></button>
+        <button id="profileBtn" class="ghost">👤 အကောင့်</button>
+      </div>
       <div class="hint" id="userLabel" style="margin-top:8px"></div>
     </div>
     <h2 class="section-title">🎮 ဂိမ်းများ</h2>
@@ -118,6 +121,26 @@
       <h2>👤 အကောင့်</h2>
       <div id="profileInfo" style="margin-top:12px"></div>
       <button id="logoutBtn" class="primary full" style="background:#e74c3c;margin-top:16px">🚪 ထွက်မယ်</button>
+    </div>
+  </div>
+
+  <div id="chatModal" class="modal hidden">
+    <div class="modal-content" style="height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="chat-avatar">🛡️</div>
+          <div>
+            <div class="chat-title">Admin Support</div>
+            <div class="chat-status">● Online</div>
+          </div>
+        </div>
+        <button class="modal-close" data-close style="position:static;font-size:26px;padding:0 8px">&times;</button>
+      </div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input-bar">
+        <input id="chatInput" placeholder="စာ ရိုက်ပါ..." />
+        <button id="chatSendBtn" class="chat-send">➤</button>
+      </div>
     </div>
   </div>
 

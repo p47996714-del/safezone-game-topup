@@ -5,6 +5,7 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
 let STATE = { user: null, games: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {} };
+let CHAT = { open: false, timer: null };
 
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers||{}) };
@@ -27,7 +28,7 @@ async function init() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
   if (!me.user) show('login');
-  else { STATE.user = me.user; show('main'); renderMain(); loadGames(); }
+  else { STATE.user = me.user; show('main'); renderMain(); loadGames(); checkUnread(); }
 }
 
 $('registerBtn').addEventListener('click', async () => {
@@ -56,6 +57,7 @@ $('loginBtn').addEventListener('click', async () => {
     STATE.user = res.user; hide('login'); show('main'); renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဝင်ပြီးပါပြီ ✅', 'success');
+    checkUnread();
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
@@ -114,7 +116,6 @@ async function openItems(game) {
   if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
   box.innerHTML = '';
 
-  // App Premium ဖြစ်ရင် category အလိုက် ခွဲ
   if (game.id === 'app-premium') {
     const groups = {};
     items.forEach(it => {
@@ -161,7 +162,6 @@ function openBuy(item) {
   const gameId = item.game_id;
   const isAppPremium = gameId === 'app-premium';
 
-  // Field toggle
   hide('fieldServerId');
   hide('fieldNote');
   show('fieldGameId');
@@ -258,11 +258,100 @@ $('historyBtn').addEventListener('click', async () => {
   box.innerHTML = html;
 });
 
+// ============ CHAT ============
+$('chatBtn').addEventListener('click', async () => {
+  CHAT.open = true;
+  show('chatModal');
+  $('chatMessages').innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
+  await loadChat(true);
+  $('chatBadge').style.display = 'none';
+  if (CHAT.timer) clearInterval(CHAT.timer);
+  CHAT.timer = setInterval(() => loadChat(false), 3000);
+});
+
+function closeChat() {
+  CHAT.open = false;
+  if (CHAT.timer) { clearInterval(CHAT.timer); CHAT.timer = null; }
+}
+
+async function loadChat(scrollBottom) {
+  if (!CHAT.open) return;
+  const res = await api('/api/chat/history', { method: 'POST', body: '{}' });
+  const msgs = res.messages || [];
+  const box = $('chatMessages');
+  if (!msgs.length) {
+    box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။ Admin ကို စာ ပို့ပါ။</p>';
+    return;
+  }
+  let lastDate = '';
+  let html = '';
+  msgs.forEach(m => {
+    const d = new Date(m.created_at * 1000);
+    const dateStr = d.toLocaleDateString();
+    if (dateStr !== lastDate) {
+      html += `<div class="chat-date-divider">${dateStr}</div>`;
+      lastDate = dateStr;
+    }
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const cls = m.from === 'user' ? 'user' : 'admin';
+    const safeText = m.text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    html += `<div class="chat-msg ${cls}">${safeText}<div class="chat-time">${time}</div></div>`;
+  });
+  const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 50;
+  box.innerHTML = html;
+  if (scrollBottom || wasAtBottom) box.scrollTop = box.scrollHeight;
+}
+
+$('chatSendBtn').addEventListener('click', sendChat);
+$('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+
+async function sendChat() {
+  const text = $('chatInput').value.trim();
+  if (!text) return;
+  $('chatInput').value = '';
+  $('chatSendBtn').disabled = true;
+  const res = await api('/api/chat/send', { method: 'POST', body: JSON.stringify({ text }) });
+  $('chatSendBtn').disabled = false;
+  if (res.ok) {
+    try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
+    await loadChat(true);
+  } else {
+    toast(res.error || 'မပို့နိုင်ပါ', 'error');
+    $('chatInput').value = text;
+  }
+}
+
+async function checkUnread() {
+  if (CHAT.open || !STATE.user) return;
+  try {
+    const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
+    if (res.count > 0) {
+      $('chatBadge').textContent = res.count;
+      $('chatBadge').style.display = 'inline-block';
+    } else {
+      $('chatBadge').style.display = 'none';
+    }
+  } catch(e) {}
+}
+setInterval(checkUnread, 15000);
+
+// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
-  b.addEventListener('click', (e) => { e.target.closest('.modal').classList.add('hidden'); });
+  b.addEventListener('click', (e) => {
+    const modal = e.target.closest('.modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      if (modal.id === 'chatModal') closeChat();
+    }
+  });
 });
 document.querySelectorAll('.modal').forEach(m => {
-  m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+  m.addEventListener('click', (e) => {
+    if (e.target === m) {
+      m.classList.add('hidden');
+      if (m.id === 'chatModal') closeChat();
+    }
+  });
 });
 
 init();
