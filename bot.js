@@ -42,12 +42,12 @@ const now = () => Math.floor(Date.now() / 1000);
 function fixImagePaths() {
   let changed = false;
   dbData.games.forEach(g => {
-    if (g.image && g.image.includes('/images/')) {
-      g.image = g.image.replace('/images/', '/image/');
+    if (g.image && g.image.includes('/image/')) {
+      g.image = g.image.replace('/image/', '/image/');
       changed = true;
     }
   });
-  if (changed) { console.log('✅ Fixed image paths /images/ → /image/'); saveDB(); }
+  if (changed) { console.log('✅ Fixed image paths /image/ → /image/'); saveDB(); }
 }
 
 // ============ LOCAL BACKUP ============
