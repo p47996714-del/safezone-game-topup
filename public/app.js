@@ -34,13 +34,10 @@ async function init() {
     toast('Server မချိတ်နိုင်ပါ', 'error');
     return;
   }
-
-  // localStorage မသုံးတော့ဘူး — server ကနေ အမြဲ စစ်
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
-  if (!me.user) {
-    show('login');
-  } else {
+  if (!me.user) { show('login'); }
+  else {
     STATE.user = me.user;
     show('main');
     renderMain();
@@ -64,16 +61,13 @@ $('registerBtn').addEventListener('click', async () => {
     method: 'POST',
     body: JSON.stringify({ name, phone, password, password2 })
   });
-
   if (res.ok) {
     STATE.user = res.user;
     hide('register'); show('main');
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
-  } else {
-    toast(res.error || 'မအောင်မြင်ပါ', 'error');
-  }
+  } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
 // ============ LOGIN ============
@@ -88,9 +82,7 @@ $('loginBtn').addEventListener('click', async () => {
     renderMain(); loadGames();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဝင်ပြီးပါပြီ ✅', 'success');
-  } else {
-    toast(res.error || 'မအောင်မြင်ပါ', 'error');
-  }
+  } else { toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
 $('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
@@ -115,8 +107,7 @@ $('logoutBtn').addEventListener('click', async () => {
   STATE.user = null;
   hide('profileModal'); hide('main');
   $('loginPhone').value = ''; $('loginPassword').value = '';
-  $('phoneInput').value = ''; $('nameInput').value = '';
-  $('passwordInput').value = ''; $('passwordInput2').value = '';
+  $('phoneInput').value = ''; $('nameInput').value = ''; $('passwordInput').value = ''; $('passwordInput2').value = '';
   show('login');
   toast('အကောင့်မှ ထွက်ပြီးပါပြီ', 'success');
 });
@@ -147,7 +138,7 @@ async function loadGames() {
   });
 }
 
-// ============ ITEMS ============
+// ============ ITEMS (2-COLUMN GRID) ============
 async function openItems(game) {
   $('itemsTitle').textContent = game.name;
   $('itemsList').innerHTML = '<p class="hint">ခဏစောင့်ပါ...</p>';
@@ -155,20 +146,24 @@ async function openItems(game) {
   const res = await api(`/api/items/${game.id}`);
   const items = res.items || [];
   const box = $('itemsList');
-  if (!items.length) { box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>'; return; }
+  if (!items.length) {
+    box.innerHTML = '<p class="hint">Item မရှိသေးပါ။</p>';
+    return;
+  }
   box.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'items-grid';
   items.forEach(it => {
-    const row = document.createElement('div');
-    row.className = 'item-row';
-    row.innerHTML = `
-      <div>
-        <div style="font-weight:600">${it.name}</div>
-        <div class="price">${it.price > 0 ? Number(it.price).toLocaleString() + ' MMK' : 'စျေးမသတ်ရသေး'}</div>
-      </div>
-      <button ${it.price>0?'':'disabled style="opacity:.5"'}>ဝယ်မယ်</button>`;
-    row.querySelector('button').addEventListener('click', () => openBuy(it));
-    box.appendChild(row);
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.innerHTML = `
+      <div class="item-name">${it.name}</div>
+      <div class="item-price">${it.price > 0 ? Number(it.price).toLocaleString() + ' Ks' : 'စျေးမသတ်ရသေး'}</div>
+      <button ${it.price>0?'':'disabled'} class="item-buy">ဝယ်မယ်</button>`;
+    card.querySelector('button').addEventListener('click', () => openBuy(it));
+    grid.appendChild(card);
   });
+  box.appendChild(grid);
 }
 
 function openBuy(item) {
@@ -182,10 +177,7 @@ function openBuy(item) {
 $('confirmBuy').addEventListener('click', async () => {
   const account = $('buyGameAccount').value.trim();
   if (account.length < 3) return toast('Game ID ထည့်ပါ', 'error');
-  const res = await api('/api/purchase', {
-    method: 'POST',
-    body: JSON.stringify({ item_id: STATE.selectedItem.id, game_account: account })
-  });
+  const res = await api('/api/purchase', { method: 'POST', body: JSON.stringify({ item_id: STATE.selectedItem.id, game_account: account }) });
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
@@ -219,14 +211,8 @@ $('submitDeposit').addEventListener('click', async () => {
   if (!STATE.selectedMethod) return toast('ငွေလွှဲနည်းလမ်း ရွေးပါ', 'error');
   if (!file) return toast('ပြေစာပုံ တင်ပါ', 'error');
   const fd = new FormData();
-  fd.append('amount', amount);
-  fd.append('method', STATE.selectedMethod);
-  fd.append('receipt', file);
-  const res = await fetch('/api/deposit', {
-    method: 'POST',
-    headers: { 'X-Init-Data': initData },
-    body: fd
-  }).then(r => r.json());
+  fd.append('amount', amount); fd.append('method', STATE.selectedMethod); fd.append('receipt', file);
+  const res = await fetch('/api/deposit', { method: 'POST', headers: { 'X-Init-Data': initData }, body: fd }).then(r => r.json());
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('Admin ထံ ပို့ပြီးပါပြီ။ အတည်ပြုချက် စောင့်ပါ ⏳', 'success');
@@ -239,37 +225,19 @@ $('historyBtn').addEventListener('click', async () => {
   show('historyModal');
   const box = $('historyList');
   box.innerHTML = '<p class="hint">ခဏစောင့်ပါ...</p>';
-  const [txs, orders, deps] = await Promise.all([
-    api('/api/my-tx'), api('/api/my-orders'), api('/api/deposits')
-  ]);
+  const [txs, orders, deps] = await Promise.all([api('/api/my-tx'), api('/api/my-orders'), api('/api/deposits')]);
   let html = '<h3 style="margin:10px 0 6px">💳 Transactions</h3>';
-  if ((txs.txs||[]).length) {
-    html += txs.txs.map(t => `
-      <div class="item-row" style="margin-bottom:6px">
-        <div>${t.type}<div class="hint">${new Date(t.created_at*1000).toLocaleString()}</div></div>
-        <div class="price">${t.amount>0?'+':''}${t.amount} → ${t.balance_after}</div>
-      </div>`).join('');
-  } else html += '<p class="hint">မရှိပါ</p>';
+  if ((txs.txs||[]).length) html += txs.txs.map(t => `<div class="item-row" style="margin-bottom:6px"><div>${t.type}<div class="hint">${new Date(t.created_at*1000).toLocaleString()}</div></div><div class="price">${t.amount>0?'+':''}${t.amount} → ${t.balance_after}</div></div>`).join('');
+  else html += '<p class="hint">မရှိပါ</p>';
   html += '<h3 style="margin:16px 0 6px">📥 Deposits</h3>';
-  if ((deps.deposits||[]).length) {
-    html += deps.deposits.map(d => `
-      <div class="item-row" style="margin-bottom:6px">
-        <div>${d.method} #${d.id}<div class="hint">${new Date(d.created_at*1000).toLocaleString()}</div></div>
-        <div class="price">${d.amount} <small>${d.status}</small></div>
-      </div>`).join('');
-  } else html += '<p class="hint">မရှိပါ</p>';
+  if ((deps.deposits||[]).length) html += deps.deposits.map(d => `<div class="item-row" style="margin-bottom:6px"><div>${d.method} #${d.id}<div class="hint">${new Date(d.created_at*1000).toLocaleString()}</div></div><div class="price">${d.amount} <small>${d.status}</small></div></div>`).join('');
+  else html += '<p class="hint">မရှိပါ</p>';
   html += '<h3 style="margin:16px 0 6px">🛒 Orders</h3>';
-  if ((orders.orders||[]).length) {
-    html += orders.orders.map(o => `
-      <div class="item-row" style="margin-bottom:6px">
-        <div>${o.item_name}<div class="hint">#${o.id} • ${o.game_id} • ${o.status}</div></div>
-        <div class="price">${o.price}</div>
-      </div>`).join('');
-  } else html += '<p class="hint">မရှိပါ</p>';
+  if ((orders.orders||[]).length) html += orders.orders.map(o => `<div class="item-row" style="margin-bottom:6px"><div>${o.item_name}<div class="hint">#${o.id} • ${o.game_id} • ${o.status}</div></div><div class="price">${o.price}</div></div>`).join('');
+  else html += '<p class="hint">မရှိပါ</p>';
   box.innerHTML = html;
 });
 
-// ============ MODAL CLOSE ============
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', (e) => { e.target.closest('.modal').classList.add('hidden'); });
 });
