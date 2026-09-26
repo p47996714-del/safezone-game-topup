@@ -14,6 +14,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@pyae_phyo_12327';
 const ADMIN_CONTACT_CLEAN = ADMIN_CONTACT.replace('@', '');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '218401';
+const AUTO_REPLY_TIMEOUT = 180; // 3 minutes
 
 if (!BOT_TOKEN) { console.error('❌ BOT_TOKEN မရှိပါ'); process.exit(1); }
 if (!ADMIN_ID) { console.error('❌ ADMIN_ID မရှိပါ'); process.exit(1); }
@@ -26,6 +27,7 @@ const DB_FILE = path.join(DATA_DIR, 'app.json');
 const BACKUP_DIR = path.join(DATA_ROOT, 'backups');
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 console.log(`💾 Storage: ${USE_DISK ? 'Persistent Disk' : 'Local'}`);
+console.log(`⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s (${AUTO_REPLY_TIMEOUT/60} min)`);
 
 function defaultDB() {
   return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
@@ -574,6 +576,11 @@ app.post('/api/admin/toggle-miniapp', adminAuth, (req, res) => {
   res.json({ ok: true, enabled: !cur });
 });
 
+app.post('/api/admin/backup', adminAuth, async (req, res) => {
+  await sendBackupToAdmin('web-manual');
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/chats', adminAuth, (req, res) => {
   const msgs = (dbData.messages || []).filter(m => m.from === 'user').slice(-50).reverse();
   const enriched = msgs.map(m => {
@@ -641,6 +648,7 @@ bot.on('message', async (ctx, next) => {
   return next();
 });
 
+// FAQ Bot + Auto Reply (3 minutes)
 bot.on('text', async (ctx, next) => {
   if (isAdmin(ctx.from.id)) return next();
   const text = ctx.message.text || '';
@@ -657,7 +665,7 @@ bot.on('text', async (ctx, next) => {
   }
 
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
-  if (now() - lastSeen > 3600) {
+  if (now() - lastSeen > AUTO_REPLY_TIMEOUT) {
     await ctx.reply(`🤖 Admin သည် ယခုအချိန် offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`);
   }
   return next();
@@ -680,7 +688,7 @@ async function sendAdminPanel(ctx) {
   const s = H.stats();
   const enabled = H.getSetting('miniapp_enabled', '1') === '1';
   const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
-  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅' : '❌'}\n\n🌐 Web: /admin.html`;
+  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅' : '❌'}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s\n🌐 Web: /admin.html`;
   const kb = Markup.inlineKeyboard([
     [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
     [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
@@ -800,9 +808,10 @@ bot.command('additem', async (ctx) => { if (!isAdmin(ctx.from.id)) return; const
 bot.command('status', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
-  const isOnline = (now() - lastSeen) < 3600;
+  const isOnline = (now() - lastSeen) < AUTO_REPLY_TIMEOUT;
   const lastSeenStr = lastSeen ? new Date(lastSeen * 1000).toLocaleString() : 'မရှိ';
-  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ ${lastSeenStr}`, { parse_mode: 'Markdown' });
+  const timeLeft = Math.max(0, AUTO_REPLY_TIMEOUT - (now() - lastSeen));
+  await ctx.reply(`🤖 *Admin Status*\n\n${isOnline ? '🟢 Online' : '🔴 Offline'}\n⏰ နောက်ဆုံး: ${lastSeenStr}\n\n⏱ Auto Reply ဖြစ်ဖို့: ${timeLeft > 0 ? timeLeft + ' စက္ကန့် ကျန်' : 'ပို့မည်'}\n⏱ Timeout: ${AUTO_REPLY_TIMEOUT}s (${AUTO_REPLY_TIMEOUT/60} min)`, { parse_mode: 'Markdown' });
 });
 bot.command('faqlist', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
@@ -824,7 +833,7 @@ bot.command('backupstatus', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('backup-')).sort().reverse() : [];
   const s = H.stats();
-  await ctx.reply(`💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}`);
+  await ctx.reply(`💾 Storage: ${USE_DISK ? '/data' : 'Local'}\n📁 Files: ${files.length}\n\n👥 Users: ${s.users}\n📦 Items: ${dbData.items.length}\n🛒 Orders: ${dbData.orders.length}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s`);
 });
 bot.command('restore', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
@@ -846,7 +855,7 @@ app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   if (PUBLIC_URL) console.log(`🔵 ${PUBLIC_URL}`);
   console.log(`📦 Items: ${dbData.items.length}`);
-  console.log(`🔐 Admin: /admin.html`);
+  console.log(`⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s`);
 });
 
 bot.launch()
