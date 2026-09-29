@@ -208,7 +208,32 @@ window.confirmAddItem = async () => {
   if (res.ok) { toast('✅ #' + res.id, 'success'); closeModal(); loadItems(); } else toast(res.error || 'Error', 'error');
 };
 
+// ===============================
+// QUICK REPLY SELECT (Chat မှာ ရွေးရန်)
+// ===============================
+async function loadQRSelect() {
+  const select = $('qrSelect');
+  if (!select) return;
+  const res = await api('/api/admin/quick-replies', null, 'GET');
+  if (res.ok && res.replies.length) {
+    select.innerHTML = '<option value="">-- ⚡ Quick Reply ရွေးရန် --</option>';
+    res.replies.forEach(qr => {
+      const opt = document.createElement('option');
+      opt.value = qr.text;
+      opt.textContent = `⚡ ${qr.title}`;
+      select.appendChild(opt);
+    });
+  }
+}
+document.getElementById('qrSelect').addEventListener('change', (e) => {
+  if (e.target.value) {
+    $('chatReplyText').value = e.target.value;
+    e.target.value = '';
+  }
+});
+
 async function loadChats() {
+  await loadQRSelect();
   const box = $('chatsList'); box.innerHTML = '<div class="empty">ခဏစောင့်ပါ...</div>';
   const res = await api('/api/admin/chats', null, 'GET');
   if (!res.ok || !res.messages.length) { box.innerHTML = '<div class="empty">💬 Chat မရှိပါ။</div>'; return; }
