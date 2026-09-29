@@ -704,6 +704,83 @@ app.post('/api/admin/quick-replies', adminAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ BATCH C: BROADCAST SYSTEM ============
+app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
+  const { message, image_url } = req.body;
+  if (!message && !image_url) return res.status(400).json({ ok: false, error: 'Message or image required' });
+
+  const users = dbData.users.filter(u => u.telegram_id && !u.banned);
+  let success = 0, failed = 0;
+
+  res.json({ ok: true, total: users.length, message: 'Broadcast started in background.' });
+
+  (async () => {
+    for (const user of users) {
+      try {
+        if (image_url) {
+          await bot.telegram.sendPhoto(user.telegram_id, image_url, { caption: message });
+        } else {
+          await bot.telegram.sendMessage(user.telegram_id, message);
+        }
+        success++;
+      } catch (e) {
+        failed++;
+        LOG.error(`Broadcast failed to ${user.telegram_id}: ${e.message}`);
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+    LOG.ok(`Broadcast completed: ${success} success, ${failed} failed`);
+    H.addLog('admin-panel', 'broadcast', null, `${success} sent, ${failed} failed`);
+  })();
+});
+
+// ============ ADMIN CHAT REPLY (with Photo) ============
+app.post('/api/admin/chat/reply', adminAuth, upload.single('photo'), async (req, res) => {
+  try {
+    const userId = Number(req.body.user_id);
+    const text = (req.body.text || '').trim();
+    const user = H.getUserById(userId);
+    if (!user) return res.status(400).json({ ok: false, error: 'User not found' });
+
+    let photoFileId = null;
+    if (req.file) {
+      try {
+        const msg = await bot.telegram.sendPhoto(user.telegram_id, { source: req.file.path });
+        if (msg.photo?.length) photoFileId = msg.photo[msg.photo.length - 1].file_id;
+      } catch (e) {
+        LOG.error('Send photo failed:', e.message);
+      }
+    }
+
+    if (text) {
+      try {
+        await bot.telegram.sendMessage(user.telegram_id, `💬 Admin:\n\n${text}`);
+      } catch (e) {
+        LOG.error('Send text failed:', e.message);
+      }
+    }
+
+    const adminMsg = {
+      id: dbData._seq.messages++,
+      user_id: user.id,
+      from: 'admin',
+      text: text || '[Photo]',
+      photo_file_id: photoFileId,
+      created_at: now(),
+      read_by_admin: true,
+      read_by_user: false,
+      admin_msg_id: null
+    };
+    dbData.messages.push(adminMsg);
+    saveDB();
+
+    res.json({ ok: true });
+  } catch (e) {
+    LOG.error('Admin chat reply error:', e.message);
+    res.status(500).json({ ok: false, error: 'server error' });
+  }
+});
+
 // ============ BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;

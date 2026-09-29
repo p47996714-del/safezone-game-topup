@@ -81,6 +81,7 @@ function loadTab(name) {
   else if (name === 'items') loadItems();
   else if (name === 'chats') loadChats();
   else if (name === 'quickreplies') loadQR();
+  else if (name === 'broadcast') { $('bcastStatus').textContent = ''; }
   else if (name === 'logs') loadLogs();
 }
 
@@ -290,6 +291,31 @@ window.delQR = async (idx) => {
   const replies = res.ok ? res.replies : []; replies.splice(idx, 1);
   await api('/api/admin/quick-replies', { replies }, 'POST'); loadQR();
 };
+
+// ===============================
+// BROADCAST SYSTEM
+// ===============================
+$('sendBcastBtn').addEventListener('click', async () => {
+  const message = $('bcastMessage').value.trim();
+  const image_url = $('bcastImage').value.trim();
+  if (!message && !image_url) return toast('စာသား သို့မဟုတ် ပုံ URL ထည့်ပါ', 'error');
+  if (!confirm('Send to ALL users?')) return;
+
+  $('bcastStatus').textContent = '⏳ Sending...';
+  $('sendBcastBtn').disabled = true;
+
+  const res = await api('/api/admin/broadcast', { message, image_url });
+  if (res.ok) {
+    toast('✅ Broadcast စတင်လိုက်ပါပြီ', 'success');
+    $('bcastStatus').textContent = `✅ Total users: ${res.total}. Sending in background...`;
+    $('bcastMessage').value = '';
+    $('bcastImage').value = '';
+  } else {
+    toast(res.error || 'Error', 'error');
+    $('bcastStatus').textContent = '❌ Failed to start.';
+  }
+  $('sendBcastBtn').disabled = false;
+});
 
 async function loadLogs() {
   const box = $('logsList'); box.innerHTML = '<div class="empty">ခဏစောင့်ပါ...</div>';

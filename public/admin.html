@@ -37,6 +37,7 @@
     <button class="tab" data-tab="items">🧾 Items</button>
     <button class="tab" data-tab="chats">💬 Chats</button>
     <button class="tab" data-tab="quickreplies">⚡ Quick Replies</button>
+    <button class="tab" data-tab="broadcast">📢 Broadcast</button>
     <button class="tab" data-tab="logs">📜 Logs</button>
   </div>
   <main class="admin-main">
@@ -114,6 +115,17 @@
     <section id="tab-quickreplies" class="tab-content">
       <div class="filter-bar"><button id="addQRBtn" class="btn-primary">➕ Quick Reply အသစ်</button></div>
       <div id="qrList" class="list"></div>
+    </section>
+    <section id="tab-broadcast" class="tab-content">
+      <div class="card" style="max-width: 600px;">
+        <h3>📢 Send Broadcast to All Users</h3>
+        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0;">Message</label>
+        <textarea id="bcastMessage" rows="5" placeholder="စာသား ရိုက်ပါ..." style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;font-family:inherit;"></textarea>
+        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0;">Image URL (Optional)</label>
+        <input id="bcastImage" placeholder="https://example.com/image.jpg" style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;" />
+        <button id="sendBcastBtn" class="btn-primary" style="margin-top:15px;width:100%;">🚀 Send Broadcast</button>
+        <div id="bcastStatus" style="margin-top:10px;color:#8a90a0;font-size:13px;text-align:center;"></div>
+      </div>
     </section>
     <section id="tab-logs" class="tab-content">
       <div id="logsList" class="list"></div>
