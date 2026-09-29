@@ -10,10 +10,31 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0c11;color:#e5e7eb;min-height:100vh;font-size:14px;overflow-x:hidden;padding-bottom:80px}
 .hidden{display:none!important}
 .hint{color:#8a90a0;font-size:12px}
+
+/* LOADING */
 #loading{position:fixed;inset:0;background:#0a0c11;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999}
 .spinner{width:50px;height:50px;border:4px solid #1a1d26;border-top-color:#2ea6ff;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #loading p{margin-top:16px;color:#8a90a0;font-size:13px}
+
+/* LOGIN / REGISTER */
+#login,#register{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.form-card{background:linear-gradient(160deg,#1a1d26,#141821);border-radius:24px;padding:28px 24px;border:1px solid #2a2d36;box-shadow:0 20px 60px rgba(0,0,0,0.6);position:relative;overflow:hidden;width:100%;max-width:400px}
+.form-card::before{content:'';position:absolute;top:-50%;right:-30%;width:220px;height:220px;background:radial-gradient(circle,rgba(46,166,255,0.15),transparent 70%);border-radius:50%;pointer-events:none}
+.form-card::after{content:'';position:absolute;bottom:-40%;left:-20%;width:200px;height:200px;background:radial-gradient(circle,rgba(106,92,255,0.12),transparent 70%);border-radius:50%;pointer-events:none}
+.form-card h1{font-size:26px;text-align:center;margin-bottom:6px;font-weight:800;position:relative;z-index:2;background:linear-gradient(135deg,#2ea6ff,#6a5cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.form-card .subtitle{text-align:center;color:#8a90a0;font-size:13px;margin-bottom:24px;position:relative;z-index:2}
+.form-card input{position:relative;z-index:2;background:#0a0c11!important;border:1px solid #2a2d36!important;color:#fff!important;padding:14px 16px!important;border-radius:12px!important;font-size:14px!important;margin-bottom:12px!important;width:100%;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s}
+.form-card input:focus{outline:none;border-color:#2ea6ff!important;box-shadow:0 0 0 3px rgba(46,166,255,0.15)}
+.form-card input::placeholder{color:#6b7280}
+.form-card button{position:relative;z-index:2;width:100%;padding:15px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;border:none;color:#fff}
+.form-card .btn-primary{background:linear-gradient(135deg,#2ea6ff,#6a5cff);box-shadow:0 6px 20px rgba(46,166,255,0.35)}
+.form-card .btn-success{background:linear-gradient(135deg,#27ae60,#2ea6ff);box-shadow:0 6px 20px rgba(39,174,96,0.35)}
+.form-card .switch-text{text-align:center;margin-top:18px;font-size:13px;color:#8a90a0;position:relative;z-index:2}
+.form-card .switch-text a{color:#2ea6ff;cursor:pointer;font-weight:700;text-decoration:none}
+.form-card .switch-text a:hover{text-decoration:underline}
+
+/* HEADER */
 .app-header{padding:14px 16px;background:#0a0c11;position:sticky;top:0;z-index:50;border-bottom:1px solid #1a1d26}
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .user-name{font-weight:700;font-size:15px;color:#fff}
@@ -21,11 +42,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .header-actions{display:flex;gap:8px}
 .header-btn{width:40px;height:40px;border-radius:12px;border:none;background:#1a1d26;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative}
 .badge{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;min-width:18px;text-align:center}
+
+/* BALANCE */
 .balance-card{margin:16px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(46,166,255,0.3)}
 .balance-card::before{content:'';position:absolute;top:-30%;right:-20%;width:180px;height:180px;background:rgba(255,255,255,0.1);border-radius:50%}
 .balance-card .label{font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:6px}
 .balance-card .amount{font-size:32px;font-weight:800;color:#fff;margin-bottom:4px}
 .balance-card .currency{font-size:14px;color:rgba(255,255,255,0.85)}
+
+/* BANNER */
 .banner-slider{margin:0 16px 16px;border-radius:16px;overflow:hidden;position:relative}
 .banner-track{display:flex;transition:transform 0.5s ease}
 .banner{min-width:100%;height:140px;padding:22px;display:flex;flex-direction:column;justify-content:center;color:#fff;position:relative;overflow:hidden}
@@ -35,6 +60,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .banner-dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5}
 .banner-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.4);transition:all 0.3s}
 .banner-dots span.active{width:20px;border-radius:3px;background:#fff}
+
+/* DASHBOARD GRID */
 .dashboard-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0 16px 16px}
 .dashboard-card{background:linear-gradient(135deg,#1a1d26,#22252e);border-radius:14px;padding:16px;border:1px solid #2a2d36;cursor:pointer;transition:transform 0.2s;position:relative;overflow:hidden;min-height:100px}
 .dashboard-card:active{transform:scale(0.97)}
@@ -50,21 +77,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .dashboard-card.referral .dc-value{color:#27ae60}
 .dashboard-card.promo .dc-value{color:#6a5cff}
 .dashboard-card.spin .dc-value{color:#e74c3c}
+
+/* SECTION */
 .section-title{margin:0 16px 10px;font-size:15px;font-weight:700;color:#fff}
+
+/* GAMES */
 .games-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0 16px 20px}
 .game-card{background:#1a1d26;border-radius:14px;padding:12px;text-align:center;cursor:pointer;border:1px solid #2a2d36;transition:transform 0.2s}
 .game-card:active{transform:scale(0.96)}
 .game-card img{width:100%;height:80px;object-fit:contain;border-radius:8px;background:#0a0c11}
 .game-card .name{font-size:13px;font-weight:600;margin-top:8px;color:#fff}
+
+/* SKELETON */
 .skeleton{background:linear-gradient(90deg,#1a1d26 25%,#2a2d36 50%,#1a1d26 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 .skeleton-game{height:130px}
 .skeleton-item{height:100px}
+
+/* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0a0c11;border-top:1px solid #1a1d26;padding:10px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;z-index:60}
 .nav-btn{background:transparent;border:none;color:#8a90a0;padding:8px 4px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;position:relative}
 .nav-btn .ico{font-size:22px}
 .nav-btn:active{background:#1a1d26}
 .nav-badge{position:absolute;top:2px;right:14px;background:#e74c3c;color:#fff;font-size:9px;padding:2px 5px;border-radius:8px;font-weight:700}
+
+/* MODALS */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;z-index:200}
 .modal-content{background:#0a0c11;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;position:relative;animation:slideUp 0.3s ease-out}
 @keyframes slideUp{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -72,14 +109,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .modal-close{position:absolute;top:16px;right:18px;background:#1a1d26;border:none;color:#8a90a0;width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .modal-content input,.modal-content select,.modal-content textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-size:14px;margin-bottom:12px;font-family:inherit}
 .modal-content label{display:block;font-size:12px;color:#8a90a0;margin-bottom:6px;margin-top:8px;font-weight:600}
+
+/* BUTTONS */
 .btn-primary{background:#2ea6ff;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
 .btn-success{background:#27ae60;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
 .btn-full{width:100%}
-.form-card{margin:20px;background:#1a1d26;border-radius:20px;padding:24px;border:1px solid #2a2d36}
-.form-card h1{font-size:24px;text-align:center;margin-bottom:6px;color:#fff}
-.form-card .subtitle{text-align:center;color:#8a90a0;font-size:13px;margin-bottom:24px}
-.form-card .switch-text{text-align:center;margin-top:16px;font-size:13px;color:#8a90a0}
-.form-card .switch-text a{color:#2ea6ff;cursor:pointer;font-weight:700}
+
+/* ITEMS */
 .items-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .item-card{background:#1a1d26;border-radius:12px;padding:14px;border:1px solid #2a2d36;position:relative;display:flex;flex-direction:column;gap:8px}
 .item-card .item-name{font-size:13px;font-weight:600;color:#fff;min-height:34px}
@@ -88,13 +124,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .item-card .item-buy:disabled{background:#2a2d36;color:#8a90a0}
 .wish-heart{position:absolute;top:8px;right:8px;background:transparent;border:none;font-size:18px;cursor:pointer}
 .category-title{font-size:13px;font-weight:700;color:#2ea6ff;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid #1a1d26}
+
+/* ITEM ROW */
 .item-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#1a1d26;border-radius:10px}
 .item-row .price{color:#2ea6ff;font-weight:700;font-size:14px}
+
+/* PAY */
 .pay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
 .pay-btn{padding:10px 6px;border-radius:10px;border:2px solid #2a2d36;background:#1a1d26;color:#8a90a0;font-weight:700;cursor:pointer;font-family:inherit;font-size:11px}
 .pay-btn.active{border-color:#2ea6ff;background:#2ea6ff22;color:#2ea6ff}
 .qa-btn{padding:8px 12px;border-radius:8px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-weight:600;cursor:pointer;font-family:inherit;font-size:12px;margin-right:6px;margin-bottom:6px}
 .pay-info{margin-top:12px;padding:12px;background:#1a1d26;border-radius:10px;font-size:13px;line-height:1.6}
+
+/* CHAT */
 #chatMessages{background:#0a0c11;border-radius:10px;padding:12px;min-height:300px;max-height:50vh;overflow-y:auto;margin-bottom:12px}
 .chat-msg{padding:10px 14px;border-radius:14px;margin-bottom:8px;max-width:80%;word-wrap:break-word;font-size:13px;line-height:1.4}
 .chat-msg.user{background:#2ea6ff;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
@@ -103,6 +145,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 #chatInput{flex:1;padding:12px;border-radius:24px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-family:inherit}
 #chatSendBtn{padding:12px 20px;border-radius:24px;border:none;background:#2ea6ff;color:#fff;font-weight:700;cursor:pointer}
 .chat-input-row{display:flex;gap:8px}
+
+/* TRACK */
 .track-step{display:flex;gap:12px;padding:12px 0;position:relative}
 .track-step::before{content:'';position:absolute;left:14px;top:34px;bottom:-10px;width:2px;background:#2a2d36}
 .track-step:last-child::before{display:none}
@@ -118,7 +162,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .spin-wheel-wrapper{width:300px;height:300px;margin:0 auto 20px;position:relative}
 .spin-wheel{width:100%;height:100%;border-radius:50%;position:relative;overflow:hidden;box-shadow:0 0 40px rgba(46,166,255,0.6),inset 0 0 20px rgba(0,0,0,0.4);transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);border:4px solid #fff}
 .spin-segment{position:absolute;top:0;left:50%;width:50%;height:50%;transform-origin:0% 100%;pointer-events:none}
-.spin-segment .seg-label{position:absolute;top:20px;left:25px;transform:rotate(90deg);transform-origin:left center;font-size:14px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.6);white-space:nowrap;letter-spacing:0.5px}
+.spin-segment .seg-label{position:absolute;top:22px;left:28px;transform:rotate(90deg);transform-origin:left center;font-size:14px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.7);white-space:nowrap;letter-spacing:0.5px}
 .spin-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:85px;height:85px;background:radial-gradient(circle,#1a1d26,#0a0c11);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 0 25px rgba(0,0,0,0.7),inset 0 0 10px rgba(255,255,255,0.1);z-index:10;border:3px solid #2a2d36}
 .spin-pointer{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid #fff;z-index:20;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.6))}
 .spin-btn{width:100%;max-width:300px;padding:15px;border-radius:30px;border:none;background:linear-gradient(135deg,#e74c3c,#f39c12);color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(231,76,60,0.5)}
@@ -143,10 +187,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .promo-input-group{display:flex;gap:8px;margin-bottom:12px}
 .promo-input-group input{flex:1;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-family:inherit;text-transform:uppercase;font-weight:700;font-size:15px;letter-spacing:1px}
 .promo-input-group button{padding:12px 20px;border-radius:10px;border:none;background:#6a5cff;color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* TOAST */
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:14px 22px;border-radius:30px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,0.5);max-width:90%;text-align:center;animation:toastIn 0.3s ease-out}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
 .toast.success{background:#27ae60}
 .toast.error{background:#e74c3c}
+
+/* MAINTENANCE */
 #maintenanceOverlay{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11 0%,#141821 50%,#0a0c11 100%);z-index:999999;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mt-bg-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.4;animation:mtBlob 8s ease-in-out infinite}
 .mt-blob-1{width:300px;height:300px;background:#2ea6ff;top:-100px;left:-100px}
@@ -174,7 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <p class="subtitle">Safe Zone Game Topup</p>
     <input id="loginPhone" type="tel" placeholder="ဖုန်းနံပါတ်" />
     <input id="loginPassword" type="password" placeholder="စကားဝှက်" />
-    <button id="loginBtn" class="btn-primary btn-full">🔓 Login</button>
+    <button id="loginBtn" class="btn-primary">🔓 Login</button>
     <p class="switch-text">အကောင့်မရှိဘူးလား? <a id="showRegisterBtn">Register လုပ်ပါ</a></p>
   </div>
 </div>
@@ -187,7 +235,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <input id="phoneInput" type="tel" placeholder="ဖုန်းနံပါတ်" />
     <input id="passwordInput" type="password" placeholder="စကားဝှက် (4 လုံး+)" />
     <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ရိုက်ပါ" />
-    <button id="registerBtn" class="btn-success btn-full">✨ Register</button>
+    <button id="registerBtn" class="btn-success">✨ Register</button>
     <p class="switch-text">အကောင့်ရှိပြီးသားလား? <a id="showLoginBtn">Login ဝင်ပါ</a></p>
   </div>
 </div>
