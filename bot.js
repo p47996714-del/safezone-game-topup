@@ -446,6 +446,7 @@ function auth(req, res, next) {
 function adminAuth(req, res, next) {
   const pwd = req.headers['x-admin-password'] || req.body?.password || req.query?.password;
   if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  H.setSetting('admin_last_seen', String(now()));
   next();
 }
 
@@ -1055,12 +1056,11 @@ const isAdmin = (id) => String(id) === ADMIN_ID;
 
 bot.use(async (ctx, next) => { if (ctx.from && isAdmin(ctx.from.id)) H.setSetting('admin_last_seen', String(now())); return next(); });
 
-// ===== ADMIN PANEL BUILDER =====
 async function buildAdminPanel() {
   const s = H.stats();
   const enabled = H.getSetting('miniapp_enabled', '1') === '1';
   const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
-  const text = `🛠️ *Admin Panel*\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅ ON' : '❌ OFF'}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s\n🌐 Web: /admin.html`;
+  const text = `🛠️ Admin Panel\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅ ON' : '❌ OFF'}\n\n⏱ Auto Reply: ${AUTO_REPLY_TIMEOUT}s\n🌐 Web: /admin.html`;
   const kb = Markup.inlineKeyboard([
     [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
     [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
@@ -1070,14 +1070,12 @@ async function buildAdminPanel() {
   return { text, kb };
 }
 
-// ===== START =====
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   const welcome = `👋 မင်္ဂလာပါ ${ctx.from.first_name || ''}!\n\n🛍️ Safe Zone Game Topup\n\n${u ? `💰 Balance: ${Number(u.balance || 0).toLocaleString()} MMK\n⭐ Points: ${Number(u.points || 0)}\n📱 Phone: ${u.phone || '-'}` : '📝 Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။'}\n\n💡 ဘာမေးချင်လဲ ရိုက်ပါ — FAQ ကနေ auto ဖြေပါမယ်။`;
   await ctx.reply(welcome, Markup.keyboard([['💰 Balance', '⭐ Points'], ['👤 အကောင့်', '📜 History']]).resize());
 });
 
-// ===== USER MENU =====
 bot.hears('💰 Balance', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   if (!u) return ctx.reply('⚠️ Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
@@ -1105,7 +1103,7 @@ bot.hears('📜 History', async (ctx) => {
   ctx.reply('📜 မှတ်တမ်း:\n\n' + text);
 });
 
-// ===== ADMIN MESSAGE REPLY =====
+// ===== Admin Reply to Message =====
 bot.on('message', async (ctx, next) => {
   if (!isAdmin(ctx.from.id)) return next();
   if (!ctx.message.reply_to_message) return next();
@@ -1145,13 +1143,22 @@ bot.on('text', async (ctx, next) => {
   if (text.startsWith('/')) return next();
   if (ctx.message.reply_to_message) return next();
   const answer = FAQ.findAnswer(text);
-  if (answer) { const kb = PUBLIC_URL ? { reply_markup: { inline_keyboard: [[{ text: '🛍️ Mini App ဖွင့်', web_app: { url: PUBLIC_URL } }]] } } : {}; try { await ctx.reply(answer, kb); } catch (e) { await ctx.reply(answer); } return; }
+  if (answer) {
+    const kb = PUBLIC_URL ? { reply_markup: { inline_keyboard: [[{ text: '🛍️ Mini App ဖွင့်', web_app: { url: PUBLIC_URL } }]] } } : {};
+    try { await ctx.reply(answer, kb); } catch (e) { await ctx.reply(answer); }
+    return;
+  }
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
-  if (now() - lastSeen > AUTO_REPLY_TIMEOUT) await ctx.reply(`🤖 Admin offline ဖြစ်နေပါသည်။\n📞 @${ADMIN_CONTACT_CLEAN}`);
+  const isOnline = (now() - lastSeen) < AUTO_REPLY_TIMEOUT;
+  if (isOnline) {
+    await ctx.reply(`✅ Admin online ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin မြန်မြန် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`);
+  } else {
+    await ctx.reply(`🤖 Admin offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 အမြန်ဆုံး ဆက်သွယ်ရန်: @${ADMIN_CONTACT_CLEAN}`);
+  }
   return next();
 });
 
-// ===== BACKUP =====
+// ===== Backup =====
 async function sendBackupToAdmin(reason = 'manual') {
   try {
     const data = H.backup();
@@ -1162,14 +1169,12 @@ async function sendBackupToAdmin(reason = 'manual') {
   } catch (e) { LOG.error('Backup failed:', e.message); }
 }
 
-// ===== ADMIN COMMAND =====
 bot.command('admin', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
   const { text, kb } = await buildAdminPanel();
   await ctx.reply(text, { parse_mode: 'Markdown', ...kb });
 });
 
-// ===== ADMIN ACTIONS =====
 bot.action('adm:toggle', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const cur = H.getSetting('miniapp_enabled', '1') === '1';
@@ -1215,7 +1220,6 @@ bot.action('adm:orders', async (ctx) => {
   }
 });
 
-// ===== DEPOSIT APPROVE =====
 bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]);
@@ -1233,7 +1237,6 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
 
-// ===== DEPOSIT REJECT =====
 bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]);
@@ -1249,7 +1252,6 @@ bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
 
-// ===== ORDER COMPLETE =====
 bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]);
@@ -1264,7 +1266,6 @@ bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
 
-// ===== ORDER REFUND =====
 bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const id = Number(ctx.match[1]);
@@ -1283,12 +1284,11 @@ bot.action(/^ord:no:(\d+)$/, async (ctx) => {
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup sent'); });
 
 app.listen(PORT, () => {
-  console.log(`\n═══════════════════════════════════`);
+  console.log(`\n═══════════════════════════`);
   console.log(`  🛡️  SAFE ZONE — Running`);
   console.log(`  🌐 Port: ${PORT}`);
-  console.log(`  💾 Storage: ${USE_DISK ? '/data' : 'Local'}`);
   console.log(`  👥 Users: ${dbData.users.length}`);
-  console.log(`═══════════════════════════════════\n`);
+  console.log(`═══════════════════════════\n`);
 });
 
 async function launchBot(retries = 5) {
