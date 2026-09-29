@@ -4,17 +4,22 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
+const TG_BOT_USERNAME = 'SafeZoneGametopup26_bot';
+const TG_SHARE_URL = 'https://t.me/' + TG_BOT_USERNAME;
+
 let STATE = { user: null, games: [], items: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {}, banners: [], wishlist: JSON.parse(localStorage.getItem('wishlist') || '[]') };
 let CHAT = { open: false, timer: null, lastCount: 0 };
 let AUDIO_CTX = null;
+let FEATURES = { loyalty: false, referral: false, spin: false };
 
 async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers||{}) };
+  const headers = { 'Content-Type': 'application/json', 'X-Init-Data': initData, ...(opts.headers || {}) };
   const res = await fetch(path, { ...opts, headers });
   return res.json();
 }
 function toast(msg, type = '') {
-  const t = $('toast'); t.textContent = msg; t.className = 'toast ' + type; t.classList.remove('hidden');
+  const t = $('toast'); if (!t) return;
+  t.textContent = msg; t.className = 'toast ' + type; t.classList.remove('hidden');
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.add('hidden'), 3000);
   if (type === 'success') notifySound('success');
   else if (type === 'error') notifySound('error');
@@ -60,8 +65,7 @@ function notifySound(type = 'message') {
 // ============ WISHLIST ============
 function saveWishlist() { localStorage.setItem('wishlist', JSON.stringify(STATE.wishlist)); updateWishBadge(); }
 function updateWishBadge() {
-  const b = $('wishBadge');
-  if (!b) return;
+  const b = $('wishBadge'); if (!b) return;
   if (STATE.wishlist.length > 0) { b.textContent = STATE.wishlist.length; b.classList.remove('hidden'); }
   else b.classList.add('hidden');
 }
@@ -73,15 +77,9 @@ function toggleWishlist(item) {
 }
 if ($('wishlistBtn')) $('wishlistBtn').addEventListener('click', () => { renderWishlist(); show('wishlistModal'); });
 function renderWishlist() {
-  const box = $('wishlistContent');
-  if (!box) return;
+  const box = $('wishlistContent'); if (!box) return;
   if (!STATE.wishlist.length) { box.innerHTML = '<p class="hint" style="text-align:center;padding:20px">Wishlist အလွတ်ဖြစ်နေတယ်။ ❤️ နှိပ်ပြီး ထည့်ပါ။</p>'; return; }
-  box.innerHTML = STATE.wishlist.map(w => `
-    <div class="item-row" style="margin-bottom:8px">
-      <div><div style="font-weight:600">${w.name}</div><div class="hint">${w.game_id}</div></div>
-      <div class="price">${Number(w.price).toLocaleString()} Ks</div>
-    </div>
-  `).join('');
+  box.innerHTML = STATE.wishlist.map(w => '<div class="item-row" style="margin-bottom:8px"><div><div style="font-weight:600">' + w.name + '</div><div class="hint">' + w.game_id + '</div></div><div class="price">' + Number(w.price).toLocaleString() + ' Ks</div></div>').join('');
 }
 
 // ============ INIT ============
@@ -90,19 +88,214 @@ async function init() {
     const cfg = await (await fetch('/api/config')).json();
     if (!cfg.enabled) { hide('loading'); showMaintenanceScreen(); return; }
     STATE.payments = cfg.payments || {};
+    if (cfg.features) FEATURES = cfg.features;
   } catch(e) { hide('loading'); toast('Server မချိတ်နိုင်ပါ', 'error'); return; }
   const me = await api('/api/me', { method: 'POST', body: '{}' });
   hide('loading');
-  if (!me.user) show('login');
+  if (!me.user) { show('login'); }
   else {
     STATE.user = me.user;
     show('main');
+    if ($('bottomNav')) $('bottomNav').classList.remove('hidden');
     renderMain();
     loadGames();
     loadBanners();
     checkUnread();
+    loadFeatureStatus();
+    refreshFeatures();
   }
 }
+
+// ============ FEATURES ============
+async function loadFeatureStatus() {
+  const card1 = document.querySelector('.dashboard-card.points');
+  const card2 = document.querySelector('.dashboard-card.referral');
+  const card3 = document.querySelector('.dashboard-card.spin');
+  if (!FEATURES.loyalty && card1) card1.style.display = 'none';
+  if (!FEATURES.referral && card2) card2.style.display = 'none';
+  if (!FEATURES.spin && card3) card3.style.display = 'none';
+}
+
+async function refreshFeatures() {
+  if (!STATE.user) return;
+  if (FEATURES.loyalty) {
+    try {
+      const res = await api('/api/points/balance', { method: 'POST', body: '{}' });
+      if (res.ok) {
+        const el = $('dashPoints');
+        if (el) el.textContent = Number(res.points || 0).toLocaleString();
+      }
+    } catch(e) {}
+  }
+  if (FEATURES.referral) {
+    try {
+      const res = await api('/api/referral/info', { method: 'POST', body: '{}' });
+      if (res.ok) {
+        const el = $('dashReferral');
+        if (el) el.textContent = (res.stats && res.stats.count) || 0;
+      }
+    } catch(e) {}
+  }
+  if (FEATURES.spin) {
+    try {
+      const res = await api('/api/spin/info', { method: 'POST', body: '{}' });
+      if (res.ok) {
+        const el = $('dashSpin');
+        if (el) el.textContent = res.canSpin ? 'Play' : '✓ Done';
+      }
+    } catch(e) {}
+  }
+}
+
+// === POINTS ===
+window.openPointsModal = async () => {
+  if (!FEATURES.loyalty) return toast('Points Feature ပိတ်ထားပါသည်', 'error');
+  show('pointsModal');
+  const balRes = await api('/api/points/balance', { method: 'POST', body: '{}' });
+  const histRes = await api('/api/points/history', { method: 'POST', body: '{}' });
+  if (balRes.ok) {
+    if ($('pointsBig')) $('pointsBig').textContent = Number(balRes.points || 0).toLocaleString();
+    if ($('pointsRate')) $('pointsRate').textContent = balRes.rate || 10;
+    if ($('pointsMin')) $('pointsMin').textContent = balRes.minRedeem || 100;
+  }
+  const hbox = $('pointsHistoryBox');
+  if (!hbox) return;
+  if (histRes.ok && histRes.history && histRes.history.length) {
+    hbox.innerHTML = histRes.history.map(h => {
+      const color = h.points > 0 ? '#27ae60' : '#e74c3c';
+      const sign = h.points > 0 ? '+' : '';
+      return '<div style="display:flex;justify-content:space-between;padding:8px;background:#1a1d26;border-radius:8px;margin-bottom:6px;font-size:12px">' +
+        '<div>' + h.reason + '<br><span style="color:#8a90a0">' + new Date(h.created_at * 1000).toLocaleString() + '</span></div>' +
+        '<div style="color:' + color + ';font-weight:700">' + sign + h.points + '</div></div>';
+    }).join('');
+  } else {
+    hbox.innerHTML = '<p style="color:#8a90a0;text-align:center;font-size:13px;padding:12px">မှတ်တမ်း မရှိပါ</p>';
+  }
+};
+
+window.redeemPoints = async () => {
+  const input = $('pointsRedeemInput'); if (!input) return;
+  const points = Number(input.value);
+  if (!points) return toast('Points ထည့်ပါ', 'error');
+  const res = await api('/api/points/redeem', { method: 'POST', body: JSON.stringify({ points: points }) });
+  if (res.ok) {
+    toast('✅ +' + res.ksValue.toLocaleString() + ' Ks!', 'success');
+    showConfetti();
+    await refreshMe();
+    await refreshFeatures();
+    openPointsModal();
+  } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
+};
+
+// === REFERRAL ===
+window.openReferralModal = async () => {
+  if (!FEATURES.referral) return toast('Referral Feature ပိတ်ထားပါသည်', 'error');
+  show('referralModal');
+  const res = await api('/api/referral/info', { method: 'POST', body: '{}' });
+  if (res.ok) {
+    if ($('refCodeDisplay')) $('refCodeDisplay').textContent = res.code || '------';
+    if ($('refCount')) $('refCount').textContent = (res.stats && res.stats.count) || 0;
+    if ($('refEarned')) $('refEarned').textContent = Number((res.stats && res.stats.earned) || 0).toLocaleString();
+  }
+};
+
+window.copyRefCode = () => {
+  const code = $('refCodeDisplay') ? $('refCodeDisplay').textContent : '';
+  if (!code || code === '------') return;
+  try {
+    navigator.clipboard.writeText(code);
+    toast('📋 Code ကူးပြီ', 'success');
+  } catch(e) { toast('Code: ' + code, 'info'); }
+};
+
+window.shareRefCode = () => {
+  const code = $('refCodeDisplay') ? $('refCodeDisplay').textContent : '';
+  if (!code || code === '------') return;
+  const text = '🎁 Safe Zone Game Topup မှာ ကျွန်တော့်ရဲ့ Referral Code "' + code + '" နဲ့ အကောင့်ဖွင့်ပြီး Bonus ငွေ ရယူပါ!';
+  const url = 'https://t.me/share/url?url=' + encodeURIComponent(TG_SHARE_URL) + '&text=' + encodeURIComponent(text);
+  window.open(url, '_blank');
+};
+
+// === SPIN ===
+let spinInfo = { canSpin: false, limit: 1 };
+
+window.openSpinModal = async () => {
+  if (!FEATURES.spin) return toast('Lucky Spin ပိတ်ထားပါသည်', 'error');
+  show('spinModal');
+  const res = await api('/api/spin/info', { method: 'POST', body: '{}' });
+  if (res.ok) {
+    spinInfo = res;
+    const btn = $('spinBtn');
+    const limitEl = $('spinLimit');
+    if (limitEl) limitEl.textContent = res.limit || 1;
+    if (btn) {
+      if (!res.canSpin) {
+        btn.disabled = true;
+        btn.textContent = '✅ ဒီနေ့ လှည့်ပြီး (' + res.todayCount + '/' + res.limit + ')';
+      } else {
+        btn.disabled = false;
+        btn.textContent = '🎰 SPIN လှည့်မယ်';
+      }
+    }
+  }
+};
+
+window.playSpin = async () => {
+  const btn = $('spinBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '🎰 လှည့်နေသည်...';
+  const res = await api('/api/spin/play', { method: 'POST', body: '{}' });
+  if (!res.ok) {
+    toast(res.error || 'မအောင်မြင်ပါ', 'error');
+    btn.disabled = false;
+    btn.textContent = '🎰 SPIN လှည့်မယ်';
+    return;
+  }
+  const wheel = $('spinWheel');
+  if (wheel) {
+    const spinDeg = 1800 + Math.floor(Math.random() * 360);
+    wheel.style.transform = 'rotate(' + spinDeg + 'deg)';
+  }
+  try { tg.HapticFeedback.impactOccurred('heavy'); } catch(e) {}
+  setTimeout(async () => {
+    toast('🎉 +' + Number(res.reward).toLocaleString() + ' Ks!', 'success');
+    showConfetti();
+    try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+    await refreshMe();
+    await refreshFeatures();
+    if (wheel) {
+      wheel.style.transition = 'none';
+      wheel.style.transform = 'rotate(0deg)';
+      setTimeout(() => { wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)'; }, 100);
+    }
+    openSpinModal();
+  }, 4200);
+};
+
+// === PROMO ===
+window.openPromoModal = () => {
+  show('promoModal');
+  if ($('promoInput')) $('promoInput').value = '';
+  if ($('promoResult')) $('promoResult').innerHTML = '';
+};
+
+window.redeemPromo = async () => {
+  const input = $('promoInput'); if (!input) return;
+  const code = input.value.trim();
+  if (!code) return toast('Code ထည့်ပါ', 'error');
+  const res = await api('/api/promo/redeem', { method: 'POST', body: JSON.stringify({ code: code }) });
+  const resultBox = $('promoResult');
+  if (res.ok) {
+    if (resultBox) resultBox.innerHTML = '<span style="color:#27ae60">✅ +' + Number(res.bonus).toLocaleString() + ' Ks</span>';
+    toast('🎉 +' + Number(res.bonus).toLocaleString() + ' Ks', 'success');
+    showConfetti();
+    await refreshMe();
+  } else {
+    if (resultBox) resultBox.innerHTML = '<span style="color:#e74c3c">❌ ' + res.error + '</span>';
+    toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  }
+};
 
 // ============ REGISTER / LOGIN ============
 if ($('registerBtn')) $('registerBtn').addEventListener('click', async () => {
@@ -118,7 +311,8 @@ if ($('registerBtn')) $('registerBtn').addEventListener('click', async () => {
   if (res.ok) {
     STATE.user = res.user;
     hide('register'); show('main');
-    renderMain(); loadGames(); loadBanners();
+    if ($('bottomNav')) $('bottomNav').classList.remove('hidden');
+    renderMain(); loadGames(); loadBanners(); loadFeatureStatus(); refreshFeatures();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
@@ -132,8 +326,8 @@ if ($('loginBtn')) $('loginBtn').addEventListener('click', async () => {
   if (res.ok) {
     STATE.user = res.user;
     hide('login'); show('main');
-    renderMain(); loadGames(); loadBanners();
-    checkUnread();
+    if ($('bottomNav')) $('bottomNav').classList.remove('hidden');
+    renderMain(); loadGames(); loadBanners(); checkUnread(); loadFeatureStatus(); refreshFeatures();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     toast('အကောင့်ဝင်ပြီးပါပြီ ✅', 'success');
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
@@ -145,27 +339,28 @@ if ($('showRegisterBtn')) $('showRegisterBtn').addEventListener('click', () => {
 // ============ PROFILE / LOGOUT ============
 if ($('profileBtn')) $('profileBtn').addEventListener('click', () => {
   const u = STATE.user; if (!u) return;
-  $('profileInfo').innerHTML = `
-    <div class="item-row" style="margin-bottom:8px"><div>📛 နာမည်</div><div class="price">${u.name || u.first_name || '-'}</div></div>
-    <div class="item-row" style="margin-bottom:8px"><div>📱 ဖုန်း</div><div class="price">${u.phone || '-'}</div></div>
-    <div class="item-row" style="margin-bottom:8px"><div>🆔 User ID</div><div class="price">#${u.id}</div></div>
-    <div class="item-row" style="margin-bottom:8px"><div>💰 Balance</div><div class="price">${Number(u.balance || 0).toLocaleString()} MMK</div></div>
-    <div class="item-row" style="margin-bottom:8px"><div>📅 မှတ်ပုံတင်</div><div class="price">${new Date((u.created_at||0)*1000).toLocaleDateString()}</div></div>`;
+  $('profileInfo').innerHTML =
+    '<div class="item-row" style="margin-bottom:8px"><div>📛 နာမည်</div><div class="price">' + (u.name || u.first_name || '-') + '</div></div>' +
+    '<div class="item-row" style="margin-bottom:8px"><div>📱 ဖုန်း</div><div class="price">' + (u.phone || '-') + '</div></div>' +
+    '<div class="item-row" style="margin-bottom:8px"><div>🆔 User ID</div><div class="price">#' + u.id + '</div></div>' +
+    '<div class="item-row" style="margin-bottom:8px"><div>💰 Balance</div><div class="price">' + Number(u.balance || 0).toLocaleString() + ' MMK</div></div>' +
+    '<div class="item-row" style="margin-bottom:8px"><div>⭐ Points</div><div class="price">' + Number(u.points || 0).toLocaleString() + '</div></div>' +
+    '<div class="item-row" style="margin-bottom:8px"><div>📅 မှတ်ပုံတင်</div><div class="price">' + new Date((u.created_at || 0) * 1000).toLocaleDateString() + '</div></div>';
   show('profileModal');
 });
 
 if ($('logoutBtn')) $('logoutBtn').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST', body: '{}' });
   STATE.user = null;
-  hide('profileModal'); hide('main');
-  $('loginPhone').value = ''; $('loginPassword').value = '';
-  $('phoneInput').value = ''; $('nameInput').value = ''; $('passwordInput').value = ''; $('passwordInput2').value = '';
+  hide('profileModal'); hide('main'); hide('bottomNav');
+  if ($('loginPhone')) $('loginPhone').value = '';
+  if ($('loginPassword')) $('loginPassword').value = '';
   show('login'); toast('ထွက်ပြီးပါပြီ', 'success');
 });
 
 function renderMain() {
   const bv = $('balanceVal'); if (bv) bv.textContent = Number(STATE.user.balance || 0).toLocaleString();
-  const ul = $('userLabel'); if (ul) ul.textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
+  const ul = $('userLabel'); if (ul) ul.textContent = (STATE.user.name || STATE.user.first_name || '') + ' • ' + (STATE.user.phone || '');
 }
 async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
@@ -186,8 +381,8 @@ async function loadBanners() {
   STATE.banners.forEach((b, i) => {
     const div = document.createElement('div');
     div.className = 'banner';
-    div.style.background = `linear-gradient(135deg,${b.color1},${b.color2})`;
-    div.innerHTML = `<h3>${b.title}</h3><p>${b.subtitle || ''}</p>`;
+    div.style.background = 'linear-gradient(135deg,' + b.color1 + ',' + b.color2 + ')';
+    div.innerHTML = '<h3>' + b.title + '</h3><p>' + (b.subtitle || '') + '</p>';
     track.appendChild(div);
     const dot = document.createElement('span');
     if (i === 0) dot.classList.add('active');
@@ -197,15 +392,14 @@ async function loadBanners() {
   if (bannerTimer) clearInterval(bannerTimer);
   bannerTimer = setInterval(() => {
     idx = (idx + 1) % STATE.banners.length;
-    track.style.transform = `translateX(-${idx * 100}%)`;
+    track.style.transform = 'translateX(-' + (idx * 100) + '%)';
     dots.querySelectorAll('span').forEach((s, i) => s.classList.toggle('active', i === idx));
   }, 3500);
 }
 
 // ============ GAMES ============
 async function loadGames() {
-  const grid = $('gamesGrid');
-  if (!grid) return;
+  const grid = $('gamesGrid'); if (!grid) return;
   grid.innerHTML = '';
   for (let i = 0; i < 4; i++) {
     const sk = document.createElement('div');
@@ -218,7 +412,7 @@ async function loadGames() {
   STATE.games.forEach(g => {
     const div = document.createElement('div');
     div.className = 'game-card';
-    div.innerHTML = `<img src="${g.image || ''}" alt="${g.name}" onerror="this.style.display='none'"/><div class="name">${g.name}</div>`;
+    div.innerHTML = '<img src="' + (g.image || '') + '" alt="' + g.name + '" onerror="this.style.display=\'none\'"/><div class="name">' + g.name + '</div>';
     div.addEventListener('click', () => openItems(g));
     grid.appendChild(div);
   });
@@ -228,9 +422,9 @@ async function loadGames() {
 // ============ ITEMS ============
 async function openItems(game) {
   STATE.selectedGame = game;
-  $('itemsTitle').textContent = game.name;
-  $('itemSearch').value = '';
-  const box = $('itemsList');
+  if ($('itemsTitle')) $('itemsTitle').textContent = game.name;
+  if ($('itemSearch')) $('itemSearch').value = '';
+  const box = $('itemsList'); if (!box) return;
   box.innerHTML = '';
   const skGrid = document.createElement('div');
   skGrid.className = 'items-grid';
@@ -241,13 +435,13 @@ async function openItems(game) {
   }
   box.appendChild(skGrid);
   show('itemsModal');
-  const res = await api(`/api/items/${game.id}`);
+  const res = await api('/api/items/' + game.id);
   STATE.items = res.items || [];
   renderItems('');
 }
 
 function renderItems(query) {
-  const box = $('itemsList');
+  const box = $('itemsList'); if (!box) return;
   box.innerHTML = '';
   let items = STATE.items;
   if (query) items = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
@@ -280,11 +474,13 @@ function makeItemCard(it) {
   const card = document.createElement('div');
   card.className = 'item-card';
   const inWish = STATE.wishlist.some(w => w.id === it.id);
-  card.innerHTML = `
-    <button class="wish-heart">${inWish ? '❤️' : '🤍'}</button>
-    <div class="item-name">${it.name}</div>
-    <div class="item-price">${it.price > 0 ? Number(it.price).toLocaleString() + ' Ks' : 'စျေးမသတ်ရသေး'}</div>
-    <button ${it.price>0?'':'disabled'} class="item-buy">ဝယ်မယ်</button>`;
+  const autoBadge = it.auto_delivery ? ' <span style="background:#27ae60;color:#fff;font-size:9px;padding:2px 5px;border-radius:8px">⚡</span>' : '';
+  const priceText = it.price > 0 ? Number(it.price).toLocaleString() + ' Ks' : 'စျေးမသတ်ရသေး';
+  const disabled = it.price > 0 ? '' : 'disabled';
+  card.innerHTML = '<button class="wish-heart">' + (inWish ? '❤️' : '🤍') + '</button>' +
+    '<div class="item-name">' + it.name + autoBadge + '</div>' +
+    '<div class="item-price">' + priceText + '</div>' +
+    '<button ' + disabled + ' class="item-buy">ဝယ်မယ်</button>';
   card.querySelector('.item-buy').addEventListener('click', () => openBuy(it));
   card.querySelector('.wish-heart').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -296,18 +492,18 @@ function makeItemCard(it) {
 
 function openBuy(item) {
   STATE.selectedItem = item;
-  $('buyItemName').textContent = item.name;
-  $('buyItemPrice').textContent = Number(item.price).toLocaleString();
-  $('buyGameAccount').value = '';
-  $('buyServerId').value = '';
+  if ($('buyItemName')) $('buyItemName').textContent = item.name;
+  if ($('buyItemPrice')) $('buyItemPrice').textContent = Number(item.price).toLocaleString();
+  if ($('buyGameAccount')) $('buyGameAccount').value = '';
+  if ($('buyServerId')) $('buyServerId').value = '';
   const gameId = item.game_id;
   const isAppPremium = gameId === 'app-premium';
   hide('fieldServerId');
   hide('fieldNote');
   show('fieldGameId');
   if (isAppPremium) { hide('fieldGameId'); show('fieldNote'); }
-  else if (gameId === 'mlbb' || gameId === 'magic-chess') { show('fieldServerId'); $('gameIdLabel').textContent = 'Game ID'; $('buyGameAccount').placeholder = 'Game ID ထည့်ပါ'; }
-  else if (gameId === 'pubg') { $('gameIdLabel').textContent = 'PUBG ID'; $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ'; }
+  else if (gameId === 'mlbb' || gameId === 'magic-chess') { show('fieldServerId'); if ($('gameIdLabel')) $('gameIdLabel').textContent = 'Game ID'; if ($('buyGameAccount')) $('buyGameAccount').placeholder = 'Game ID ထည့်ပါ'; }
+  else if (gameId === 'pubg') { if ($('gameIdLabel')) $('gameIdLabel').textContent = 'PUBG ID'; if ($('buyGameAccount')) $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ'; }
   hide('itemsModal');
   show('buyModal');
 }
@@ -329,23 +525,24 @@ if ($('confirmBuy')) $('confirmBuy').addEventListener('click', async () => {
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
     showConfetti();
-    toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
+    toast(res.auto_delivered ? '⚡ ချက်ချင်း ပို့ပြီးပါပြီ!' : 'ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
     hide('buyModal');
     await refreshMe();
+    await refreshFeatures();
   } else { shakeElement($('buyModal')); toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
 // ============ DEPOSIT ============
 if ($('depositBtn')) $('depositBtn').addEventListener('click', () => {
-  $('depAmount').value = '';
-  $('receiptInput').value = '';
+  if ($('depAmount')) $('depAmount').value = '';
+  if ($('receiptInput')) $('receiptInput').value = '';
   STATE.selectedMethod = null;
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
   hide('payInfo');
   show('depositModal');
 });
 document.querySelectorAll('.qa-btn').forEach(b => {
-  b.addEventListener('click', () => { $('depAmount').value = b.dataset.amt; });
+  b.addEventListener('click', () => { if ($('depAmount')) $('depAmount').value = b.dataset.amt; });
 });
 document.querySelectorAll('.pay-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -353,8 +550,11 @@ document.querySelectorAll('.pay-btn').forEach(btn => {
     btn.classList.add('active');
     STATE.selectedMethod = btn.dataset.method;
     const info = STATE.payments[STATE.selectedMethod.toLowerCase()] || '';
-    $('payInfo').innerHTML = `<div><b>${btn.textContent}</b> သို့ ငွေလွှဲပါ</div><div style="margin-top:6px">📱 ${info}</div><div class="hint" style="margin-top:6px">ငွေလွှဲပြီးပါက ပြေစာပုံ တင်ပါ။</div>`;
-    show('payInfo');
+    const pi = $('payInfo');
+    if (pi) {
+      pi.innerHTML = '<div><b>' + btn.textContent + '</b> သို့ ငွေလွှဲပါ</div><div style="margin-top:6px">📱 ' + info + '</div><div class="hint" style="margin-top:6px">ငွေလွှဲပြီးပါက ပြေစာပုံ တင်ပါ။</div>';
+      pi.classList.remove('hidden');
+    }
   });
 });
 if ($('submitDeposit')) $('submitDeposit').addEventListener('click', async () => {
@@ -380,21 +580,19 @@ if ($('submitDeposit')) $('submitDeposit').addEventListener('click', async () =>
 // ============ HISTORY + TRACKING ============
 if ($('historyBtn')) $('historyBtn').addEventListener('click', async () => {
   show('historyModal');
-  const box = $('historyList');
+  const box = $('historyList'); if (!box) return;
   box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
-  const [txs, orders, deps] = await Promise.all([api('/api/my-tx'), api('/api/my-orders'), api('/api/deposits')]);
+  const txs = await api('/api/my-tx');
+  const orders = await api('/api/my-orders');
+  const deps = await api('/api/deposits');
   let html = '<h3 style="margin:10px 0 6px">💳 Transactions</h3>';
-  if ((txs.txs||[]).length) html += txs.txs.map(t => `<div class="item-row" style="margin-bottom:6px"><div>${t.type}<div class="hint">${new Date(t.created_at*1000).toLocaleString()}</div></div><div class="price">${t.amount>0?'+':''}${t.amount} → ${t.balance_after}</div></div>`).join('');
+  if (txs.txs && txs.txs.length) html += txs.txs.map(t => '<div class="item-row" style="margin-bottom:6px"><div>' + t.type + '<div class="hint">' + new Date(t.created_at * 1000).toLocaleString() + '</div></div><div class="price">' + (t.amount > 0 ? '+' : '') + t.amount + ' → ' + t.balance_after + '</div></div>').join('');
   else html += '<p class="hint">မရှိပါ</p>';
   html += '<h3 style="margin:16px 0 6px">📥 Deposits</h3>';
-  if ((deps.deposits||[]).length) html += deps.deposits.map(d => `<div class="item-row" style="margin-bottom:6px"><div>${d.method} #${d.id}<div class="hint">${new Date(d.created_at*1000).toLocaleString()}</div></div><div class="price">${d.amount} <small>${d.status}</small></div></div>`).join('');
+  if (deps.deposits && deps.deposits.length) html += deps.deposits.map(d => '<div class="item-row" style="margin-bottom:6px"><div>' + d.method + ' #' + d.id + '<div class="hint">' + new Date(d.created_at * 1000).toLocaleString() + '</div></div><div class="price">' + d.amount + ' <small>' + d.status + '</small></div></div>').join('');
   else html += '<p class="hint">မရှိပါ</p>';
   html += '<h3 style="margin:16px 0 6px">🛒 Orders</h3>';
-  if ((orders.orders||[]).length) html += orders.orders.map(o => `
-    <div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTrack(${o.id})">
-      <div>${o.item_name}<div class="hint">#${o.id} • ${o.game_id} • ${o.status}</div></div>
-      <div class="price">${o.price} 📍</div>
-    </div>`).join('');
+  if (orders.orders && orders.orders.length) html += orders.orders.map(o => '<div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTrack(' + o.id + ')"><div>' + o.item_name + '<div class="hint">#' + o.id + ' • ' + o.game_id + ' • ' + o.status + '</div></div><div class="price">' + o.price + ' 📍</div></div>').join('');
   else html += '<p class="hint">မရှိပါ</p>';
   box.innerHTML = html;
 });
@@ -402,23 +600,20 @@ if ($('historyBtn')) $('historyBtn').addEventListener('click', async () => {
 window.openTrack = async (orderId) => {
   hide('historyModal');
   show('trackModal');
-  const box = $('trackContent');
+  const box = $('trackContent'); if (!box) return;
   box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
-  const res = await api(`/api/order/${orderId}`);
+  const res = await api('/api/order/' + orderId);
   if (!res.ok) { box.innerHTML = '<p class="hint" style="text-align:center">Order မတွေ့ပါ။</p>'; return; }
-  const { order, timeline } = res;
-  let html = `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:15px">#${order.id} ${order.item_name}</div><div class="hint" style="margin-top:4px">${order.price} Ks • ${order.game_id}</div></div>`;
-  timeline.forEach((t, i) => {
-    setTimeout(() => {
-      const step = document.querySelector(`.track-step[data-i="${i}"]`);
-      if (step) step.classList.add('done');
-    }, i * 300);
-    html += `<div class="track-step ${t.done ? 'done' : ''}" data-i="${i}">
-      <div class="track-dot">${t.done ? '✓' : '○'}</div>
-      <div class="track-info">
-        <div class="track-label">${t.label}</div>
-        ${t.at ? `<div class="track-time">${new Date(t.at * 1000).toLocaleString()}</div>` : ''}
-      </div></div>`;
+  const order = res.order;
+  const timeline = res.timeline;
+  let html = '<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:15px">#' + order.id + ' ' + order.item_name + '</div><div class="hint" style="margin-top:4px">' + order.price + ' Ks • ' + order.game_id + '</div></div>';
+  timeline.forEach(t => {
+    html += '<div class="track-step ' + (t.done ? 'done' : '') + '">' +
+      '<div class="track-dot">' + (t.done ? '✓' : '○') + '</div>' +
+      '<div class="track-info">' +
+      '<div class="track-label">' + t.label + '</div>' +
+      (t.at ? '<div class="track-time">' + new Date(t.at * 1000).toLocaleString() + '</div>' : '') +
+      '</div></div>';
   });
   box.innerHTML = html;
 };
@@ -427,9 +622,9 @@ window.openTrack = async (orderId) => {
 if ($('chatBtn')) $('chatBtn').addEventListener('click', async () => {
   CHAT.open = true;
   show('chatModal');
-  $('chatMessages').innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
+  if ($('chatMessages')) $('chatMessages').innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
   await loadChat(true);
-  $('chatBadge').style.display = 'none';
+  if ($('chatBadge')) $('chatBadge').classList.add('hidden');
   if (CHAT.timer) clearInterval(CHAT.timer);
   CHAT.timer = setInterval(() => loadChat(false), 3000);
 });
@@ -443,7 +638,7 @@ async function loadChat(scrollBottom) {
   if (!CHAT.open) return;
   const res = await api('/api/chat/history', { method: 'POST', body: '{}' });
   const msgs = res.messages || [];
-  const box = $('chatMessages');
+  const box = $('chatMessages'); if (!box) return;
   if (!msgs.length) {
     box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။ Admin ကို စာ ပို့ပါ။</p>';
     return;
@@ -458,11 +653,11 @@ async function loadChat(scrollBottom) {
   msgs.forEach(m => {
     const d = new Date(m.created_at * 1000);
     const dateStr = d.toLocaleDateString();
-    if (dateStr !== lastDate) { html += `<div class="chat-date-divider">${dateStr}</div>`; lastDate = dateStr; }
+    if (dateStr !== lastDate) { html += '<div style="text-align:center;font-size:11px;color:#8a90a0;margin:12px 0;padding:4px 12px;background:#1a1d26;border-radius:10px;display:inline-block;width:auto">' + dateStr + '</div>'; lastDate = dateStr; }
     const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const cls = m.from === 'user' ? 'user' : 'admin';
     const safeText = m.text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-    html += `<div class="chat-msg ${cls}">${safeText}<div class="chat-time">${time}</div></div>`;
+    html += '<div class="chat-msg ' + cls + '">' + safeText + '<div class="chat-time">' + time + '</div></div>';
   });
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 50;
   box.innerHTML = html;
@@ -472,18 +667,19 @@ async function loadChat(scrollBottom) {
 if ($('chatSendBtn')) $('chatSendBtn').addEventListener('click', sendChat);
 if ($('chatInput')) $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
 async function sendChat() {
-  const text = $('chatInput').value.trim();
+  const input = $('chatInput'); if (!input) return;
+  const text = input.value.trim();
   if (!text) return;
-  $('chatInput').value = '';
-  $('chatSendBtn').disabled = true;
-  const res = await api('/api/chat/send', { method: 'POST', body: JSON.stringify({ text }) });
-  $('chatSendBtn').disabled = false;
+  input.value = '';
+  if ($('chatSendBtn')) $('chatSendBtn').disabled = true;
+  const res = await api('/api/chat/send', { method: 'POST', body: JSON.stringify({ text: text }) });
+  if ($('chatSendBtn')) $('chatSendBtn').disabled = false;
   if (res.ok) {
     try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
     await loadChat(true);
   } else {
     toast(res.error || 'မပို့နိုင်ပါ', 'error');
-    $('chatInput').value = text;
+    input.value = text;
   }
 }
 
@@ -491,10 +687,9 @@ async function checkUnread() {
   if (CHAT.open || !STATE.user) return;
   try {
     const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
-    const badge = $('chatBadge');
-    if (!badge) return;
-    if (res.count > 0) { badge.textContent = res.count; badge.style.display = 'inline-block'; }
-    else { badge.style.display = 'none'; }
+    const badge = $('chatBadge'); if (!badge) return;
+    if (res.count > 0) { badge.textContent = res.count; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
   } catch(e) {}
 }
 setInterval(checkUnread, 15000);
@@ -502,7 +697,7 @@ setInterval(checkUnread, 15000);
 // ============ AUTO REFRESH ============
 async function autoRefresh() {
   if (!STATE.user || CHAT.open) return;
-  if ($('main').classList.contains('hidden')) return;
+  if ($('main') && $('main').classList.contains('hidden')) return;
   try {
     const me = await api('/api/me', { method: 'POST', body: '{}' });
     if (me.user) {
@@ -512,7 +707,7 @@ async function autoRefresh() {
       renderMain();
       if (newBal > oldBal) {
         const diff = newBal - oldBal;
-        toast(`💰 +${diff.toLocaleString()} MMK ရောက်ပါပြီ!`, 'success');
+        toast('💰 +' + diff.toLocaleString() + ' MMK ရောက်ပါပြီ!', 'success');
         try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
       }
     }
@@ -533,53 +728,40 @@ document.querySelectorAll('.modal').forEach(m => {
   });
 });
 
-// ===============================
-// MAINTENANCE SCREEN (လှလှပပ)
-// ===============================
+// ============ MAINTENANCE SCREEN ============
 function showMaintenanceScreen() {
   if (document.getElementById('maintenanceOverlay')) return;
   const overlay = document.createElement('div');
   overlay.id = 'maintenanceOverlay';
-  overlay.innerHTML = `
-    <div class="mt-bg-blob mt-blob-1"></div>
-    <div class="mt-bg-blob mt-blob-2"></div>
-    <div class="mt-content">
-      <div class="mt-icon">
-        <div class="mt-gear mt-gear-1">⚙️</div>
-        <div class="mt-gear mt-gear-2">⚙️</div>
-        <div class="mt-center">🛠️</div>
-      </div>
-      <h1 class="mt-title">ခဏစောင့်ပါ</h1>
-      <p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p>
-      <div class="mt-progress"><div class="mt-progress-bar"></div></div>
-      <p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p>
-    </div>
-  `;
+  overlay.innerHTML =
+    '<div class="mt-bg-blob mt-blob-1"></div>' +
+    '<div class="mt-bg-blob mt-blob-2"></div>' +
+    '<div class="mt-content">' +
+    '<div class="mt-icon">' +
+    '<div class="mt-gear mt-gear-1">⚙️</div>' +
+    '<div class="mt-gear mt-gear-2">⚙️</div>' +
+    '<div class="mt-center">🛠️</div>' +
+    '</div>' +
+    '<h1 class="mt-title">ခဏစောင့်ပါ</h1>' +
+    '<p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p>' +
+    '<div class="mt-progress"><div class="mt-progress-bar"></div></div>' +
+    '<p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p>' +
+    '</div>';
   document.body.appendChild(overlay);
-  if (window.Telegram?.WebApp?.HapticFeedback) {
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
   }
 }
 
-// ===============================
-// ANIMATION FUNCTIONS
-// ===============================
+// ============ ANIMATIONS ============
 function showToast(message, type = 'info', duration = 2500) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
   const toastEl = document.createElement('div');
-  toastEl.className = `toast ${type}`;
+  toastEl.className = 'toast ' + type;
   toastEl.textContent = message;
   document.body.appendChild(toastEl);
-  if (window.Telegram?.WebApp?.HapticFeedback) {
-    window.Telegram.WebApp.HapticFeedback.notificationOccurred(type === 'error' ? 'error' : 'success');
-  }
-  setTimeout(() => {
-    toastEl.style.transition = 'opacity 0.3s, transform 0.3s';
-    toastEl.style.opacity = '0';
-    toastEl.style.transform = 'translate(-50%, 20px)';
-    setTimeout(() => toastEl.remove(), 300);
-  }, duration);
+  setTimeout(() => { toastEl.remove(); }, duration);
 }
 
 function animateNumber(element, targetValue, duration = 1000) {
@@ -595,17 +777,6 @@ function animateNumber(element, targetValue, duration = 1000) {
     else element.textContent = targetValue.toLocaleString() + ' Ks';
   }
   requestAnimationFrame(update);
-}
-
-function showSkeleton(container, count = 3) {
-  if (!container) return;
-  container.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const skeleton = document.createElement('div');
-    skeleton.className = 'skeleton';
-    skeleton.style.cssText = 'height:80px;margin-bottom:10px;';
-    container.appendChild(skeleton);
-  }
 }
 
 function animateCards(container) {
@@ -625,26 +796,16 @@ function animateCards(container) {
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('button, .btn');
   if (!btn) return;
-  if (window.Telegram?.WebApp?.HapticFeedback) {
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
   }
-  const ripple = document.createElement('span');
-  const rect = btn.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height);
-  ripple.style.cssText = `position:absolute;width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;background:rgba(255,255,255,0.4);border-radius:50%;transform:scale(0);animation:rippleAnim 0.6s ease-out;pointer-events:none;`;
-  if (getComputedStyle(btn).position === 'static') {
-    btn.style.position = 'relative';
-    btn.style.overflow = 'hidden';
-  }
-  btn.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 600);
 });
 
 function showConfetti() {
   const colors = ['#2ea6ff', '#27ae60', '#f39c12', '#e74c3c', '#6a5cff'];
   for (let i = 0; i < 30; i++) {
     const confetti = document.createElement('div');
-    confetti.style.cssText = `position:fixed;top:-10px;left:${Math.random() * 100}vw;width:8px;height:8px;background:${colors[Math.floor(Math.random() * colors.length)]};border-radius:50%;z-index:99998;pointer-events:none;animation:confettiFall ${1.5 + Math.random()}s ease-in forwards;`;
+    confetti.style.cssText = 'position:fixed;top:-10px;left:' + (Math.random() * 100) + 'vw;width:8px;height:8px;background:' + colors[Math.floor(Math.random() * colors.length)] + ';border-radius:50%;z-index:99998;pointer-events:none;animation:confettiFall ' + (1.5 + Math.random()) + 's ease-in forwards;';
     document.body.appendChild(confetti);
     setTimeout(() => confetti.remove(), 3000);
   }
@@ -654,15 +815,17 @@ function shakeElement(element) {
   if (!element) return;
   element.classList.add('shake');
   setTimeout(() => element.classList.remove('shake'), 400);
-  if (window.Telegram?.WebApp?.HapticFeedback) {
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  document.body.classList.add('fade-in');
-});
+// ============ BOTTOM NAV profileBtn2 ============
+if ($('profileBtn2')) {
+  $('profileBtn2').addEventListener('click', () => { if ($('profileBtn')) $('profileBtn').click(); });
+}
 
 // ============ START ============
+window.addEventListener('DOMContentLoaded', () => { document.body.classList.add('fade-in'); });
 updateWishBadge();
 init();
