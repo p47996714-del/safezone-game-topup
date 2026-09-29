@@ -17,34 +17,43 @@
     <div id="loginError" class="login-error hidden"></div>
   </div>
 </div>
+
 <div id="adminScreen" class="admin-screen hidden">
   <audio id="notifySound" src="notification.mp3" preload="auto"></audio>
   <header class="admin-header">
     <div class="logo">🛡️ Safe Zone Admin</div>
     <div class="header-actions">
       <button id="toggleAppBtn" class="btn-toggle">...</button>
-      <button id="backupBtn" class="btn-backup">💾 Backup</button>
+      <button id="backupBtn" class="btn-backup">💾</button>
       <button id="logoutBtn" class="btn-logout">🚪</button>
     </div>
   </header>
   <div class="tabs">
-    <button class="tab active" data-tab="dash">📊 Dashboard</button>
+    <button class="tab active" data-tab="dash">📊 Dash</button>
     <button class="tab" data-tab="analytics">📈 Analytics</button>
     <button class="tab" data-tab="deposits">📥 Deposits</button>
     <button class="tab" data-tab="orders">🛒 Orders</button>
     <button class="tab" data-tab="users">👥 Users</button>
     <button class="tab" data-tab="items">🧾 Items</button>
+    <button class="tab" data-tab="stocks">📦 Stocks</button>
     <button class="tab" data-tab="banners">🖼️ Banners</button>
+    <button class="tab" data-tab="promos">🎟️ Promos</button>
+    <button class="tab" data-tab="referrals">🎁 Referrals</button>
+    <button class="tab" data-tab="points">⭐ Points</button>
+    <button class="tab" data-tab="spins">🎰 Spins</button>
     <button class="tab" data-tab="chats">💬 Chats</button>
-    <button class="tab" data-tab="quickreplies">⚡ Quick Replies</button>
-    <button class="tab" data-tab="broadcast">📢 Broadcast</button>
+    <button class="tab" data-tab="qr">⚡ QR</button>
+    <button class="tab" data-tab="broadcast">📢 Bcast</button>
+    <button class="tab" data-tab="settings">⚙️ Settings</button>
     <button class="tab" data-tab="logs">📜 Logs</button>
   </div>
   <main class="admin-main">
+    <!-- DASHBOARD -->
     <section id="tab-dash" class="tab-content active">
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-val" id="sUsers">0</div><div class="stat-label">Users</div></div>
         <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="sBalance">0</div><div class="stat-label">Total Balance</div></div>
+        <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val" id="sPoints">0</div><div class="stat-label">Total Points</div></div>
         <div class="stat-card"><div class="stat-icon">📥</div><div class="stat-val" id="sPendingDep">0</div><div class="stat-label">Pending Deposits</div></div>
         <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-val" id="sPendingOrd">0</div><div class="stat-label">Pending Orders</div></div>
         <div class="stat-card"><div class="stat-icon">💵</div><div class="stat-val" id="sTotalDep">0</div><div class="stat-label">Approved Deposits</div></div>
@@ -53,22 +62,28 @@
         <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-val" id="sChats">0</div><div class="stat-label">Unread Chats</div></div>
       </div>
       <div class="charts-grid">
-        <div class="stat-card chart-card"><h3>📈 Revenue (Last 7 Days)</h3><canvas id="revenueChart" height="150"></canvas></div>
-        <div class="stat-card chart-card"><h3>👥 User Registration (Last 14 Days)</h3><canvas id="usersChart" height="150"></canvas></div>
+        <div class="stat-card chart-card"><h3>📈 Revenue (7 Days)</h3><canvas id="revenueChart" height="150"></canvas></div>
+        <div class="stat-card chart-card"><h3>👥 Users (14 Days)</h3><canvas id="usersChart" height="150"></canvas></div>
       </div>
     </section>
+
+    <!-- ANALYTICS -->
     <section id="tab-analytics" class="tab-content">
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-val" id="aTotalUsers">0</div><div class="stat-label">Total Users</div></div>
         <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-val" id="aActiveUsers">0</div><div class="stat-label">Active Users</div></div>
-        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-val" id="aTotalOrders">0</div><div class="stat-label">Total Orders</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val" id="aCompletedOrders">0</div><div class="stat-label">Completed Orders</div></div>
+        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-val" id="aTotalOrders">0</div><div class="stat-label">Orders</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val" id="aCompletedOrders">0</div><div class="stat-label">Completed</div></div>
+        <div class="stat-card"><div class="stat-icon">🎁</div><div class="stat-val" id="aReferrals">0</div><div class="stat-label">Referrals</div></div>
+        <div class="stat-card"><div class="stat-icon">🎰</div><div class="stat-val" id="aSpins">0</div><div class="stat-label">Total Spins</div></div>
       </div>
       <div class="charts-grid">
-        <div class="stat-card chart-card"><h3>🏆 Top Spenders</h3><div id="topSpendersList" class="list" style="margin-top: 10px;"></div></div>
-        <div class="stat-card chart-card"><h3>📦 Top Selling Items</h3><div id="topItemsList" class="list" style="margin-top: 10px;"></div></div>
+        <div class="stat-card chart-card"><h3>🏆 Top Spenders</h3><div id="topSpendersList" class="list" style="margin-top:10px"></div></div>
+        <div class="stat-card chart-card"><h3>📦 Top Items</h3><div id="topItemsList" class="list" style="margin-top:10px"></div></div>
       </div>
     </section>
+
+    <!-- DEPOSITS -->
     <section id="tab-deposits" class="tab-content">
       <div class="filter-bar">
         <button class="filter active" data-status="pending">Pending</button>
@@ -78,6 +93,8 @@
       </div>
       <div id="depositsList" class="list"></div>
     </section>
+
+    <!-- ORDERS -->
     <section id="tab-orders" class="tab-content">
       <div class="filter-bar">
         <button class="filter active" data-status="pending">Pending</button>
@@ -87,52 +104,118 @@
       </div>
       <div id="ordersList" class="list"></div>
     </section>
+
+    <!-- USERS -->
     <section id="tab-users" class="tab-content">
-      <div class="filter-bar"><input id="userSearch" type="text" placeholder="🔍 နာမည် / ဖုန်း ရှာ..." /></div>
+      <div class="filter-bar"><input id="userSearch" type="text" placeholder="🔍 နာမည် / ဖုန်း / Ref Code ရှာ..." /></div>
       <div id="usersList" class="list"></div>
     </section>
+
+    <!-- ITEMS -->
     <section id="tab-items" class="tab-content">
       <div class="filter-bar"><button id="addItemBtn" class="btn-primary">➕ Item အသစ်</button></div>
       <div id="itemsList" class="list"></div>
     </section>
+
+    <!-- STOCKS (Auto-Delivery) -->
+    <section id="tab-stocks" class="tab-content">
+      <div class="filter-bar">
+        <select id="stockItemSelect" class="filter" style="flex:1;min-width:200px">
+          <option value="">-- Item ရွေးပါ --</option>
+        </select>
+        <button id="addStockBtn" class="btn-primary">➕ Stock ထည့်</button>
+      </div>
+      <div id="stocksSummary" class="stats-grid" style="margin-bottom:16px"></div>
+      <div id="stocksList" class="list"></div>
+    </section>
+
+    <!-- BANNERS -->
     <section id="tab-banners" class="tab-content">
       <div class="filter-bar"><button id="addBannerBtn" class="btn-primary">➕ Banner အသစ်</button></div>
       <div id="bannersList" class="list"></div>
     </section>
+
+    <!-- PROMO CODES -->
+    <section id="tab-promos" class="tab-content">
+      <div class="filter-bar"><button id="addPromoBtn" class="btn-primary">➕ Promo Code အသစ်</button></div>
+      <div id="promoList" class="list"></div>
+    </section>
+
+    <!-- REFERRALS -->
+    <section id="tab-referrals" class="tab-content">
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">🎁</div><div class="stat-val" id="refTotal">0</div><div class="stat-label">Total Referrals</div></div>
+        <div class="stat-card"><div class="stat-icon">💵</div><div class="stat-val" id="refBonus">0</div><div class="stat-label">Bonus Given</div></div>
+      </div>
+      <div id="referralsList" class="list"></div>
+    </section>
+
+    <!-- POINTS -->
+    <section id="tab-points" class="tab-content">
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val" id="ptsTotal">0</div><div class="stat-label">Total Points</div></div>
+        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val" id="ptsIssued">0</div><div class="stat-label">Issued</div></div>
+        <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-val" id="ptsRedeemed">0</div><div class="stat-label">Redeemed</div></div>
+      </div>
+      <div id="pointsHistoryList" class="list"></div>
+    </section>
+
+    <!-- SPINS -->
+    <section id="tab-spins" class="tab-content">
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">🎰</div><div class="stat-val" id="spinTotal">0</div><div class="stat-label">Total Spins</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="spinReward">0</div><div class="stat-label">Rewards Given</div></div>
+      </div>
+      <div id="spinsList" class="list"></div>
+    </section>
+
+    <!-- CHATS -->
     <section id="tab-chats" class="tab-content">
       <div id="chatsList" class="list"></div>
       <div class="chat-reply-box">
         <h3>📤 Reply to User</h3>
         <select id="chatUserSelect" class="chat-select"><option value="">-- Select User --</option></select>
-        <select id="qrSelect" class="chat-select"><option value="">-- ⚡ Quick Reply ရွေးရန် --</option></select>
+        <select id="qrSelect" class="chat-select"><option value="">-- ⚡ Quick Reply --</option></select>
         <textarea id="chatReplyText" rows="3" placeholder="စာသား ရိုက်ပါ..."></textarea>
         <div class="chat-file-input">
-          <label for="chatPhoto" class="btn-gray">📷 ဓာတ်ပုံ ရွေးရန်</label>
+          <label for="chatPhoto" class="btn-gray">📷 ဓာတ်ပုံ</label>
           <input type="file" id="chatPhoto" accept="image/*" style="display:none;" />
           <span id="fileNameDisplay">ဓာတ်ပုံ မရွေးရသေးပါ</span>
         </div>
-        <button id="sendChatBtn" class="btn-primary" style="margin-top:10px;">📨 Send Reply</button>
+        <button id="sendChatBtn" class="btn-primary" style="margin-top:10px">📨 Send</button>
       </div>
     </section>
-    <section id="tab-quickreplies" class="tab-content">
+
+    <!-- QUICK REPLIES -->
+    <section id="tab-qr" class="tab-content">
       <div class="filter-bar"><button id="addQRBtn" class="btn-primary">➕ Quick Reply အသစ်</button></div>
       <div id="qrList" class="list"></div>
     </section>
+
+    <!-- BROADCAST -->
     <section id="tab-broadcast" class="tab-content">
-      <div class="card" style="max-width: 600px;">
-        <h3>📢 Send Broadcast to All Users</h3>
-        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0;">Message</label>
-        <textarea id="bcastMessage" rows="5" placeholder="စာသား ရိုက်ပါ..." style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;font-family:inherit;"></textarea>
-        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0;">Image URL (Optional)</label>
-        <input id="bcastImage" placeholder="https://example.com/image.jpg" style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;" />
-        <button id="sendBcastBtn" class="btn-primary" style="margin-top:15px;width:100%;">🚀 Send Broadcast</button>
-        <div id="bcastStatus" style="margin-top:10px;color:#8a90a0;font-size:13px;text-align:center;"></div>
+      <div class="card" style="max-width:600px">
+        <h3>📢 Send Broadcast</h3>
+        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0">Message</label>
+        <textarea id="bcastMessage" rows="5" placeholder="စာသား ရိုက်ပါ..." style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;font-family:inherit"></textarea>
+        <label style="display:block;margin-top:10px;margin-bottom:5px;color:#8a90a0">Image URL (Optional)</label>
+        <input id="bcastImage" placeholder="https://..." style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff" />
+        <button id="sendBcastBtn" class="btn-primary" style="margin-top:15px;width:100%">🚀 Send</button>
+        <div id="bcastStatus" style="margin-top:10px;color:#8a90a0;font-size:13px;text-align:center"></div>
       </div>
     </section>
+
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="tab-content">
+      <div id="settingsContent"></div>
+    </section>
+
+    <!-- LOGS -->
     <section id="tab-logs" class="tab-content">
       <div id="logsList" class="list"></div>
     </section>
   </main>
+
   <div id="modal" class="modal hidden"><div class="modal-box"><button class="modal-x" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
   <div id="toast" class="toast hidden"></div>
 </div>
