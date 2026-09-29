@@ -5,197 +5,467 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>Safe Zone Game Topup</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="style.css" />
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0c11;color:#e5e7eb;min-height:100vh;font-size:14px;overflow-x:hidden;padding-bottom:80px}
+.hidden{display:none!important}
+.hint{color:#8a90a0;font-size:12px}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:#0a0c11;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999}
+.spinner{width:50px;height:50px;border:4px solid #1a1d26;border-top-color:#2ea6ff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{margin-top:16px;color:#8a90a0;font-size:13px}
+
+/* HEADER */
+.app-header{padding:14px 16px;background:#0a0c11;position:sticky;top:0;z-index:50;border-bottom:1px solid #1a1d26}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.user-name{font-weight:700;font-size:15px;color:#fff}
+.user-phone{font-size:12px;color:#8a90a0;margin-top:2px}
+.header-actions{display:flex;gap:8px}
+.header-btn{width:40px;height:40px;border-radius:12px;border:none;background:#1a1d26;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative}
+.badge{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;min-width:18px;text-align:center}
+
+/* BALANCE */
+.balance-card{margin:16px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(46,166,255,0.3)}
+.balance-card::before{content:'';position:absolute;top:-30%;right:-20%;width:180px;height:180px;background:rgba(255,255,255,0.1);border-radius:50%}
+.balance-card .label{font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:6px}
+.balance-card .amount{font-size:32px;font-weight:800;color:#fff;margin-bottom:4px}
+.balance-card .currency{font-size:14px;color:rgba(255,255,255,0.85)}
+
+/* BANNER */
+.banner-slider{margin:0 16px 16px;border-radius:16px;overflow:hidden;position:relative}
+.banner-track{display:flex;transition:transform 0.5s ease}
+.banner{min-width:100%;height:140px;padding:22px;display:flex;flex-direction:column;justify-content:center;color:#fff;position:relative;overflow:hidden}
+.banner::before{content:'';position:absolute;top:-40%;right:-15%;width:180px;height:180px;background:rgba(255,255,255,0.12);border-radius:50%}
+.banner h3{font-size:20px;font-weight:800;margin-bottom:6px;position:relative;z-index:2}
+.banner p{font-size:13px;color:rgba(255,255,255,0.92);position:relative;z-index:2}
+.banner-dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5}
+.banner-dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.4);transition:all 0.3s}
+.banner-dots span.active{width:20px;border-radius:3px;background:#fff}
+
+/* DASHBOARD GRID */
+.dashboard-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0 16px 16px}
+.dashboard-card{background:linear-gradient(135deg,#1a1d26,#22252e);border-radius:14px;padding:16px;border:1px solid #2a2d36;cursor:pointer;transition:transform 0.2s;position:relative;overflow:hidden;min-height:100px}
+.dashboard-card:active{transform:scale(0.97)}
+.dashboard-card::before{content:'';position:absolute;top:-30%;right:-20%;width:100px;height:100px;border-radius:50%;opacity:0.15}
+.dashboard-card.points::before{background:#f39c12}
+.dashboard-card.referral::before{background:#27ae60}
+.dashboard-card.promo::before{background:#6a5cff}
+.dashboard-card.spin::before{background:#e74c3c}
+.dc-icon{font-size:28px;margin-bottom:6px}
+.dc-title{font-size:13px;color:#8a90a0;font-weight:600;margin-bottom:4px}
+.dc-value{font-size:20px;font-weight:800;color:#fff}
+.dashboard-card.points .dc-value{color:#f39c12}
+.dashboard-card.referral .dc-value{color:#27ae60}
+.dashboard-card.promo .dc-value{color:#6a5cff}
+.dashboard-card.spin .dc-value{color:#e74c3c}
+
+/* SECTION TITLE */
+.section-title{margin:0 16px 10px;font-size:15px;font-weight:700;color:#fff}
+
+/* GAMES */
+.games-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0 16px 20px}
+.game-card{background:#1a1d26;border-radius:14px;padding:12px;text-align:center;cursor:pointer;border:1px solid #2a2d36;transition:transform 0.2s}
+.game-card:active{transform:scale(0.96)}
+.game-card img{width:100%;height:80px;object-fit:contain;border-radius:8px;background:#0a0c11}
+.game-card .name{font-size:13px;font-weight:600;margin-top:8px;color:#fff}
+
+/* SKELETON */
+.skeleton{background:linear-gradient(90deg,#1a1d26 25%,#2a2d36 50%,#1a1d26 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.skeleton-game{height:130px}
+.skeleton-item{height:100px}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0a0c11;border-top:1px solid #1a1d26;padding:10px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;z-index:60}
+.nav-btn{background:transparent;border:none;color:#8a90a0;padding:8px 4px;border-radius:12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;position:relative}
+.nav-btn .ico{font-size:22px}
+.nav-btn:active{background:#1a1d26}
+.nav-badge{position:absolute;top:2px;right:14px;background:#e74c3c;color:#fff;font-size:9px;padding:2px 5px;border-radius:8px;font-weight:700}
+
+/* MODALS */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;z-index:200}
+.modal-content{background:#0a0c11;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;position:relative;animation:slideUp 0.3s ease-out}
+@keyframes slideUp{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-content h2{font-size:18px;font-weight:800;margin-bottom:16px;color:#fff}
+.modal-close{position:absolute;top:16px;right:18px;background:#1a1d26;border:none;color:#8a90a0;width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-content input,.modal-content select,.modal-content textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-size:14px;margin-bottom:12px;font-family:inherit}
+.modal-content label{display:block;font-size:12px;color:#8a90a0;margin-bottom:6px;margin-top:8px;font-weight:600}
+
+/* BUTTONS */
+.btn-primary{background:#2ea6ff;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
+.btn-success{background:#27ae60;color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
+.btn-full{width:100%}
+
+/* FORM CARDS */
+.form-card{margin:20px;background:#1a1d26;border-radius:20px;padding:24px;border:1px solid #2a2d36}
+.form-card h1{font-size:24px;text-align:center;margin-bottom:6px;color:#fff}
+.form-card .subtitle{text-align:center;color:#8a90a0;font-size:13px;margin-bottom:24px}
+.form-card .switch-text{text-align:center;margin-top:16px;font-size:13px;color:#8a90a0}
+.form-card .switch-text a{color:#2ea6ff;cursor:pointer;font-weight:700}
+
+/* ITEMS */
+.items-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.item-card{background:#1a1d26;border-radius:12px;padding:14px;border:1px solid #2a2d36;position:relative;display:flex;flex-direction:column;gap:8px}
+.item-card .item-name{font-size:13px;font-weight:600;color:#fff;min-height:34px}
+.item-card .item-price{font-size:15px;font-weight:800;color:#2ea6ff}
+.item-card .item-buy{padding:8px;border-radius:8px;border:none;background:#2ea6ff;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
+.item-card .item-buy:disabled{background:#2a2d36;color:#8a90a0}
+.wish-heart{position:absolute;top:8px;right:8px;background:transparent;border:none;font-size:18px;cursor:pointer}
+.category-title{font-size:13px;font-weight:700;color:#2ea6ff;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid #1a1d26}
+
+/* ITEM ROW */
+.item-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#1a1d26;border-radius:10px}
+.item-row .price{color:#2ea6ff;font-weight:700;font-size:14px}
+
+/* PAY */
+.pay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.pay-btn{padding:10px 6px;border-radius:10px;border:2px solid #2a2d36;background:#1a1d26;color:#8a90a0;font-weight:700;cursor:pointer;font-family:inherit;font-size:11px}
+.pay-btn.active{border-color:#2ea6ff;background:#2ea6ff22;color:#2ea6ff}
+.qa-btn{padding:8px 12px;border-radius:8px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-weight:600;cursor:pointer;font-family:inherit;font-size:12px;margin-right:6px;margin-bottom:6px}
+.pay-info{margin-top:12px;padding:12px;background:#1a1d26;border-radius:10px;font-size:13px;line-height:1.6}
+
+/* CHAT */
+#chatMessages{background:#0a0c11;border-radius:10px;padding:12px;min-height:300px;max-height:50vh;overflow-y:auto;margin-bottom:12px}
+.chat-msg{padding:10px 14px;border-radius:14px;margin-bottom:8px;max-width:80%;word-wrap:break-word;font-size:13px;line-height:1.4}
+.chat-msg.user{background:#2ea6ff;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.chat-msg.admin{background:#1a1d26;color:#fff;border-bottom-left-radius:4px}
+.chat-time{font-size:10px;opacity:0.7;margin-top:4px;text-align:right}
+#chatInput{flex:1;padding:12px;border-radius:24px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-family:inherit}
+#chatSendBtn{padding:12px 20px;border-radius:24px;border:none;background:#2ea6ff;color:#fff;font-weight:700;cursor:pointer}
+.chat-input-row{display:flex;gap:8px}
+
+/* TRACK */
+.track-step{display:flex;gap:12px;padding:12px 0;position:relative}
+.track-step::before{content:'';position:absolute;left:14px;top:34px;bottom:-10px;width:2px;background:#2a2d36}
+.track-step:last-child::before{display:none}
+.track-step.done::before{background:#27ae60}
+.track-dot{width:30px;height:30px;border-radius:50%;background:#1a1d26;border:2px solid #2a2d36;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#8a90a0}
+.track-step.done .track-dot{background:#27ae60;border-color:#27ae60;color:#fff}
+.track-info{flex:1;padding-top:4px}
+.track-label{font-size:13px;font-weight:600;color:#fff}
+.track-time{font-size:11px;color:#8a90a0;margin-top:2px}
+
+/* SPIN WHEEL */
+.spin-container{text-align:center;padding:20px 0}
+.spin-wheel-wrapper{width:260px;height:260px;margin:0 auto 20px;position:relative}
+.spin-wheel{width:100%;height:100%;border-radius:50%;background:conic-gradient(#e74c3c 0deg 45deg,#f39c12 45deg 90deg,#27ae60 90deg 135deg,#2ea6ff 135deg 180deg,#6a5cff 180deg 225deg,#e91e63 225deg 270deg,#ff9800 270deg 315deg,#00bcd4 315deg 360deg);box-shadow:0 0 30px rgba(46,166,255,0.5),inset 0 0 20px rgba(0,0,0,0.3);transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);position:relative}
+.spin-wheel::after{content:'🎰';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:75px;height:75px;background:#1a1d26;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 0 15px rgba(0,0,0,0.5)}
+.spin-pointer{position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:24px solid #fff;z-index:10;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))}
+.spin-btn{width:100%;max-width:260px;padding:15px;border-radius:30px;border:none;background:linear-gradient(135deg,#e74c3c,#f39c12);color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(231,76,60,0.5)}
+.spin-btn:disabled{background:#2a2d36;color:#8a90a0;box-shadow:none}
+
+/* REFERRAL */
+.referral-box{background:linear-gradient(135deg,#27ae60,#2ea6ff);border-radius:14px;padding:18px;margin-bottom:14px;color:#fff}
+.referral-box h3{font-size:16px;margin-bottom:8px}
+.referral-code-display{background:rgba(255,255,255,0.2);padding:12px;border-radius:10px;font-family:monospace;font-size:18px;font-weight:800;text-align:center;margin:10px 0;letter-spacing:2px;cursor:pointer;border:2px dashed rgba(255,255,255,0.4)}
+.referral-stats{display:flex;justify-content:space-around;margin-top:12px}
+.referral-stat{text-align:center}
+.referral-stat b{font-size:20px;display:block}
+.referral-stat span{font-size:11px;opacity:0.8}
+.referral-share{width:100%;padding:12px;border-radius:10px;border:none;background:rgba(255,255,255,0.25);color:#fff;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit}
+
+/* POINTS */
+.points-balance-big{font-size:48px;font-weight:800;text-align:center;background:linear-gradient(135deg,#f39c12,#e74c3c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:10px 0}
+
+/* PROMO */
+.promo-input-group{display:flex;gap:8px;margin-bottom:12px}
+.promo-input-group input{flex:1;padding:12px;border-radius:10px;border:1px solid #2a2d36;background:#1a1d26;color:#fff;font-family:inherit;text-transform:uppercase;font-weight:700;font-size:15px;letter-spacing:1px}
+.promo-input-group button{padding:12px 20px;border-radius:10px;border:none;background:#6a5cff;color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* TOAST */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:14px 22px;border-radius:30px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,0.5);max-width:90%;text-align:center;animation:toastIn 0.3s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast.success{background:#27ae60}
+.toast.error{background:#e74c3c}
+
+/* MAINTENANCE */
+#maintenanceOverlay{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11 0%,#141821 50%,#0a0c11 100%);z-index:999999;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mt-bg-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.4;animation:mtBlob 8s ease-in-out infinite}
+.mt-blob-1{width:300px;height:300px;background:#2ea6ff;top:-100px;left:-100px}
+.mt-blob-2{width:250px;height:250px;background:#e74c3c;bottom:-80px;right:-80px;animation-delay:2s}
+@keyframes mtBlob{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.2) translate(20px,-20px)}}
+.mt-content{position:relative;z-index:2;text-align:center;padding:30px;max-width:400px}
+.mt-icon{position:relative;width:140px;height:140px;margin:0 auto 30px}
+.mt-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:60px;animation:mtPulse 2s ease-in-out infinite}
+@keyframes mtPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.1)}}
+.mt-gear{position:absolute;font-size:30px;opacity:0.6}
+.mt-gear-1{top:0;left:10px;animation:mtSpin 3s linear infinite}
+.mt-gear-2{bottom:10px;right:0;animation:mtSpin 4s linear infinite reverse;font-size:24px}
+@keyframes mtSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.mt-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:10px}
+.mt-subtitle{font-size:14px;color:#8a90a0;margin-bottom:25px}
+.mt-progress{width:200px;height:4px;background:#1a1d26;border-radius:4px;margin:0 auto 20px;overflow:hidden}
+.mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
+@keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+.mt-note{font-size:13px;color:#6b7280;margin-top:10px}
+</style>
 </head>
 <body>
-<div id="app">
-  <div id="loading" class="center"><div class="loading-dots"><span></span><span></span><span></span></div><p>ခဏစောင့်ပါ...</p></div>
-  <div id="maintenance" class="center hidden"><div class="big-icon">🛠️</div><h2>ခေတ္တပိတ်ထားပါသည်</h2><p class="hint">Admin မှ ပြန်ဖွင့်သည်အထိ စောင့်ပါ။</p></div>
 
-  <div id="login" class="hidden fade-in">
-    <div class="app-header">
-      <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
-      <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
-    </div>
-    <div class="card">
-      <h1>အကောင့်ဝင်ပါ</h1>
-      <label class="label">ဖုန်းနံပါတ်</label>
-      <input id="loginPhone" type="tel" placeholder="09xxxxxxxxx" />
-      <label class="label">စကားဝှက်</label>
-      <input id="loginPassword" type="password" placeholder="စကားဝှက်" />
-      <button id="loginBtn" class="primary full">🔓 အကောင့်ဝင်မယ်</button>
-      <button id="showRegisterBtn" class="ghost full" style="margin-top:8px">📝 အကောင့်အသစ် ဖွင့်မယ်</button>
-    </div>
-  </div>
-
-  <div id="register" class="hidden fade-in">
-    <div class="app-header">
-      <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
-      <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
-    </div>
-    <div class="card">
-      <h1>အကောင့်ဖွင့်ပါ</h1>
-      <label class="label">နာမည်</label>
-      <input id="nameInput" type="text" placeholder="သင့်နာမည်" />
-      <label class="label">ဖုန်းနံပါတ်</label>
-      <input id="phoneInput" type="tel" placeholder="09xxxxxxxxx" />
-      <label class="label">စကားဝှက်</label>
-      <input id="passwordInput" type="password" placeholder="4 လုံး+" />
-      <label class="label">စကားဝှက် အတည်ပြု</label>
-      <input id="passwordInput2" type="password" placeholder="ပြန်ထည့်ပါ" />
-      <button id="registerBtn" class="primary full">✅ အကောင့်ဖွင့်မယ်</button>
-      <button id="showLoginBtn" class="ghost full" style="margin-top:8px">🔓 အကောင့်ရှိပြီးသား ဝင်မယ်</button>
-    </div>
-  </div>
-
-  <div id="main" class="hidden">
-    <div class="theme-toggle-bar">
-      <button id="wishlistBtn" class="theme-btn" title="Wishlist">❤️<span id="wishBadge" class="badge hidden">0</span></button>
-      <button id="themeToggle" class="theme-btn" title="Theme">🌙</button>
-    </div>
-    <div class="app-header">
-      <img src="/images/logo.png" alt="Safe Zone" class="app-logo" />
-      <div class="app-tagline">SAFE ZONE GAME TOPUP</div>
-    </div>
-
-    <div id="bannerSlider" class="banner-slider">
-      <div class="banner-track" id="bannerTrack"></div>
-      <div class="banner-dots" id="bannerDots"></div>
-    </div>
-
-    <div class="card balance-card">
-      <div class="balance-label">💰 Wallet Balance</div>
-      <div class="balance-amount"><span id="balanceVal">0</span> <small>MMK</small></div>
-      <div class="row-btns">
-        <button id="depositBtn" class="ghost">➕ ငွေဖြည့်</button>
-        <button id="historyBtn" class="ghost">📜 မှတ်တမ်း</button>
-      </div>
-      <div class="row-btns" style="margin-top:8px">
-        <button id="chatBtn" class="ghost" style="position:relative">💬 Admin Chat <span id="chatBadge" style="display:none;background:#e74c3c;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px">0</span></button>
-        <button id="profileBtn" class="ghost">👤 အကောင့်</button>
-      </div>
-      <div class="hint" id="userLabel" style="margin-top:8px"></div>
-    </div>
-
-    <h2 class="section-title">🎮 ဂိမ်းများ</h2>
-    <div id="gamesGrid" class="games-grid"></div>
-  </div>
-
-  <div id="depositModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>💰 ငွေဖြည့်</h2>
-      <label class="label">ပမာဏ (MMK)</label>
-      <input id="depAmount" type="number" placeholder="5000" />
-      <div class="quick-amounts">
-        <button class="qa-btn" data-amt="1000">1K</button>
-        <button class="qa-btn" data-amt="5000">5K</button>
-        <button class="qa-btn" data-amt="10000">10K</button>
-        <button class="qa-btn" data-amt="20000">20K</button>
-        <button class="qa-btn" data-amt="50000">50K</button>
-        <button class="qa-btn" data-amt="100000">100K</button>
-      </div>
-      <label class="label">နည်းလမ်း</label>
-      <div class="pay-grid" id="payGrid">
-        <button class="pay-btn" data-method="KBZ">KBZ Pay</button>
-        <button class="pay-btn" data-method="WAVE">Wave Money</button>
-        <button class="pay-btn" data-method="UAB">UAB Pay</button>
-        <button class="pay-btn" data-method="AYA">AYA Pay</button>
-      </div>
-      <div id="payInfo" class="pay-info hidden"></div>
-      <label class="label">ပြေစာပုံ</label>
-      <input id="receiptInput" type="file" accept="image/*" />
-      <button id="submitDeposit" class="primary full">📤 Admin ထံပို့မယ်</button>
-    </div>
-  </div>
-
-  <div id="itemsModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2 id="itemsTitle">Items</h2>
-      <div class="search-bar">
-        <input id="itemSearch" type="text" placeholder="🔍 Item ရှာ..." />
-      </div>
-      <div id="itemsList" class="items-list"></div>
-    </div>
-  </div>
-
-  <div id="buyModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>🛒 အတည်ပြုပါ</h2>
-      <p id="buyItemName" class="buy-item"></p>
-      <p class="buy-price">💰 <span id="buyItemPrice"></span> Ks</p>
-      <div id="fieldGameId">
-        <label class="label" id="gameIdLabel">Game ID</label>
-        <input id="buyGameAccount" placeholder="Game ID ထည့်ပါ" />
-      </div>
-      <div id="fieldServerId" class="hidden">
-        <label class="label">Server ID</label>
-        <input id="buyServerId" placeholder="Server ID ထည့်ပါ" />
-      </div>
-      <div id="fieldNote" class="hidden">
-        <div class="pay-info"><b>📌 မှတ်ချက်</b><div style="margin-top:6px">ငွေဖြတ်ပြီးပါက Admin မှ သင့်အကောင့်ကို Telegram မှတစ်ဆင့် ပေးပို့ပါမည်။</div></div>
-      </div>
-      <button id="confirmBuy" class="primary full">✅ အတည်ပြု ဝယ်မယ်</button>
-    </div>
-  </div>
-
-  <div id="historyModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>📜 မှတ်တမ်း</h2>
-      <div id="historyList"></div>
-    </div>
-  </div>
-
-  <div id="trackModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>📍 Order Tracking</h2>
-      <div id="trackContent"></div>
-    </div>
-  </div>
-
-  <div id="wishlistModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>❤️ Wishlist</h2>
-      <div id="wishlistContent"></div>
-    </div>
-  </div>
-
-  <div id="profileModal" class="modal hidden">
-    <div class="modal-content fade-in-up">
-      <button class="modal-close" data-close>&times;</button>
-      <h2>👤 အကောင့်</h2>
-      <div id="profileInfo" style="margin-top:12px"></div>
-      <button id="logoutBtn" class="primary full" style="background:#e74c3c;margin-top:16px">🚪 ထွက်မယ်</button>
-    </div>
-  </div>
-
-  <div id="chatModal" class="modal hidden">
-    <div class="modal-content fade-in-up" style="height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
-      <div class="chat-header">
-        <div class="chat-header-left">
-          <div class="chat-avatar">🛡️</div>
-          <div>
-            <div class="chat-title">Admin Support</div>
-            <div class="chat-status">● Online</div>
-          </div>
-        </div>
-        <button class="modal-close" data-close style="position:static;font-size:26px;padding:0 8px">&times;</button>
-      </div>
-      <div id="chatMessages" class="chat-messages"></div>
-      <div class="chat-input-bar">
-        <input id="chatInput" placeholder="စာ ရိုက်ပါ..." />
-        <button id="chatSendBtn" class="chat-send">➤</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
+<div id="loading">
+  <div class="spinner"></div>
+  <p>ခဏစောင့်ပါ...</p>
 </div>
+
+<div id="login" class="hidden">
+  <div class="form-card">
+    <h1>🔐 Login</h1>
+    <p class="subtitle">Safe Zone Game Topup</p>
+    <input id="loginPhone" type="tel" placeholder="ဖုန်းနံပါတ်" />
+    <input id="loginPassword" type="password" placeholder="စကားဝှက်" />
+    <button id="loginBtn" class="btn-primary btn-full">🔓 Login</button>
+    <p class="switch-text">အကောင့်မရှိဘူးလား? <a id="showRegisterBtn">Register လုပ်ပါ</a></p>
+  </div>
+</div>
+
+<div id="register" class="hidden">
+  <div class="form-card">
+    <h1>📝 Register</h1>
+    <p class="subtitle">အကောင့်အသစ် ဖွင့်ပါ</p>
+    <input id="nameInput" type="text" placeholder="နာမည်" />
+    <input id="phoneInput" type="tel" placeholder="ဖုန်းနံပါတ်" />
+    <input id="passwordInput" type="password" placeholder="စကားဝှက် (4 လုံး+)" />
+    <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ရိုက်ပါ" />
+    <button id="registerBtn" class="btn-success btn-full">✨ Register</button>
+    <p class="switch-text">အကောင့်ရှိပြီးသားလား? <a id="showLoginBtn">Login ဝင်ပါ</a></p>
+  </div>
+</div>
+
+<div id="main" class="hidden">
+  <header class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="user-name" id="userLabel">-</div>
+        <div class="user-phone">Safe Zone Game Topup</div>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" id="wishlistBtn">❤️<span class="badge hidden" id="wishBadge">0</span></button>
+        <button class="header-btn" id="profileBtn">👤</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="balance-card">
+    <div class="label">💰 လက်ကျန်ငွေ</div>
+    <div class="amount"><span id="balanceVal">0</span> <span class="currency">Ks</span></div>
+  </div>
+
+  <div class="banner-slider" id="bannerSlider">
+    <div class="banner-track" id="bannerTrack"></div>
+    <div class="banner-dots" id="bannerDots"></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-card points" onclick="openPointsModal()">
+      <div class="dc-icon">⭐</div>
+      <div class="dc-title">Points</div>
+      <div class="dc-value" id="dashPoints">0</div>
+    </div>
+    <div class="dashboard-card referral" onclick="openReferralModal()">
+      <div class="dc-icon">🎁</div>
+      <div class="dc-title">Referral</div>
+      <div class="dc-value" id="dashReferral">0</div>
+    </div>
+    <div class="dashboard-card spin" onclick="openSpinModal()">
+      <div class="dc-icon">🎰</div>
+      <div class="dc-title">Lucky Spin</div>
+      <div class="dc-value" id="dashSpin">Play</div>
+    </div>
+    <div class="dashboard-card promo" onclick="openPromoModal()">
+      <div class="dc-icon">🎟️</div>
+      <div class="dc-title">Promo Code</div>
+      <div class="dc-value">Redeem</div>
+    </div>
+  </div>
+
+  <div class="section-title">🎮 ဂိမ်းများ</div>
+  <div class="games-grid" id="gamesGrid"></div>
+</div>
+
+<div id="bottomNav" class="bottom-nav hidden">
+  <button class="nav-btn" id="depositBtn"><span class="ico">📥</span>Deposit</button>
+  <button class="nav-btn" id="historyBtn"><span class="ico">📜</span>History</button>
+  <button class="nav-btn" id="chatBtn"><span class="ico">💬</span>Chat<span class="nav-badge hidden" id="chatBadge">0</span></button>
+  <button class="nav-btn" id="profileBtn2"><span class="ico">👤</span>Profile</button>
+</div>
+
+<!-- ITEMS MODAL -->
+<div id="itemsModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="itemsTitle">Items</h2>
+    <input id="itemSearch" type="text" placeholder="🔍 Item ရှာပါ..." />
+    <div id="itemsList"></div>
+  </div>
+</div>
+
+<!-- BUY MODAL -->
+<div id="buyModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>🛒 ဝယ်ယူမည်</h2>
+    <div class="item-row" style="margin-bottom:14px">
+      <div id="buyItemName">-</div>
+      <div class="price"><span id="buyItemPrice">0</span> Ks</div>
+    </div>
+    <div id="fieldGameId">
+      <label id="gameIdLabel">Game ID</label>
+      <input id="buyGameAccount" type="text" placeholder="Game ID ထည့်ပါ" />
+    </div>
+    <div id="fieldServerId" class="hidden">
+      <label>Server ID</label>
+      <input id="buyServerId" type="text" placeholder="Server ID ထည့်ပါ" />
+    </div>
+    <div id="fieldNote" class="hidden">
+      <p class="hint" style="text-align:center;padding:12px">📌 Admin ကို ဆက်သွယ်ပါ</p>
+    </div>
+    <button id="confirmBuy" class="btn-success btn-full" style="margin-top:12px">✅ Confirm</button>
+  </div>
+</div>
+
+<!-- DEPOSIT MODAL -->
+<div id="depositModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>📥 ငွေဖြည့်</h2>
+    <label>ပမာဏ (Ks)</label>
+    <input id="depAmount" type="number" placeholder="5000" />
+    <div style="margin-bottom:12px">
+      <button class="qa-btn" data-amt="1000">1,000</button>
+      <button class="qa-btn" data-amt="5000">5,000</button>
+      <button class="qa-btn" data-amt="10000">10,000</button>
+      <button class="qa-btn" data-amt="50000">50,000</button>
+    </div>
+    <label>နည်းလမ်း</label>
+    <div class="pay-grid">
+      <button class="pay-btn" data-method="KBZ">KBZ</button>
+      <button class="pay-btn" data-method="WAVE">Wave</button>
+      <button class="pay-btn" data-method="UAB">UAB</button>
+      <button class="pay-btn" data-method="AYA">AYA</button>
+    </div>
+    <div id="payInfo" class="pay-info hidden"></div>
+    <label style="margin-top:12px">ပြေစာပုံ</label>
+    <input id="receiptInput" type="file" accept="image/*" />
+    <button id="submitDeposit" class="btn-success btn-full" style="margin-top:12px">📤 ပို့မည်</button>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div id="historyModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>📜 မှတ်တမ်း</h2>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- TRACK MODAL -->
+<div id="trackModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>📍 Order Tracking</h2>
+    <div id="trackContent"></div>
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div id="chatModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>💬 Chat with Admin</h2>
+    <div id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input id="chatInput" type="text" placeholder="စာသား ရိုက်ပါ..." />
+      <button id="chatSendBtn">📨</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>👤 Profile</h2>
+    <div id="profileInfo"></div>
+    <button id="logoutBtn" class="btn-primary btn-full" style="margin-top:14px;background:#e74c3c">🚪 Logout</button>
+  </div>
+</div>
+
+<!-- WISHLIST MODAL -->
+<div id="wishlistModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>❤️ Wishlist</h2>
+    <div id="wishlistContent"></div>
+  </div>
+</div>
+
+<!-- POINTS MODAL -->
+<div id="pointsModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>⭐ Loyalty Points</h2>
+    <div class="points-balance-big" id="pointsBig">0</div>
+    <p style="text-align:center;color:#8a90a0;font-size:13px;margin-bottom:12px">1 Point = <span id="pointsRate">10</span> Ks</p>
+    <label>Redeem Points (အနည်းဆုံး <span id="pointsMin">100</span>)</label>
+    <input type="number" id="pointsRedeemInput" placeholder="100" />
+    <button class="btn-primary btn-full" style="background:#f39c12" onclick="redeemPoints()">💸 Redeem</button>
+    <h3 style="margin:16px 0 8px;font-size:14px">📜 Recent History</h3>
+    <div id="pointsHistoryBox" style="max-height:200px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- REFERRAL MODAL -->
+<div id="referralModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>🎁 Referral</h2>
+    <div class="referral-box">
+      <h3>📋 သင့် Referral Code</h3>
+      <div class="referral-code-display" id="refCodeDisplay" onclick="copyRefCode()">------</div>
+      <p style="font-size:12px;opacity:0.9">Code ကို သူငယ်ချင်းတွေကို မျှဝေပါ။ သူတို့ Register လုပ်ရင် နှစ်ယောက်လုံး Bonus ရပါမယ်။</p>
+      <div class="referral-stats">
+        <div class="referral-stat"><b id="refCount">0</b><span>ဖိတ်ခေါ်ပြီး</span></div>
+        <div class="referral-stat"><b id="refEarned">0</b><span>ရရှိပြီး (Ks)</span></div>
+      </div>
+      <button class="referral-share" onclick="shareRefCode()">📤 Share to Telegram</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPIN MODAL -->
+<div id="spinModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>🎰 Lucky Spin</h2>
+    <div class="spin-container">
+      <div class="spin-wheel-wrapper">
+        <div class="spin-pointer"></div>
+        <div class="spin-wheel" id="spinWheel"></div>
+      </div>
+      <p style="color:#8a90a0;font-size:13px;margin-bottom:12px">တစ်ရက် <span id="spinLimit">1</span> ခါ လှည့်လို့ရပါသည်</p>
+      <button class="spin-btn" id="spinBtn" onclick="playSpin()">🎰 SPIN လှည့်မယ်</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROMO MODAL -->
+<div id="promoModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>🎟️ Promo Code</h2>
+    <p style="color:#8a90a0;font-size:13px;margin-bottom:14px">Promo Code ရိုက်ထည့်ပြီး Bonus ငွေ ရယူပါ</p>
+    <div class="promo-input-group">
+      <input id="promoInput" placeholder="WELCOME100" />
+      <button onclick="redeemPromo()">Redeem</button>
+    </div>
+    <div id="promoResult" style="text-align:center;font-size:14px;font-weight:600;margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>
 </body>
