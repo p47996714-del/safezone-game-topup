@@ -19,8 +19,8 @@ function toast(msg, type = '') {
   if (type === 'success') notifySound('success');
   else if (type === 'error') notifySound('error');
 }
-function show(id) { $(id).classList.remove('hidden'); }
-function hide(id) { $(id).classList.add('hidden'); }
+function show(id) { const el = $(id); if (el) el.classList.remove('hidden'); }
+function hide(id) { const el = $(id); if (el) el.classList.add('hidden'); }
 
 // ============ THEME ============
 function applyTheme(theme) {
@@ -71,9 +71,10 @@ function toggleWishlist(item) {
   else { STATE.wishlist.push({ id: item.id, name: item.name, price: item.price, game_id: item.game_id }); toast('Wishlist ထဲ ထည့်ပြီ ❤️', 'success'); }
   saveWishlist();
 }
-$('wishlistBtn').addEventListener('click', () => { renderWishlist(); show('wishlistModal'); });
+if ($('wishlistBtn')) $('wishlistBtn').addEventListener('click', () => { renderWishlist(); show('wishlistModal'); });
 function renderWishlist() {
   const box = $('wishlistContent');
+  if (!box) return;
   if (!STATE.wishlist.length) { box.innerHTML = '<p class="hint" style="text-align:center;padding:20px">Wishlist အလွတ်ဖြစ်နေတယ်။ ❤️ နှိပ်ပြီး ထည့်ပါ။</p>'; return; }
   box.innerHTML = STATE.wishlist.map(w => `
     <div class="item-row" style="margin-bottom:8px">
@@ -87,7 +88,7 @@ function renderWishlist() {
 async function init() {
   try {
     const cfg = await (await fetch('/api/config')).json();
-    if (!cfg.enabled) { hide('loading'); show('maintenance'); return; }
+    if (!cfg.enabled) { hide('loading'); showMaintenanceScreen(); return; }
     STATE.payments = cfg.payments || {};
   } catch(e) { hide('loading'); toast('Server မချိတ်နိုင်ပါ', 'error'); return; }
   const me = await api('/api/me', { method: 'POST', body: '{}' });
@@ -104,7 +105,7 @@ async function init() {
 }
 
 // ============ REGISTER / LOGIN ============
-$('registerBtn').addEventListener('click', async () => {
+if ($('registerBtn')) $('registerBtn').addEventListener('click', async () => {
   const name = $('nameInput').value.trim();
   const phone = $('phoneInput').value.trim();
   const password = $('passwordInput').value;
@@ -123,7 +124,7 @@ $('registerBtn').addEventListener('click', async () => {
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
-$('loginBtn').addEventListener('click', async () => {
+if ($('loginBtn')) $('loginBtn').addEventListener('click', async () => {
   const phone = $('loginPhone').value.trim();
   const password = $('loginPassword').value;
   if (!phone || !password) return toast('ဖုန်းနှင့် စကားဝှက် ထည့်ပါ', 'error');
@@ -138,11 +139,11 @@ $('loginBtn').addEventListener('click', async () => {
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
-$('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
-$('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
+if ($('showLoginBtn')) $('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
+if ($('showRegisterBtn')) $('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
 
 // ============ PROFILE / LOGOUT ============
-$('profileBtn').addEventListener('click', () => {
+if ($('profileBtn')) $('profileBtn').addEventListener('click', () => {
   const u = STATE.user; if (!u) return;
   $('profileInfo').innerHTML = `
     <div class="item-row" style="margin-bottom:8px"><div>📛 နာမည်</div><div class="price">${u.name || u.first_name || '-'}</div></div>
@@ -153,7 +154,7 @@ $('profileBtn').addEventListener('click', () => {
   show('profileModal');
 });
 
-$('logoutBtn').addEventListener('click', async () => {
+if ($('logoutBtn')) $('logoutBtn').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST', body: '{}' });
   STATE.user = null;
   hide('profileModal'); hide('main');
@@ -163,8 +164,8 @@ $('logoutBtn').addEventListener('click', async () => {
 });
 
 function renderMain() {
-  $('balanceVal').textContent = Number(STATE.user.balance || 0).toLocaleString();
-  $('userLabel').textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
+  const bv = $('balanceVal'); if (bv) bv.textContent = Number(STATE.user.balance || 0).toLocaleString();
+  const ul = $('userLabel'); if (ul) ul.textContent = `${STATE.user.name || STATE.user.first_name || ''} • ${STATE.user.phone || ''}`;
 }
 async function refreshMe() {
   const me = await api('/api/me', { method: 'POST', body: '{}' });
@@ -179,6 +180,7 @@ async function loadBanners() {
   if (!STATE.banners.length) { hide('bannerSlider'); return; }
   const track = $('bannerTrack');
   const dots = $('bannerDots');
+  if (!track || !dots) return;
   track.innerHTML = '';
   dots.innerHTML = '';
   STATE.banners.forEach((b, i) => {
@@ -203,6 +205,7 @@ async function loadBanners() {
 // ============ GAMES ============
 async function loadGames() {
   const grid = $('gamesGrid');
+  if (!grid) return;
   grid.innerHTML = '';
   for (let i = 0; i < 4; i++) {
     const sk = document.createElement('div');
@@ -219,6 +222,7 @@ async function loadGames() {
     div.addEventListener('click', () => openItems(g));
     grid.appendChild(div);
   });
+  animateCards(grid);
 }
 
 // ============ ITEMS ============
@@ -268,8 +272,9 @@ function renderItems(query) {
     items.forEach(it => grid.appendChild(makeItemCard(it)));
     box.appendChild(grid);
   }
+  animateCards(box);
 }
-$('itemSearch').addEventListener('input', (e) => renderItems(e.target.value));
+if ($('itemSearch')) $('itemSearch').addEventListener('input', (e) => renderItems(e.target.value));
 
 function makeItemCard(it) {
   const card = document.createElement('div');
@@ -307,7 +312,7 @@ function openBuy(item) {
   show('buyModal');
 }
 
-$('confirmBuy').addEventListener('click', async () => {
+if ($('confirmBuy')) $('confirmBuy').addEventListener('click', async () => {
   const item = STATE.selectedItem;
   const isAppPremium = item.game_id === 'app-premium';
   const needsServer = (item.game_id === 'mlbb' || item.game_id === 'magic-chess');
@@ -323,14 +328,15 @@ $('confirmBuy').addEventListener('click', async () => {
   const res = await api('/api/purchase', { method: 'POST', body: JSON.stringify({ item_id: item.id, game_account: account, server_id: serverId }) });
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    showConfetti();
     toast('ဝယ်ယူမှု တောင်းဆိုပြီးပါပြီ ✅', 'success');
     hide('buyModal');
     await refreshMe();
-  } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  } else { shakeElement($('buyModal')); toast(res.error || 'မအောင်မြင်ပါ', 'error'); }
 });
 
 // ============ DEPOSIT ============
-$('depositBtn').addEventListener('click', () => {
+if ($('depositBtn')) $('depositBtn').addEventListener('click', () => {
   $('depAmount').value = '';
   $('receiptInput').value = '';
   STATE.selectedMethod = null;
@@ -351,7 +357,7 @@ document.querySelectorAll('.pay-btn').forEach(btn => {
     show('payInfo');
   });
 });
-$('submitDeposit').addEventListener('click', async () => {
+if ($('submitDeposit')) $('submitDeposit').addEventListener('click', async () => {
   const amount = Number($('depAmount').value);
   const file = $('receiptInput').files[0];
   if (!amount || amount < 500) return toast('အနည်းဆုံး 500 MMK', 'error');
@@ -364,6 +370,7 @@ $('submitDeposit').addEventListener('click', async () => {
   const res = await fetch('/api/deposit', { method: 'POST', headers: { 'X-Init-Data': initData }, body: fd }).then(r => r.json());
   if (res.ok) {
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    showConfetti();
     toast('Admin ထံ ပို့ပြီးပါပြီ ⏳', 'success');
     hide('depositModal');
     await refreshMe();
@@ -371,7 +378,7 @@ $('submitDeposit').addEventListener('click', async () => {
 });
 
 // ============ HISTORY + TRACKING ============
-$('historyBtn').addEventListener('click', async () => {
+if ($('historyBtn')) $('historyBtn').addEventListener('click', async () => {
   show('historyModal');
   const box = $('historyList');
   box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
@@ -401,8 +408,12 @@ window.openTrack = async (orderId) => {
   if (!res.ok) { box.innerHTML = '<p class="hint" style="text-align:center">Order မတွေ့ပါ။</p>'; return; }
   const { order, timeline } = res;
   let html = `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;font-size:15px">#${order.id} ${order.item_name}</div><div class="hint" style="margin-top:4px">${order.price} Ks • ${order.game_id}</div></div>`;
-  timeline.forEach(t => {
-    html += `<div class="track-step ${t.done ? 'done' : ''}">
+  timeline.forEach((t, i) => {
+    setTimeout(() => {
+      const step = document.querySelector(`.track-step[data-i="${i}"]`);
+      if (step) step.classList.add('done');
+    }, i * 300);
+    html += `<div class="track-step ${t.done ? 'done' : ''}" data-i="${i}">
       <div class="track-dot">${t.done ? '✓' : '○'}</div>
       <div class="track-info">
         <div class="track-label">${t.label}</div>
@@ -413,7 +424,7 @@ window.openTrack = async (orderId) => {
 };
 
 // ============ CHAT ============
-$('chatBtn').addEventListener('click', async () => {
+if ($('chatBtn')) $('chatBtn').addEventListener('click', async () => {
   CHAT.open = true;
   show('chatModal');
   $('chatMessages').innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
@@ -458,8 +469,8 @@ async function loadChat(scrollBottom) {
   if (scrollBottom || wasAtBottom) box.scrollTop = box.scrollHeight;
 }
 
-$('chatSendBtn').addEventListener('click', sendChat);
-$('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+if ($('chatSendBtn')) $('chatSendBtn').addEventListener('click', sendChat);
+if ($('chatInput')) $('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
 async function sendChat() {
   const text = $('chatInput').value.trim();
   if (!text) return;
@@ -480,8 +491,10 @@ async function checkUnread() {
   if (CHAT.open || !STATE.user) return;
   try {
     const res = await api('/api/chat/unread', { method: 'POST', body: '{}' });
-    if (res.count > 0) { $('chatBadge').textContent = res.count; $('chatBadge').style.display = 'inline-block'; }
-    else { $('chatBadge').style.display = 'none'; }
+    const badge = $('chatBadge');
+    if (!badge) return;
+    if (res.count > 0) { badge.textContent = res.count; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
   } catch(e) {}
 }
 setInterval(checkUnread, 15000);
@@ -520,5 +533,136 @@ document.querySelectorAll('.modal').forEach(m => {
   });
 });
 
+// ===============================
+// MAINTENANCE SCREEN (လှလှပပ)
+// ===============================
+function showMaintenanceScreen() {
+  if (document.getElementById('maintenanceOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'maintenanceOverlay';
+  overlay.innerHTML = `
+    <div class="mt-bg-blob mt-blob-1"></div>
+    <div class="mt-bg-blob mt-blob-2"></div>
+    <div class="mt-content">
+      <div class="mt-icon">
+        <div class="mt-gear mt-gear-1">⚙️</div>
+        <div class="mt-gear mt-gear-2">⚙️</div>
+        <div class="mt-center">🛠️</div>
+      </div>
+      <h1 class="mt-title">ခဏစောင့်ပါ</h1>
+      <p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p>
+      <div class="mt-progress"><div class="mt-progress-bar"></div></div>
+      <p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+  }
+}
+
+// ===============================
+// ANIMATION FUNCTIONS
+// ===============================
+function showToast(message, type = 'info', duration = 2500) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toastEl = document.createElement('div');
+  toastEl.className = `toast ${type}`;
+  toastEl.textContent = message;
+  document.body.appendChild(toastEl);
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.notificationOccurred(type === 'error' ? 'error' : 'success');
+  }
+  setTimeout(() => {
+    toastEl.style.transition = 'opacity 0.3s, transform 0.3s';
+    toastEl.style.opacity = '0';
+    toastEl.style.transform = 'translate(-50%, 20px)';
+    setTimeout(() => toastEl.remove(), 300);
+  }, duration);
+}
+
+function animateNumber(element, targetValue, duration = 1000) {
+  if (!element) return;
+  const startTime = performance.now();
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(targetValue * easeProgress);
+    element.textContent = current.toLocaleString() + ' Ks';
+    if (progress < 1) requestAnimationFrame(update);
+    else element.textContent = targetValue.toLocaleString() + ' Ks';
+  }
+  requestAnimationFrame(update);
+}
+
+function showSkeleton(container, count = 3) {
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton';
+    skeleton.style.cssText = 'height:80px;margin-bottom:10px;';
+    container.appendChild(skeleton);
+  }
+}
+
+function animateCards(container) {
+  if (!container) return;
+  const cards = container.querySelectorAll('.card, .game-card, .item-card');
+  cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, index * 50);
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button, .btn');
+  if (!btn) return;
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+  }
+  const ripple = document.createElement('span');
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.cssText = `position:absolute;width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;background:rgba(255,255,255,0.4);border-radius:50%;transform:scale(0);animation:rippleAnim 0.6s ease-out;pointer-events:none;`;
+  if (getComputedStyle(btn).position === 'static') {
+    btn.style.position = 'relative';
+    btn.style.overflow = 'hidden';
+  }
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
+});
+
+function showConfetti() {
+  const colors = ['#2ea6ff', '#27ae60', '#f39c12', '#e74c3c', '#6a5cff'];
+  for (let i = 0; i < 30; i++) {
+    const confetti = document.createElement('div');
+    confetti.style.cssText = `position:fixed;top:-10px;left:${Math.random() * 100}vw;width:8px;height:8px;background:${colors[Math.floor(Math.random() * colors.length)]};border-radius:50%;z-index:99998;pointer-events:none;animation:confettiFall ${1.5 + Math.random()}s ease-in forwards;`;
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 3000);
+  }
+}
+
+function shakeElement(element) {
+  if (!element) return;
+  element.classList.add('shake');
+  setTimeout(() => element.classList.remove('shake'), 400);
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.add('fade-in');
+});
+
+// ============ START ============
 updateWishBadge();
 init();

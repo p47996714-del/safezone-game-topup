@@ -133,3 +133,102 @@ body[data-theme="light"] .skeleton{background:linear-gradient(90deg,#e5e7eb 25%,
 .track-info{flex:1;padding-top:4px}
 .track-label{font-weight:600;font-size:14px}
 .track-time{font-size:11px;color:var(--hint);margin-top:2px}
+
+/* =============================== */
+/* ANIMATION PACK */
+/* =============================== */
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes slideInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+.slide-in-up { animation: slideInUp 0.5s ease-out; }
+@keyframes scaleIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+.scale-in { animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.pulse { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, #1a1d26 25%, #2a2d36 50%, #1a1d26 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; color: transparent !important; }
+@keyframes toastSlide { 0% { opacity: 0; transform: translate(-50%, 20px); } 100% { opacity: 1; transform: translate(-50%, 0); } }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 14px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; color: #fff; z-index: 99999; animation: toastSlide 0.3s ease-out; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 90%; text-align: center; }
+.toast.success { background: #27ae60; }
+.toast.error { background: #e74c3c; }
+.toast.info { background: #2ea6ff; }
+@keyframes rippleAnim { to { transform: scale(2.5); opacity: 0; } }
+.ripple-btn { position: relative; overflow: hidden; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.bounce { animation: bounce 0.6s ease; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.shake { animation: shake 0.4s ease; }
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.rotating { animation: rotate 1s linear infinite; }
+@keyframes confettiFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+.card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card-hover:active { transform: scale(0.97); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+button:active, .btn:active { transform: scale(0.96); transition: transform 0.1s ease; }
+
+/* =============================== */
+/* ANIMATION PACK */
+/* =============================== */
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes slideInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+.slide-in-up { animation: slideInUp 0.5s ease-out; }
+@keyframes scaleIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+.scale-in { animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.pulse { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, #1a1d26 25%, #2a2d36 50%, #1a1d26 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; color: transparent !important; }
+@keyframes toastSlide { 0% { opacity: 0; transform: translate(-50%, 20px); } 100% { opacity: 1; transform: translate(-50%, 0); } }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 14px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; color: #fff; z-index: 99999; animation: toastSlide 0.3s ease-out; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 90%; text-align: center; }
+.toast.success { background: #27ae60; }
+.toast.error { background: #e74c3c; }
+.toast.info { background: #2ea6ff; }
+@keyframes rippleAnim { to { transform: scale(2.5); opacity: 0; } }
+.ripple-btn { position: relative; overflow: hidden; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.bounce { animation: bounce 0.6s ease; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.shake { animation: shake 0.4s ease; }
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.rotating { animation: rotate 1s linear infinite; }
+@keyframes confettiFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+.card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card-hover:active { transform: scale(0.97); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+button:active, .btn:active { transform: scale(0.96); transition: transform 0.1s ease; }
+
+/* =============================== */
+/* MAINTENANCE SCREEN — MODERN */
+/* =============================== */
+#maintenanceOverlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(160deg, #0a0c11 0%, #141821 50%, #0a0c11 100%);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: mtFadeIn 0.5s ease-out;
+}
+@keyframes mtFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.mt-bg-blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: mtBlob 8s ease-in-out infinite; }
+.mt-blob-1 { width: 300px; height: 300px; background: #2ea6ff; top: -100px; left: -100px; }
+.mt-blob-2 { width: 250px; height: 250px; background: #e74c3c; bottom: -80px; right: -80px; animation-delay: 2s; }
+@keyframes mtBlob { 0%, 100% { transform: scale(1) translate(0, 0); } 50% { transform: scale(1.2) translate(20px, -20px); } }
+.mt-content { position: relative; z-index: 2; text-align: center; padding: 30px; max-width: 400px; animation: mtContentIn 0.6s ease-out; }
+@keyframes mtContentIn { from { opacity: 0; transform: translateY(30px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.mt-icon { position: relative; width: 140px; height: 140px; margin: 0 auto 30px; }
+.mt-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; filter: drop-shadow(0 8px 20px rgba(46, 166, 255, 0.5)); animation: mtPulse 2s ease-in-out infinite; }
+@keyframes mtPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
+.mt-gear { position: absolute; font-size: 30px; opacity: 0.6; }
+.mt-gear-1 { top: 0; left: 10px; animation: mtSpin 3s linear infinite; }
+.mt-gear-2 { bottom: 10px; right: 0; animation: mtSpin 4s linear infinite reverse; font-size: 24px; }
+@keyframes mtSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.mt-title { font-size: 26px; font-weight: 800; color: #ffffff; margin-bottom: 10px; background: linear-gradient(135deg, #2ea6ff, #6a5cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.mt-subtitle { font-size: 14px; color: #8a90a0; margin-bottom: 25px; line-height: 1.5; }
+.mt-progress { width: 200px; height: 4px; background: #1a1d26; border-radius: 4px; margin: 0 auto 20px; overflow: hidden; }
+.mt-progress-bar { height: 100%; width: 40%; background: linear-gradient(90deg, #2ea6ff, #6a5cff); border-radius: 4px; animation: mtProgress 2s ease-in-out infinite; }
+@keyframes mtProgress { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+.mt-note { font-size: 13px; color: #6b7280; margin-top: 10px; }
