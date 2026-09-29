@@ -532,7 +532,7 @@ async function loadSettings() {
       <h3>🎰 Lucky Spin</h3>
       <div class="setting-row"><label>Enable Lucky Spin</label><div class="toggle ${s.spin_enabled === '1' ? 'on' : ''}" data-key="spin_enabled" onclick="toggleSetting(this)"></div></div>
       <div class="setting-row"><label>Spin တစ်ခါ ကုန်ကျငွေ (Ks, 0 = Free)</label><input type="number" data-key="spin_cost" value="${s.spin_cost || '0'}" /></div>
-      <div class="setting-row"><label>တစ်ရက် Spin အရေအတွက်</label><input type="number" data-key="spin_daily_limit" value="${s.spin_daily_limit || '1'}" /></div>
+      <div class="setting-row"><label>ဝယ်တိုင်း Spin ရမည့် အရေအတွက်</label><input type="number" data-key="spin_per_purchase" value="${s.spin_per_purchase || '1'}" /></div>
       <div class="setting-row" style="flex-direction:column;align-items:flex-start"><label>Rewards (JSON array)</label><input type="text" data-key="spin_rewards" value='${s.spin_rewards || "[100,200,300,500,1000]"}' style="width:100%" /></div>
     </div>
     <div class="setting-group">
