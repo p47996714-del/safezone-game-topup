@@ -942,3 +942,167 @@ setTimeout(async function() {
     }
   } catch(e) {}
 }, 2000);
+
+// ==========================================
+// SPIN WHEEL WITH VISIBLE REWARDS
+// ==========================================
+window.openSpinModal = async function() {
+  if (typeof FEATURES !== 'undefined' && !FEATURES.spin) {
+    return toast('Lucky Spin ပိတ်ထားပါသည်', 'error');
+  }
+  show('spinModal');
+  try {
+    const res = await api('/api/spin/info', { method: 'POST', body: '{}' });
+    if (!res.ok) {
+      toast(res.error || 'Spin မဖွင့်ထားပါ', 'error');
+      return;
+    }
+
+    const rewards = res.rewards || [100, 200, 300, 500, 1000, 2000, 5000];
+    renderSpinWheel(rewards);
+
+    // Rewards Info Box
+    const info = document.getElementById('spinRewardsInfo');
+    if (info) {
+      info.innerHTML = '🎁 <b>ရနိုင်တဲ့ ဆုများ:</b> ' + rewards.map(r => r >= 1000 ? (r / 1000) + 'K' : r).join(' • ');
+    }
+
+    const btn = document.getElementById('spinBtn');
+    const limitEl = document.getElementById('spinLimit');
+    if (limitEl) limitEl.textContent = res.limit || 1;
+    if (btn) {
+      if (!res.canSpin) {
+        btn.disabled = true;
+        btn.textContent = '✅ ဒီနေ့ လှည့်ပြီး (' + res.todayCount + '/' + res.limit + ')';
+      } else {
+        btn.disabled = false;
+        btn.textContent = '🎰 SPIN လှည့်မယ်';
+      }
+    }
+  } catch(e) { toast('Server Error', 'error'); }
+};
+
+function renderSpinWheel(rewards) {
+  const wheel = document.getElementById('spinWheel');
+  if (!wheel) return;
+
+  // Clear old segments (keep center)
+  wheel.querySelectorAll('.spin-segment').forEach(s => s.remove());
+
+  const colors = ['#e74c3c', '#f39c12', '#27ae60', '#2ea6ff', '#6a5cff', '#e91e63', '#ff9800', '#00bcd4'];
+  const count = rewards.length;
+  const anglePer = 360 / count;
+
+  // Background — Conic Gradient
+  let conicParts = [];
+  for (let i = 0; i < count; i++) {
+    const start = i * anglePer;
+    const end = (i + 1) * anglePer;
+    conicParts.push(colors[i % colors.length] + ' ' + start + 'deg ' + end + 'deg');
+  }
+  wheel.style.background = 'conic-gradient(' + conicParts.join(',') + ')';
+
+  // Labels — ဆုပမာဏတွေ ထည့်
+  for (let i = 0; i < count; i++) {
+    const midAngle = (i * anglePer) + (anglePer / 2);
+    const rotation = midAngle - 90; // Top ကနေ စတဲ့အတွက်
+
+    const seg = document.createElement('div');
+    seg.className = 'spin-segment';
+    seg.style.transform = 'rotate(' + rotation + 'deg)';
+
+    const reward = rewards[i];
+    let text;
+    if (reward >= 1000000) text = (reward / 1000000) + 'M';
+    else if (reward >= 1000) text = (reward / 1000) + 'K';
+    else text = String(reward);
+
+    const label = document.createElement('div');
+    label.className = 'seg-label';
+    label.textContent = text;
+
+    seg.appendChild(label);
+    wheel.appendChild(seg);
+  }
+}
+
+window.playSpin = async function() {
+  const btn = document.getElementById('spinBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '🎰 လှည့်နေသည်...';
+  try {
+    const res = await api('/api/spin/play', { method: 'POST', body: '{}' });
+    if (!res.ok) {
+      toast(res.error || 'မအောင်မြင်ပါ', 'error');
+      btn.disabled = false;
+      btn.textContent = '🎰 SPIN လှည့်မယ်';
+      return;
+    }
+    const wheel = document.getElementById('spinWheel');
+    if (wheel) {
+      const spinDeg = 1800 + Math.floor(Math.random() * 360);
+      wheel.style.transform = 'rotate(' + spinDeg + 'deg)';
+    }
+    try { tg.HapticFeedback.impactOccurred('heavy'); } catch(e) {}
+    setTimeout(async function() {
+      toast('🎉 +' + Number(res.reward).toLocaleString() + ' Ks!', 'success');
+      try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+      if (typeof refreshMe === 'function') await refreshMe();
+      if (typeof showConfetti === 'function') showConfetti();
+      if (wheel) {
+        wheel.style.transition = 'none';
+        wheel.style.transform = 'rotate(0deg)';
+        setTimeout(function() { wheel.style.transition = 'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)'; }, 100);
+      }
+      setTimeout(function() { window.openSpinModal(); }, 300);
+    }, 4200);
+  } catch(e) {
+    toast('Server Error', 'error');
+    btn.disabled = false;
+    btn.textContent = '🎰 SPIN လှည့်မယ်';
+  }
+};
+
+window.openPromoModal = function() {
+  show('promoModal');
+  const inp = document.getElementById('promoInput');
+  const res = document.getElementById('promoResult');
+  if (inp) inp.value = '';
+  if (res) res.innerHTML = '';
+};
+
+window.redeemPromo = async function() {
+  const inp = document.getElementById('promoInput');
+  if (!inp) return;
+  const code = inp.value.trim();
+  if (!code) return toast('Code ထည့်ပါ', 'error');
+  try {
+    const res = await api('/api/promo/redeem', { method: 'POST', body: JSON.stringify({ code: code }) });
+    const box = document.getElementById('promoResult');
+    if (res.ok) {
+      if (box) box.innerHTML = '<span style="color:#27ae60">✅ +' + Number(res.bonus).toLocaleString() + ' Ks</span>';
+      toast('🎉 +' + Number(res.bonus).toLocaleString() + ' Ks!', 'success');
+      if (typeof refreshMe === 'function') await refreshMe();
+      if (typeof showConfetti === 'function') showConfetti();
+    } else {
+      if (box) box.innerHTML = '<span style="color:#e74c3c">❌ ' + res.error + '</span>';
+      toast(res.error || 'မအောင်မြင်ပါ', 'error');
+    }
+  } catch(e) { toast('Server Error', 'error'); }
+};
+
+// Feature Status — Dashboard မှာ ပြ/ဖျောက်
+setTimeout(async function() {
+  try {
+    const cfg = await (await fetch('/api/config')).json();
+    if (cfg && cfg.features) {
+      const spinCard = document.querySelector('.dashboard-card.spin');
+      if (spinCard) spinCard.style.display = cfg.features.spin ? 'block' : 'none';
+      const refCard = document.querySelector('.dashboard-card.referral');
+      if (refCard) refCard.style.display = cfg.features.referral ? 'block' : 'none';
+      const ptCard = document.querySelector('.dashboard-card.points');
+      if (ptCard) ptCard.style.display = cfg.features.loyalty ? 'block' : 'none';
+    }
+  } catch(e) {}
+}, 2500);
