@@ -43,11 +43,11 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 LOG.ok(`Storage: ${USE_DISK ? '/data (Persistent)' : 'Local (Ephemeral)'}`);
 
 function defaultDB() {
-  return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], banners: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1 } };
+  return { users: [], games: [], items: [], deposits: [], orders: [], transactions: [], logs: [], messages: [], banners: [], promoCodes: [], settings: {}, _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1, banners: 1, promoCodes: 1 } };
 }
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) return defaultDB();
-  try { const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); if (!d.messages) d.messages = []; if (!d.banners) d.banners = []; if (!d._seq.messages) d._seq.messages = 1; return d; }
+  try { const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); if (!d.messages) d.messages = []; if (!d.banners) d.banners = []; if (!d.promoCodes) d.promoCodes = []; if (!d._seq.messages) d._seq.messages = 1; if (!d._seq.banners) d._seq.banners = 1; if (!d._seq.promoCodes) d._seq.promoCodes = 1; return d; }
   catch { return defaultDB(); }
 }
 let dbData = loadDB();
@@ -86,7 +86,10 @@ function restoreFromLocalBackup() {
         dbData = data;
         if (!dbData.messages) dbData.messages = [];
         if (!dbData.banners) dbData.banners = [];
+        if (!dbData.promoCodes) dbData.promoCodes = [];
         if (!dbData._seq.messages) dbData._seq.messages = 1;
+        if (!dbData._seq.banners) dbData._seq.banners = 1;
+        if (!dbData._seq.promoCodes) dbData._seq.promoCodes = 1;
         fixImagePaths(); saveDB(); return true;
       } catch (e) {}
     }
@@ -107,9 +110,9 @@ fixImagePaths();
 
 if (!dbData.banners || !dbData.banners.length) {
   dbData.banners = [
-    { id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 },
-    { id: 2, title: '💎 MLBB Diamonds', subtitle: '5000 Ks မှစ၍', color1: '#27ae60', color2: '#2ea6ff', active: 1 },
-    { id: 3, title: '🎮 PUBG UC', subtitle: 'Instant Delivery', color1: '#f39c12', color2: '#e74c3c', active: 1 }
+    { id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1, created_at: now() },
+    { id: 2, title: '💎 MLBB Diamonds', subtitle: '5000 Ks မှစ၍', color1: '#27ae60', color2: '#2ea6ff', active: 1, created_at: now() },
+    { id: 3, title: '🎮 PUBG UC', subtitle: 'Instant Delivery', color1: '#f39c12', color2: '#e74c3c', active: 1, created_at: now() }
   ];
   saveDB();
 }
@@ -222,12 +225,17 @@ const H = {
   listUserOrders: (userId, limit = 20) => dbData.orders.filter(o => o.user_id === userId).slice(-limit).reverse(),
   listUserTx: (userId, limit = 20) => dbData.transactions.filter(t => t.user_id === userId).slice(-limit).reverse(),
   listUserDeposits: (userId, limit = 20) => dbData.deposits.filter(d => d.user_id === userId).slice(-limit).reverse(),
+  listAllBanners: () => dbData.banners.slice().reverse(),
+  getBanner: (id) => dbData.banners.find(b => b.id === Number(id)) || null,
+  addBanner: ({ title, subtitle, color1, color2 }) => { const b = { id: dbData._seq.banners++, title, subtitle, color1: color1 || '#2ea6ff', color2: color2 || '#6a5cff', active: 1, created_at: now() }; dbData.banners.push(b); saveDB(); return b.id; },
+  toggleBanner: (id) => { const b = H.getBanner(id); if (b) { b.active = b.active ? 0 : 1; saveDB(); } },
+  removeBanner: (id) => { dbData.banners = dbData.banners.filter(b => b.id !== Number(id)); saveDB(); },
   addLog: (actor, action, target = null, details = null) => { dbData.logs.push({ id: dbData._seq.logs++, actor, action, target, details, created_at: now() }); if (dbData.logs.length > 5000) dbData.logs = dbData.logs.slice(-5000); saveDB(); },
   listLogs: (limit = 100) => dbData.logs.slice(-limit).reverse(),
   listAllUsers: () => dbData.users.slice().reverse(),
   stats: () => ({ users: dbData.users.length, pendingDeposits: dbData.deposits.filter(d => d.status === 'pending').length, pendingOrders: dbData.orders.filter(o => o.status === 'pending').length, totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0), totalSales: dbData.orders.reduce((s, o) => s + o.price, 0) }),
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
-  replaceData: (newData) => { dbData = newData; if (!dbData.messages) dbData.messages = []; if (!dbData.banners || !dbData.banners.length) dbData.banners = [{ id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1 }]; if (!dbData._seq.messages) dbData._seq.messages = 1; fixImagePaths(); saveDB(); }
+  replaceData: (newData) => { dbData = newData; if (!dbData.messages) dbData.messages = []; if (!dbData.banners || !dbData.banners.length) dbData.banners = [{ id: 1, title: '🎉 Welcome to Safe Zone', subtitle: 'Fast & Safe Game Topup', color1: '#2ea6ff', color2: '#6a5cff', active: 1, created_at: now() }]; if (!dbData.promoCodes) dbData.promoCodes = []; if (!dbData._seq.messages) dbData._seq.messages = 1; if (!dbData._seq.banners) dbData._seq.banners = 1; if (!dbData._seq.promoCodes) dbData._seq.promoCodes = 1; fixImagePaths(); saveDB(); }
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
@@ -241,16 +249,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 app.get('/health', (req, res) => {
   const uptime = Math.floor((Date.now() - START_TIME) / 1000);
   const mem = process.memoryUsage();
-  res.json({
-    ok: true, status: 'healthy', uptime,
-    uptimeHuman: `${Math.floor(uptime/3600)}h ${Math.floor((uptime%3600)/60)}m ${uptime%60}s`,
-    memory: { rss: Math.round(mem.rss / 1024 / 1024) + ' MB', heap: Math.round(mem.heapUsed / 1024 / 1024) + ' MB' },
-    storage: USE_DISK ? 'persistent' : 'ephemeral',
-    users: dbData.users.length, items: dbData.items.length,
-    orders: dbData.orders.length, deposits: dbData.deposits.length,
-    banners: (dbData.banners || []).length,
-    timestamp: new Date().toISOString()
-  });
+  res.json({ ok: true, status: 'healthy', uptime, uptimeHuman: `${Math.floor(uptime/3600)}h ${Math.floor((uptime%3600)/60)}m ${uptime%60}s`, memory: { rss: Math.round(mem.rss / 1024 / 1024) + ' MB', heap: Math.round(mem.heapUsed / 1024 / 1024) + ' MB' }, storage: USE_DISK ? 'persistent' : 'ephemeral', users: dbData.users.length, items: dbData.items.length, orders: dbData.orders.length, deposits: dbData.deposits.length, banners: (dbData.banners || []).length, timestamp: new Date().toISOString() });
 });
 app.get('/ping', (req, res) => res.send('pong'));
 
@@ -732,6 +731,32 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
     LOG.ok(`Broadcast completed: ${success} success, ${failed} failed`);
     H.addLog('admin-panel', 'broadcast', null, `${success} sent, ${failed} failed`);
   })();
+});
+
+// ============ BANNER MANAGEMENT SYSTEM ============
+app.get('/api/admin/banners', adminAuth, (req, res) => {
+  res.json({ ok: true, banners: H.listAllBanners() });
+});
+
+app.post('/api/admin/banner/add', adminAuth, (req, res) => {
+  const { title, subtitle, color1, color2 } = req.body;
+  if (!title) return res.status(400).json({ ok: false, error: 'Title required' });
+  const id = H.addBanner({ title, subtitle, color1, color2 });
+  H.addLog('admin-panel', 'add_banner', `banner#${id}`, title);
+  res.json({ ok: true, id });
+});
+
+app.post('/api/admin/banner/toggle', adminAuth, (req, res) => {
+  const { banner_id } = req.body;
+  H.toggleBanner(Number(banner_id));
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/banner/delete', adminAuth, (req, res) => {
+  const { banner_id } = req.body;
+  H.removeBanner(Number(banner_id));
+  H.addLog('admin-panel', 'delete_banner', `banner#${banner_id}`, null);
+  res.json({ ok: true });
 });
 
 // ============ ADMIN CHAT REPLY (with Photo) ============
