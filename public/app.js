@@ -918,3 +918,166 @@ document.head.appendChild(extraStyle);
 
 updateWishBadge();
 init();
+
+// ==========================================
+// SECTION 2: PROFESSIONAL BUSINESS FEATURES
+// ==========================================
+
+// ---------- 2.1 TERMS & PRIVACY ----------
+const TERMS_DATA = {
+  terms: {
+    title: '📜 သတ်မှတ်ချက်များ',
+    content:
+      '<h3>၁။ အကောင့်ဖွင့်ခြင်း</h3>' +
+      '<p>အသက် ၁၃ နှစ်အထက် ဖြစ်ရပါမည်။ မှန်ကန်သော အချက်အလက်များ ဖြည့်စွက်ရပါမည်။ တစ်ဦးလျှင် အကောင့် ၁ ခုသာ ဖွင့်ခွင့်ရှိသည်။</p>' +
+      '<h3>၂။ ဝယ်ယူခြင်း</h3>' +
+      '<p>Order တင်ပြီးနောက် Admin မှ စစ်ဆေးပြီး ဆောင်ရွက်ပါမည်။ Game ID မှားထည့်ခြင်းကြောင့် ဖြစ်ပေါ်သော ဆုံးရှုံးမှုအတွက် ကျွန်ုပ်တို့ တာဝန်မခံပါ။</p>' +
+      '<h3>၃။ ငွေပြန်အမ်းခြင်း</h3>' +
+      '<p>Order မဆောင်ရွက်ရသေးပါက Refund ရနိုင်သည်။ ဆောင်ရွက်ပြီးပါက Refund မရနိုင်ပါ။</p>' +
+      '<h3>၄။ ပိတ်ပင်ခြင်း</h3>' +
+      '<p>Rule ချိုးဖောက်ပါက အကောင့်ကို ပိတ်ပင်နိုင်သည်။ Balance များ ဆုံးရှုံးနိုင်သည်။</p>' +
+      '<h3>၅။ ပြောင်းလဲမှု</h3>' +
+      '<p>သတ်မှတ်ချက်များကို ကြိုတင်အသိပေးခြင်းမရှိဘဲ ပြောင်းလဲနိုင်သည်။</p>'
+  },
+  privacy: {
+    title: '🔒 Privacy Policy',
+    content:
+      '<h3>၁။ ကောက်ခံသော အချက်အလက်များ</h3>' +
+      '<ul><li>Telegram User ID</li><li>နာမည်</li><li>ဖုန်းနံပါတ်</li><li>Order မှတ်တမ်းများ</li></ul>' +
+      '<h3>၂။ အသုံးပြုသည့် ရည်ရွယ်ချက်</h3>' +
+      '<p>Order ဆောင်ရွက်ရန်၊ Customer Service ပေးရန်၊ လုံခြုံရေးအတွက် အသုံးပြုသည်။</p>' +
+      '<h3>၃။ မျှဝေခြင်း</h3>' +
+      '<p>သင့်အချက်အလက်များကို တတိယပါတီသို့ မျှဝေမည် မဟုတ်ပါ။ ဥပဒေအရ တောင်းခံပါက မှလွဲ၍။</p>' +
+      '<h3>၄။ လုံခြုံရေး</h3>' +
+      '<p>Password များကို Hash လုပ်ပြီး သိမ်းဆည်းသည်။ သင့် Password ကို ဘယ်သူ့ကိုမှ မပေးပါနှင့်။</p>' +
+      '<h3>၅။ သင့်အခွင့်အရေး</h3>' +
+      '<p>သင့်အချက်အလက်များကို ကြည့်ရှုရန်၊ ပြင်ဆင်ရန်၊ ဖျက်ရန် Admin ကို ဆက်သွယ်နိုင်သည်။</p>'
+  }
+};
+
+window.openTermsModal = function(tab) {
+  show('termsModal');
+  switchTermsTab(tab || 'terms');
+};
+
+window.switchTermsTab = function(tab) {
+  const data = TERMS_DATA[tab] || TERMS_DATA.terms;
+  const titleEl = document.getElementById('termsTitle');
+  const contentEl = document.getElementById('termsContent');
+  const termsBtn = document.getElementById('termsTabBtn');
+  const privBtn = document.getElementById('privacyTabBtn');
+  if (titleEl) titleEl.textContent = data.title;
+  if (contentEl) contentEl.innerHTML = data.content;
+  if (termsBtn && privBtn) {
+    termsBtn.className = 'terms-tab-btn ' + (tab === 'terms' ? 'active' : 'inactive');
+    privBtn.className = 'terms-tab-btn ' + (tab === 'privacy' ? 'active' : 'inactive');
+  }
+};
+
+// ---------- 2.2 ABOUT US ----------
+window.openAboutModal = function() {
+  show('aboutModal');
+  const el = document.getElementById('aboutContent');
+  if (!el) return;
+  el.innerHTML =
+    '<h3>🛡️ Safe Zone Game Topup</h3>' +
+    '<p>မြန်မာနိုင်ငံရှိ ဂိမ်းကစားသူများအတွက် လျင်မြန်လုံခြုံသော Top-up ဝန်ဆောင်မှုကို ပေးအပ်လျက်ရှိပါသည်။</p>' +
+    '<h3>🎯 ကျွန်ုပ်တို့၏ ရည်မှန်းချက်</h3>' +
+    '<ul><li>⚡ လျင်မြန်သော ဝန်ဆောင်မှု (၅ မိနစ် ~ ၁ နာရီ)</li>' +
+    '<li>🔒 လုံခြုံသော ငွေပေးချေမှု</li>' +
+    '<li>💬 ၂၄/၇ Customer Support</li>' +
+    '<li>💰 ဈေးနှုန်းသက်သာမှု</li></ul>' +
+    '<h3>🏢 ဆိုင်အချက်အလက်</h3>' +
+    '<ul><li><b>ဆိုင်အမည်:</b> Safe Zone Game Topup</li>' +
+    '<li><b>တည်နေရာ:</b> မြန်မာနိုင်ငံ</li>' +
+    '<li><b>ဝန်ဆောင်မှု:</b> MLBB, PUBG, Magic Chess, App Premium</li>' +
+    '<li><b>ငွေပေးချေမှု:</b> KBZ, Wave, UAB, AYA</li></ul>' +
+    '<h3>📞 ဆက်သွယ်ရန်</h3>' +
+    '<ul><li><b>Telegram:</b> @pyae_phyo_12327</li>' +
+    '<li><b>Chat:</b> Mini App ထဲမှ 💬 Chat</li></ul>' +
+    '<h3>🕐 ဖွင့်ချိန်</h3>' +
+    '<p>မနက် ၉:၀၀ ~ ည ၁၁:၀၀ (တစ်ပတ်လုံး)</p>' +
+    '<p style="text-align:center;color:#8a90a0;font-size:11px;margin-top:16px">© 2026 Safe Zone Game Topup. All rights reserved.</p>';
+};
+
+// ---------- 2.4 BUSINESS HOURS ----------
+function updateBusinessHours() {
+  const el = document.getElementById('businessHours');
+  const statusEl = document.getElementById('hoursStatus');
+  if (!el || !statusEl) return;
+  el.style.display = 'flex';
+
+  const now = new Date();
+  const hour = now.getHours();
+  const isOpen = hour >= 9 && hour < 23;
+
+  if (isOpen) {
+    statusEl.className = 'hours-status open';
+    statusEl.textContent = '🟢 ဖွင့်ထားသည်';
+  } else {
+    statusEl.className = 'hours-status closed';
+    statusEl.textContent = '🔴 ပိတ်ထားသည်';
+  }
+}
+setInterval(updateBusinessHours, 60000);
+
+// ---------- 2.5 VERIFIED BADGE ----------
+// renderMain ကို override
+const _origRenderMainPro = window.renderMain;
+if (typeof _origRenderMainPro === 'function') {
+  window.renderMain = function() {
+    _origRenderMainPro();
+    const ul = document.getElementById('userLabel');
+    if (ul && !ul.querySelector('.verified-badge')) {
+      ul.innerHTML = ul.textContent + '<span class="verified-badge">✅ Verified</span>';
+    }
+    updateBusinessHours();
+  };
+}
+
+// ---------- REGISTER TERMS CHECK ----------
+const _origRegisterBtn = document.getElementById('registerBtn');
+if (_origRegisterBtn) {
+  const _origHandler = _origRegisterBtn.onclick;
+  // existing addEventListener ကို clone လုပ်ပြီး override
+  const btn = _origRegisterBtn;
+  const clone = btn.cloneNode(true);
+  btn.parentNode.replaceChild(clone, btn);
+
+  clone.addEventListener('click', async function(e) {
+    const termsCheck = document.getElementById('termsCheck');
+    if (termsCheck && !termsCheck.checked) {
+      if (typeof shakeElement === 'function') shakeElement(termsCheck.parentElement);
+      if (typeof toast === 'function') toast('⚠️ သတ်မှတ်ချက်များကို သဘောတူပါ', 'error');
+      return;
+    }
+    // original register logic ကို လက်ဖြင့် ပြန်လုပ်ပါ
+    const name = document.getElementById('nameInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+    const password2 = document.getElementById('passwordInput2').value;
+    if (name.length < 2) return toast('နာမည် ထည့်ပါ', 'error');
+    if (!/^[0-9+\-\s]{6,}$/.test(phone)) return toast('ဖုန်းနံပါတ် မှန်ကန်စွာ', 'error');
+    if (password.length < 4) return toast('စကားဝှက် 4 လုံး+', 'error');
+    if (password !== password2) return toast('စကားဝှက် မတူပါ', 'error');
+    const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, phone: phone, password: password, password2: password2 }) });
+    if (res.ok) {
+      STATE.user = res.user;
+      hide('register'); show('main');
+      const bn = document.getElementById('bottomNav'); if (bn) bn.classList.remove('hidden');
+      renderMain();
+      if (typeof loadGames === 'function') loadGames();
+      if (typeof loadBanners === 'function') loadBanners();
+      if (typeof refreshFeatures === 'function') refreshFeatures();
+      if (typeof loadFeatured === 'function') loadFeatured();
+      updateBusinessHours();
+      try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
+    } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  });
+}
+
+// စတင်ချိန်မှာ Business Hours ပြ
+setTimeout(updateBusinessHours, 1000);
+
+console.log('✅ Section 2: Business features loaded');

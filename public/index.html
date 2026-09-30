@@ -196,6 +196,30 @@ body.light .item-row{background:#f9fafb}
 .mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
 @keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
 .mt-note{font-size:13px;color:#6b7280;margin-top:10px}
+
+/* TERMS & ABOUT */
+.terms-content{max-height:55vh;overflow-y:auto;padding:16px;background:#1a1d26;border-radius:10px;margin-bottom:14px;font-size:13px;line-height:1.8;color:#e5e7eb}
+.terms-content h3{color:#2ea6ff;margin:14px 0 8px;font-size:14px;font-weight:800}
+.terms-content h3:first-child{margin-top:0}
+.terms-content p{margin-bottom:10px}
+.terms-content ul{margin-left:20px;margin-bottom:10px}
+.terms-content li{margin-bottom:4px}
+.terms-content b{color:#fff}
+.business-hours{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#1a1d26;border-radius:10px;margin:0 16px 16px}
+.hours-info{font-size:12px;color:#8a90a0}
+.hours-info b{color:#e5e7eb;display:block;font-size:13px;margin-bottom:2px}
+.hours-status{font-size:11px;font-weight:800;padding:5px 12px;border-radius:14px}
+.hours-status.open{background:linear-gradient(135deg,#27ae60,#2ea6ff);color:#fff}
+.hours-status.closed{background:#e74c3c;color:#fff}
+.verified-badge{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:800;margin-left:6px;vertical-align:middle}
+.terms-checkbox-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:12px;color:#8a90a0;line-height:1.5}
+.terms-checkbox-row input[type="checkbox"]{width:18px!important;height:18px!important;margin:0!important;flex-shrink:0;accent-color:#2ea6ff}
+.terms-checkbox-row a{color:#2ea6ff;cursor:pointer;font-weight:700;text-decoration:none}
+.terms-tab-btn{flex:1;padding:10px;border-radius:10px;border:none;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px}
+.terms-tab-btn.active{background:#2ea6ff;color:#fff}
+.terms-tab-btn.inactive{background:#1a1d26;color:#8a90a0}
+.profile-link-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#1a1d26;border-radius:10px;margin-top:8px;cursor:pointer;font-size:13px;font-weight:600}
+.profile-link-row:active{background:#22252e}
 </style>
 </head>
 <body>
@@ -227,6 +251,10 @@ body.light .item-row{background:#f9fafb}
     <input id="phoneInput" type="tel" placeholder="ဖုန်းနံပါတ်" />
     <input id="passwordInput" type="password" placeholder="စကားဝှက် (4 လုံး+)" />
     <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ရိုက်ပါ" />
+    <div class="terms-checkbox-row">
+      <input type="checkbox" id="termsCheck" />
+      <label for="termsCheck">ကျွန်ုပ် <a onclick="event.preventDefault();openTermsModal('terms')">သတ်မှတ်ချက်များ</a> နှင့် <a onclick="event.preventDefault();openTermsModal('privacy')">Privacy Policy</a> ကို သဘောတူပါသည်</label>
+    </div>
     <button id="registerBtn" class="btn-success">✨ Register</button>
     <p class="switch-text">အကောင့်ရှိပြီးသားလား? <a id="showLoginBtn">Login ဝင်ပါ</a></p>
   </div>
@@ -249,6 +277,13 @@ body.light .item-row{background:#f9fafb}
   <div class="balance-card">
     <div class="label">💰 လက်ကျန်ငွေ</div>
     <div class="amount"><span id="balanceVal">0</span> <span class="currency">Ks</span></div>
+  </div>
+  <div class="business-hours" id="businessHours" style="display:none">
+    <div class="hours-info">
+      <b>🕐 ဖွင့်ချိန်</b>
+      မနက် ၉:၀၀ ~ ည ၁၁:၀၀
+    </div>
+    <div class="hours-status open" id="hoursStatus">🟢 ဖွင့်ထားသည်</div>
   </div>
   <div class="banner-slider" id="bannerSlider">
     <div class="banner-track" id="bannerTrack"></div>
@@ -388,6 +423,15 @@ body.light .item-row{background:#f9fafb}
         <div class="toggle-switch" id="soundToggle"><div class="toggle-knob"></div></div>
       </div>
     </div>
+    <div class="profile-link-row" onclick="hide('profileModal');openTermsModal('terms')">
+      <span>📜 သတ်မှတ်ချက်များ</span><span style="color:#8a90a0">›</span>
+    </div>
+    <div class="profile-link-row" onclick="hide('profileModal');openTermsModal('privacy')">
+      <span>🔒 Privacy Policy</span><span style="color:#8a90a0">›</span>
+    </div>
+    <div class="profile-link-row" onclick="hide('profileModal');openAboutModal()">
+      <span>ℹ️ ဆိုင်အကြောင်း</span><span style="color:#8a90a0">›</span>
+    </div>
     <button id="logoutBtn" class="btn-primary btn-full" style="margin-top:14px;background:#e74c3c">🚪 Logout</button>
   </div>
 </div>
@@ -466,6 +510,26 @@ body.light .item-row{background:#f9fafb}
     <button class="modal-close" data-close>×</button>
     <h2 id="previewTitle">Item</h2>
     <div id="previewContent"></div>
+  </div>
+</div>
+
+<div id="termsModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="termsTitle">📜 သတ်မှတ်ချက်များ</h2>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="terms-tab-btn active" id="termsTabBtn" onclick="switchTermsTab('terms')">📜 Terms</button>
+      <button class="terms-tab-btn inactive" id="privacyTabBtn" onclick="switchTermsTab('privacy')">🔒 Privacy</button>
+    </div>
+    <div id="termsContent" class="terms-content"></div>
+  </div>
+</div>
+
+<div id="aboutModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2>ℹ️ ဆိုင်အကြောင်း</h2>
+    <div class="terms-content" id="aboutContent"></div>
   </div>
 </div>
 
