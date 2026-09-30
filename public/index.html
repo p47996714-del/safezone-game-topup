@@ -34,6 +34,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .form-card .btn-success{background:linear-gradient(135deg,#27ae60,#2ea6ff);box-shadow:0 6px 20px rgba(39,174,96,0.35)}
 .form-card .switch-text{text-align:center;margin-top:18px;font-size:13px;color:#8a90a0;position:relative;z-index:2}
 .form-card .switch-text a{color:#2ea6ff;cursor:pointer;font-weight:700;text-decoration:none}
+.terms-checkbox-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:12px;color:#8a90a0;line-height:1.5;position:relative;z-index:2}
+.terms-checkbox-row input[type="checkbox"]{width:18px!important;height:18px!important;margin:0!important;flex-shrink:0;accent-color:#2ea6ff}
+.terms-checkbox-row a{color:#2ea6ff;cursor:pointer;font-weight:700;text-decoration:none}
 .app-header{padding:14px 16px;background:#0a0c11;position:sticky;top:0;z-index:50;border-bottom:1px solid #1a1d26}
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .user-name{font-weight:700;font-size:15px;color:#fff}
@@ -130,7 +133,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .spin-container{text-align:center;padding:20px 0}
 .spin-wheel-wrapper{width:300px;height:300px;margin:0 auto 20px;position:relative}
 .spin-wheel{width:100%;height:100%;border-radius:50%;position:relative;overflow:hidden;box-shadow:0 0 40px rgba(46,166,255,0.6),inset 0 0 20px rgba(0,0,0,0.4);transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);border:4px solid #fff}
-.spin-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:85px;height:85px;background:radial-gradient(circle,#1a1d26,#0a0c11);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 0 25px rgba(0,0,0,0.7),inset 0 0 10px rgba(255,255,255,0.1);z-index:10;border:3px solid #2a2d36}
+.spin-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:85px;height:85px;background:radial-gradient(circle,#1a1d26,#0a0c11);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 0 25px rgba(0,0,0,0.7);z-index:10;border:3px solid #2a2d36}
 .spin-pointer{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid #fff;z-index:20;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.6))}
 .spin-btn{width:100%;max-width:300px;padding:15px;border-radius:30px;border:none;background:linear-gradient(135deg,#e74c3c,#f39c12);color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(231,76,60,0.5)}
 .spin-btn:disabled{background:#2a2d36;color:#8a90a0;box-shadow:none;cursor:not-allowed}
@@ -166,6 +169,10 @@ body.light .modal-content input,body.light .modal-content select,body.light .mod
 body.light .item-card{background:#fff;border-color:#e5e7eb}
 body.light .item-card .item-name{color:#111827}
 body.light .item-row{background:#f9fafb}
+body.light .form-card{background:linear-gradient(160deg,#fff,#f9fafb);border-color:#e5e7eb}
+body.light .form-card h1{color:#111827}
+body.light .form-card input{background:#f9fafb!important;color:#111827!important;border-color:#e5e7eb!important}
+body.light .form-card .switch-text{color:#6b7280}
 .toggle-switch{width:52px;height:28px;border-radius:14px;background:#2a2d36;position:relative;cursor:pointer;transition:background 0.3s}
 .toggle-switch.on{background:#27ae60}
 .toggle-switch .toggle-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform 0.3s;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
@@ -175,8 +182,6 @@ body.light .item-row{background:#f9fafb}
 .preview-category{font-size:12px;color:#8a90a0;margin-bottom:12px}
 .preview-price{font-size:24px;font-weight:800;color:#2ea6ff;text-align:center;padding:12px;background:#1a1d26;border-radius:10px;margin-bottom:14px}
 .reorder-btn{padding:6px 12px;border-radius:8px;border:none;background:#27ae60;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
-
-/* MAINTENANCE SCREEN - ANIMATED */
 #maintenanceOverlay{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11 0%,#141821 50%,#0a0c11 100%);z-index:999999;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mt-bg-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.4;animation:mtBlob 8s ease-in-out infinite}
 .mt-blob-1{width:300px;height:300px;background:#2ea6ff;top:-100px;left:-100px}
@@ -191,35 +196,11 @@ body.light .item-row{background:#f9fafb}
 .mt-gear-2{bottom:10px;right:0;animation:mtSpin 4s linear infinite reverse;font-size:24px}
 @keyframes mtSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .mt-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:10px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.mt-subtitle{font-size:14px;color:#8a90a0;margin-bottom:25px;line-height:1.5}
+.mt-subtitle{font-size:14px;color:#8a90a0;margin-bottom:25px}
 .mt-progress{width:200px;height:4px;background:#1a1d26;border-radius:4px;margin:0 auto 20px;overflow:hidden}
 .mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
 @keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
 .mt-note{font-size:13px;color:#6b7280;margin-top:10px}
-
-/* TERMS & ABOUT */
-.terms-content{max-height:55vh;overflow-y:auto;padding:16px;background:#1a1d26;border-radius:10px;margin-bottom:14px;font-size:13px;line-height:1.8;color:#e5e7eb}
-.terms-content h3{color:#2ea6ff;margin:14px 0 8px;font-size:14px;font-weight:800}
-.terms-content h3:first-child{margin-top:0}
-.terms-content p{margin-bottom:10px}
-.terms-content ul{margin-left:20px;margin-bottom:10px}
-.terms-content li{margin-bottom:4px}
-.terms-content b{color:#fff}
-.business-hours{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#1a1d26;border-radius:10px;margin:0 16px 16px}
-.hours-info{font-size:12px;color:#8a90a0}
-.hours-info b{color:#e5e7eb;display:block;font-size:13px;margin-bottom:2px}
-.hours-status{font-size:11px;font-weight:800;padding:5px 12px;border-radius:14px}
-.hours-status.open{background:linear-gradient(135deg,#27ae60,#2ea6ff);color:#fff}
-.hours-status.closed{background:#e74c3c;color:#fff}
-.verified-badge{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-size:9px;padding:2px 7px;border-radius:10px;font-weight:800;margin-left:6px;vertical-align:middle}
-.terms-checkbox-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:12px;color:#8a90a0;line-height:1.5}
-.terms-checkbox-row input[type="checkbox"]{width:18px!important;height:18px!important;margin:0!important;flex-shrink:0;accent-color:#2ea6ff}
-.terms-checkbox-row a{color:#2ea6ff;cursor:pointer;font-weight:700;text-decoration:none}
-.terms-tab-btn{flex:1;padding:10px;border-radius:10px;border:none;font-weight:700;font-family:inherit;cursor:pointer;font-size:13px}
-.terms-tab-btn.active{background:#2ea6ff;color:#fff}
-.terms-tab-btn.inactive{background:#1a1d26;color:#8a90a0}
-.profile-link-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#1a1d26;border-radius:10px;margin-top:8px;cursor:pointer;font-size:13px;font-weight:600}
-.profile-link-row:active{background:#22252e}
 </style>
 </head>
 <body>
@@ -251,9 +232,10 @@ body.light .item-row{background:#f9fafb}
     <input id="phoneInput" type="tel" placeholder="ဖုန်းနံပါတ်" />
     <input id="passwordInput" type="password" placeholder="စကားဝှက် (4 လုံး+)" />
     <input id="passwordInput2" type="password" placeholder="စကားဝှက် ပြန်ရိုက်ပါ" />
+    <input id="referralInput" type="text" placeholder="🎁 Referral Code (Optional)" style="text-transform:uppercase;letter-spacing:1px" />
     <div class="terms-checkbox-row">
       <input type="checkbox" id="termsCheck" />
-      <label for="termsCheck">ကျွန်ုပ် <a onclick="event.preventDefault();openTermsModal('terms')">သတ်မှတ်ချက်များ</a> နှင့် <a onclick="event.preventDefault();openTermsModal('privacy')">Privacy Policy</a> ကို သဘောတူပါသည်</label>
+      <label for="termsCheck">ကျွန်ုပ် Terms & Privacy ကို သဘောတူပါသည်</label>
     </div>
     <button id="registerBtn" class="btn-success">✨ Register</button>
     <p class="switch-text">အကောင့်ရှိပြီးသားလား? <a id="showLoginBtn">Login ဝင်ပါ</a></p>
@@ -278,38 +260,15 @@ body.light .item-row{background:#f9fafb}
     <div class="label">💰 လက်ကျန်ငွေ</div>
     <div class="amount"><span id="balanceVal">0</span> <span class="currency">Ks</span></div>
   </div>
-  <div class="business-hours" id="businessHours" style="display:none">
-    <div class="hours-info">
-      <b>🕐 ဖွင့်ချိန်</b>
-      မနက် ၉:၀၀ ~ ည ၁၁:၀၀
-    </div>
-    <div class="hours-status open" id="hoursStatus">🟢 ဖွင့်ထားသည်</div>
-  </div>
   <div class="banner-slider" id="bannerSlider">
     <div class="banner-track" id="bannerTrack"></div>
     <div class="banner-dots" id="bannerDots"></div>
   </div>
   <div class="dashboard-grid">
-    <div class="dashboard-card points" onclick="openPointsModal()">
-      <div class="dc-icon">⭐</div>
-      <div class="dc-title">Points</div>
-      <div class="dc-value" id="dashPoints">0</div>
-    </div>
-    <div class="dashboard-card referral" onclick="openReferralModal()">
-      <div class="dc-icon">🎁</div>
-      <div class="dc-title">Referral</div>
-      <div class="dc-value" id="dashReferral">0</div>
-    </div>
-    <div class="dashboard-card spin" onclick="openSpinModal()">
-      <div class="dc-icon">🎰</div>
-      <div class="dc-title">Lucky Spin</div>
-      <div class="dc-value" id="dashSpin">Play</div>
-    </div>
-    <div class="dashboard-card promo" onclick="openPromoModal()">
-      <div class="dc-icon">🎟️</div>
-      <div class="dc-title">Promo Code</div>
-      <div class="dc-value">Redeem</div>
-    </div>
+    <div class="dashboard-card points" onclick="openPointsModal()"><div class="dc-icon">⭐</div><div class="dc-title">Points</div><div class="dc-value" id="dashPoints">0</div></div>
+    <div class="dashboard-card referral" onclick="openReferralModal()"><div class="dc-icon">🎁</div><div class="dc-title">Referral</div><div class="dc-value" id="dashReferral">0</div></div>
+    <div class="dashboard-card spin" onclick="openSpinModal()"><div class="dc-icon">🎰</div><div class="dc-title">Lucky Spin</div><div class="dc-value" id="dashSpin">Play</div></div>
+    <div class="dashboard-card promo" onclick="openPromoModal()"><div class="dc-icon">🎟️</div><div class="dc-title">Promo Code</div><div class="dc-value">Redeem</div></div>
   </div>
   <div class="section-title">🎮 ဂိမ်းများ</div>
   <div class="games-grid" id="gamesGrid"></div>
@@ -322,237 +281,31 @@ body.light .item-row{background:#f9fafb}
   <button class="nav-btn" id="profileBtn2"><span class="ico">👤</span>ပရိုဖိုင်</button>
 </div>
 
-<div id="itemsModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2 id="itemsTitle">Items</h2>
-    <input id="itemSearch" type="text" placeholder="🔍 Item ရှာပါ..." />
-    <div id="itemsList"></div>
-  </div>
-</div>
-
-<div id="buyModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>🛒 ဝယ်ယူမည်</h2>
-    <div class="item-row" style="margin-bottom:14px">
-      <div id="buyItemName">-</div>
-      <div class="price"><span id="buyItemPrice">0</span> Ks</div>
-    </div>
-    <div id="fieldGameId">
-      <label id="gameIdLabel">Game ID</label>
-      <input id="buyGameAccount" type="text" placeholder="Game ID ထည့်ပါ" />
-    </div>
-    <div id="fieldServerId" class="hidden">
-      <label>Server ID</label>
-      <input id="buyServerId" type="text" placeholder="Server ID ထည့်ပါ" />
-    </div>
-    <div id="fieldNote" class="hidden">
-      <p style="text-align:center;padding:14px;background:#1a1d26;border-radius:10px;color:#f39c12;font-size:13px;font-weight:600">📌 Admin ကို ဆက်သွယ်ပါ</p>
-    </div>
-    <div id="saveGameIdRow" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-      <input type="checkbox" id="saveGameIdCheck" style="width:auto;margin:0" />
-      <label for="saveGameIdCheck" style="font-size:12px;color:#8a90a0;cursor:pointer;margin:0">📌 ဒီ Game ID ကို သိမ်းထားမယ်</label>
-    </div>
-    <button id="confirmBuy" class="btn-success btn-full" style="margin-top:12px">✅ Confirm</button>
-  </div>
-</div>
-
-<div id="depositModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>📥 ငွေဖြည့်ရန်</h2>
-    <label>ပမာဏ (Ks)</label>
-    <input id="depAmount" type="number" placeholder="5000" />
-    <div style="margin-bottom:12px">
-      <button class="qa-btn" data-amt="1000">1,000</button>
-      <button class="qa-btn" data-amt="5000">5,000</button>
-      <button class="qa-btn" data-amt="10000">10,000</button>
-      <button class="qa-btn" data-amt="50000">50,000</button>
-    </div>
-    <label>နည်းလမ်း</label>
-    <div class="pay-grid">
-      <button class="pay-btn" data-method="KBZ">KBZ</button>
-      <button class="pay-btn" data-method="WAVE">Wave</button>
-      <button class="pay-btn" data-method="UAB">UAB</button>
-      <button class="pay-btn" data-method="AYA">AYA</button>
-    </div>
-    <div id="payInfo" class="pay-info hidden"></div>
-    <label style="margin-top:12px">ပြေစာပုံ</label>
-    <input id="receiptInput" type="file" accept="image/*" />
-    <button id="submitDeposit" class="btn-success btn-full" style="margin-top:12px">📤 ပို့မည်</button>
-  </div>
-</div>
-
-<div id="historyModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>📜 မှတ်တမ်း</h2>
-    <div id="historyList"></div>
-  </div>
-</div>
-
-<div id="trackModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>📍 Order Tracking</h2>
-    <div id="trackContent"></div>
-  </div>
-</div>
-
-<div id="chatModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>💬 Chat with Admin</h2>
-    <div id="chatMessages"></div>
-    <div class="chat-input-row">
-      <input id="chatInput" type="text" placeholder="စာသား ရိုက်ပါ..." />
-      <button id="chatSendBtn">📨</button>
-    </div>
-  </div>
-</div>
-
-<div id="profileModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>👤 ပရိုဖိုင်</h2>
-    <div id="profileInfo"></div>
-    <div style="margin-top:14px;padding:12px;background:#1a1d26;border-radius:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;font-weight:600">🔊 အသံ ဖွင့်/ပိတ်</span>
-        <div class="toggle-switch" id="soundToggle"><div class="toggle-knob"></div></div>
-      </div>
-    </div>
-    <div class="profile-link-row" onclick="hide('profileModal');openTermsModal('terms')">
-      <span>📜 သတ်မှတ်ချက်များ</span><span style="color:#8a90a0">›</span>
-    </div>
-    <div class="profile-link-row" onclick="hide('profileModal');openTermsModal('privacy')">
-      <span>🔒 Privacy Policy</span><span style="color:#8a90a0">›</span>
-    </div>
-    <div class="profile-link-row" onclick="hide('profileModal');openAboutModal()">
-      <span>ℹ️ ဆိုင်အကြောင်း</span><span style="color:#8a90a0">›</span>
-    </div>
-    <button id="logoutBtn" class="btn-primary btn-full" style="margin-top:14px;background:#e74c3c">🚪 Logout</button>
-  </div>
-</div>
-
-<div id="wishlistModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>❤️ Wishlist</h2>
-    <div id="wishlistContent"></div>
-  </div>
-</div>
-
-<div id="pointsModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>⭐ Loyalty Points</h2>
-    <div class="points-balance-big" id="pointsBig">0</div>
-    <p style="text-align:center;color:#8a90a0;font-size:13px;margin-bottom:12px">1 Point = <span id="pointsRate">10</span> Ks</p>
-    <label>Redeem Points (အနည်းဆုံး <span id="pointsMin">100</span>)</label>
-    <input type="number" id="pointsRedeemInput" placeholder="100" />
-    <button class="btn-primary btn-full" style="background:#f39c12" onclick="redeemPoints()">💸 Redeem</button>
-    <h3 style="margin:16px 0 8px;font-size:14px">📜 မှတ်တမ်း</h3>
-    <div id="pointsHistoryBox" style="max-height:200px;overflow-y:auto"></div>
-  </div>
-</div>
-
-<div id="referralModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>🎁 Referral</h2>
-    <div class="referral-box">
-      <h3>📋 သင့် Referral Code</h3>
-      <div class="referral-code-display" id="refCodeDisplay" onclick="copyRefCode()">------</div>
-      <p style="font-size:12px;opacity:0.9">Code ကို သူငယ်ချင်းတွေကို မျှဝေပါ။ သူတို့ Register လုပ်ရင် နှစ်ယောက်လုံး Bonus ရပါမယ်။</p>
-      <div class="referral-stats">
-        <div class="referral-stat"><b id="refCount">0</b><span>ဖိတ်ခေါ်ပြီး</span></div>
-        <div class="referral-stat"><b id="refEarned">0</b><span>ရရှိပြီး (Ks)</span></div>
-      </div>
-      <button class="referral-share" onclick="shareRefCode()">📤 Share to Telegram</button>
-    </div>
-  </div>
-</div>
-
-<div id="spinModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>🎰 Lucky Spin</h2>
-    <div class="spin-container">
-      <div class="spin-wheel-wrapper">
-        <div class="spin-pointer"></div>
-        <div class="spin-wheel" id="spinWheel"></div>
-        <div class="spin-center">🎰</div>
-      </div>
-      <p style="color:#8a90a0;font-size:13px;margin-bottom:12px">Spin ကျန်: <span id="spinLimit">0</span> ခါ</p>
-      <button class="spin-btn" id="spinBtn" onclick="playSpin()">🎰 SPIN လှည့်မယ်</button>
-      <div class="spin-rewards-info" id="spinRewardsInfo"></div>
-    </div>
-  </div>
-</div>
-
-<div id="promoModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>🎟️ Promo Code</h2>
-    <p style="color:#8a90a0;font-size:13px;margin-bottom:14px">Promo Code ရိုက်ထည့်ပြီး Bonus ငွေ ရယူပါ</p>
-    <div class="promo-input-group">
-      <input id="promoInput" placeholder="WELCOME100" />
-      <button onclick="redeemPromo()">Redeem</button>
-    </div>
-    <div id="promoResult" style="text-align:center;font-size:14px;font-weight:600;margin-top:8px"></div>
-  </div>
-</div>
-
-<div id="previewModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2 id="previewTitle">Item</h2>
-    <div id="previewContent"></div>
-  </div>
-</div>
-
-<div id="termsModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2 id="termsTitle">📜 သတ်မှတ်ချက်များ</h2>
-    <div style="display:flex;gap:6px;margin-bottom:12px">
-      <button class="terms-tab-btn active" id="termsTabBtn" onclick="switchTermsTab('terms')">📜 Terms</button>
-      <button class="terms-tab-btn inactive" id="privacyTabBtn" onclick="switchTermsTab('privacy')">🔒 Privacy</button>
-    </div>
-    <div id="termsContent" class="terms-content"></div>
-  </div>
-</div>
-
-<div id="aboutModal" class="modal hidden">
-  <div class="modal-content">
-    <button class="modal-close" data-close>×</button>
-    <h2>ℹ️ ဆိုင်အကြောင်း</h2>
-    <div class="terms-content" id="aboutContent"></div>
-  </div>
-</div>
-
-<div id="contactAdminModal" class="modal hidden">
-  <div class="modal-content" style="text-align:center">
-    <h2 style="background:linear-gradient(135deg,#27ae60,#2ea6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">✅ Order အောင်မြင်ပါသည်</h2>
-    <div style="font-size:60px;margin:16px 0">📞</div>
-    <p style="color:#8a90a0;font-size:14px;line-height:1.7;margin-bottom:16px">
-      App Premium အတွက် Admin ကို ဆက်သွယ်ပါ။<br>
-      Order ID ကို ပြောပြီး အကောင့် ရယူပါ။
-    </p>
-    <div id="contactOrderInfo" style="background:#1a1d26;padding:14px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:left"></div>
-    <a id="contactAdminLink" href="#" target="_blank" style="display:block;width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-weight:800;text-decoration:none;font-size:15px;margin-bottom:10px;box-sizing:border-box">
-      💬 Admin ကို ဆက်သွယ်ရန်
-    </a>
-    <button onclick="document.getElementById('contactAdminModal').classList.add('hidden')" style="width:100%;padding:12px;border-radius:12px;background:#1a1d26;color:#8a90a0;border:none;font-weight:700;cursor:pointer;font-family:inherit">
-      ပိတ်မည်
-    </button>
-  </div>
-</div>
-
+<div id="itemsModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2 id="itemsTitle">Items</h2><input id="itemSearch" type="text" placeholder="🔍 Item ရှာပါ..." /><div id="itemsList"></div></div></div>
+<div id="buyModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>🛒 ဝယ်ယူမည်</h2><div class="item-row" style="margin-bottom:14px"><div id="buyItemName">-</div><div class="price"><span id="buyItemPrice">0</span> Ks</div></div><div id="fieldGameId"><label id="gameIdLabel">Game ID</label><input id="buyGameAccount" type="text" placeholder="Game ID ထည့်ပါ" /></div><div id="fieldServerId" class="hidden"><label>Server ID</label><input id="buyServerId" type="text" placeholder="Server ID ထည့်ပါ" /></div><div id="fieldNote" class="hidden"><p style="text-align:center;padding:14px;background:#1a1d26;border-radius:10px;color:#f39c12;font-size:13px;font-weight:600">📌 Admin ကို ဆက်သွယ်ပါ</p></div><div id="saveGameIdRow" style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><input type="checkbox" id="saveGameIdCheck" style="width:auto;margin:0" /><label for="saveGameIdCheck" style="font-size:12px;color:#8a90a0;cursor:pointer;margin:0">📌 ဒီ Game ID ကို သိမ်းထားမယ်</label></div><button id="confirmBuy" class="btn-success btn-full" style="margin-top:12px">✅ Confirm</button></div></div>
+<div id="depositModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>📥 ငွေဖြည့်ရန်</h2><label>ပမာဏ (Ks)</label><input id="depAmount" type="number" placeholder="5000" /><div style="margin-bottom:12px"><button class="qa-btn" data-amt="1000">1,000</button><button class="qa-btn" data-amt="5000">5,000</button><button class="qa-btn" data-amt="10000">10,000</button><button class="qa-btn" data-amt="50000">50,000</button></div><label>နည်းလမ်း</label><div class="pay-grid"><button class="pay-btn" data-method="KBZ">KBZ</button><button class="pay-btn" data-method="WAVE">Wave</button><button class="pay-btn" data-method="UAB">UAB</button><button class="pay-btn" data-method="AYA">AYA</button></div><div id="payInfo" class="pay-info hidden"></div><label style="margin-top:12px">ပြေစာပုံ</label><input id="receiptInput" type="file" accept="image/*" /><button id="submitDeposit" class="btn-success btn-full" style="margin-top:12px">📤 ပို့မည်</button></div></div>
+<div id="historyModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>📜 မှတ်တမ်း</h2><div id="historyList"></div></div></div>
+<div id="trackModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>📍 Order Tracking</h2><div id="trackContent"></div></div></div>
+<div id="chatModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>💬 Chat with Admin</h2><div id="chatMessages"></div><div class="chat-input-row"><input id="chatInput" type="text" placeholder="စာသား ရိုက်ပါ..." /><button id="chatSendBtn">📨</button></div></div></div>
+<div id="profileModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>👤 ပရိုဖိုင်</h2><div id="profileInfo"></div><div style="margin-top:14px;padding:12px;background:#1a1d26;border-radius:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600">🔊 အသံ ဖွင့်/ပိတ်</span><div class="toggle-switch" id="soundToggle"><div class="toggle-knob"></div></div></div></div><button id="logoutBtn" class="btn-primary btn-full" style="margin-top:14px;background:#e74c3c">🚪 Logout</button></div></div>
+<div id="wishlistModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>❤️ Wishlist</h2><div id="wishlistContent"></div></div></div>
+<div id="pointsModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>⭐ Loyalty Points</h2><div class="points-balance-big" id="pointsBig">0</div><p style="text-align:center;color:#8a90a0;font-size:13px;margin-bottom:12px">1 Point = <span id="pointsRate">10</span> Ks</p><label>Redeem Points (အနည်းဆုံး <span id="pointsMin">100</span>)</label><input type="number" id="pointsRedeemInput" placeholder="100" /><button class="btn-primary btn-full" style="background:#f39c12" onclick="redeemPoints()">💸 Redeem</button><h3 style="margin:16px 0 8px;font-size:14px">📜 မှတ်တမ်း</h3><div id="pointsHistoryBox" style="max-height:200px;overflow-y:auto"></div></div></div>
+<div id="referralModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>🎁 Referral</h2><div class="referral-box"><h3>📋 သင့် Referral Code</h3><div class="referral-code-display" id="refCodeDisplay" onclick="copyRefCode()">------</div><p style="font-size:12px;opacity:0.9">Code ကို သူငယ်ချင်းတွေကို မျှဝေပါ။ သူတို့ Register လုပ်ရင် နှစ်ယောက်လုံး Bonus ရပါမယ်။</p><div class="referral-stats"><div class="referral-stat"><b id="refCount">0</b><span>ဖိတ်ခေါ်ပြီး</span></div><div class="referral-stat"><b id="refEarned">0</b><span>ရရှိပြီး (Ks)</span></div></div><button class="referral-share" onclick="shareRefCode()">📤 Share to Telegram</button></div></div></div>
+<div id="spinModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>🎰 Lucky Spin</h2><div class="spin-container"><div class="spin-wheel-wrapper"><div class="spin-pointer"></div><div class="spin-wheel" id="spinWheel"></div><div class="spin-center">🎰</div></div><p style="color:#8a90a0;font-size:13px;margin-bottom:12px">Spin ကျန်: <span id="spinLimit">0</span> ခါ</p><button class="spin-btn" id="spinBtn" onclick="playSpin()">🎰 SPIN လှည့်မယ်</button><div class="spin-rewards-info" id="spinRewardsInfo"></div></div></div></div>
+<div id="promoModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2>🎟️ Promo Code</h2><p style="color:#8a90a0;font-size:13px;margin-bottom:14px">Promo Code ရိုက်ထည့်ပြီး Bonus ငွေ ရယူပါ</p><div class="promo-input-group"><input id="promoInput" placeholder="WELCOME100" /><button onclick="redeemPromo()">Redeem</button></div><div id="promoResult" style="text-align:center;font-size:14px;font-weight:600;margin-top:8px"></div></div></div>
+<div id="previewModal" class="modal hidden"><div class="modal-content"><button class="modal-close" data-close>×</button><h2 id="previewTitle">Item</h2><div id="previewContent"></div></div></div>
+<div id="contactAdminModal" class="modal hidden"><div class="modal-content" style="text-align:center"><h2 style="background:linear-gradient(135deg,#27ae60,#2ea6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">✅ Order အောင်မြင်ပါသည်</h2><div style="font-size:60px;margin:16px 0">📞</div><p style="color:#8a90a0;font-size:14px;line-height:1.7;margin-bottom:16px">App Premium အတွက် Admin ကို ဆက်သွယ်ပါ။<br>Order ID ကို ပြောပြီး အကောင့် ရယူပါ။</p><div id="contactOrderInfo" style="background:#1a1d26;padding:14px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:left"></div><a id="contactAdminLink" href="#" target="_blank" style="display:block;width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-weight:800;text-decoration:none;font-size:15px;margin-bottom:10px;box-sizing:border-box">💬 Admin ကို ဆက်သွယ်ရန်</a><button onclick="document.getElementById('contactAdminModal').classList.add('hidden')" style="width:100%;padding:12px;border-radius:12px;background:#1a1d26;color:#8a90a0;border:none;font-weight:700;cursor:pointer;font-family:inherit">ပိတ်မည်</button></div></div>
 <div id="toast" class="toast hidden"></div>
 
+<script>
+  (function() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var ref = params.get('ref') || params.get('start') || params.get('startapp') || '';
+      if (ref) sessionStorage.setItem('pending_referral', ref.toUpperCase());
+    } catch(e) {}
+  })();
+</script>
 <script src="app.js"></script>
 </body>
 </html>

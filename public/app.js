@@ -5,7 +5,6 @@ try { tg.setHeaderColor('secondary_bg_color'); } catch(e){}
 const $ = (id) => document.getElementById(id);
 const initData = tg.initData || '';
 const TG_BOT_USERNAME = 'SafeZoneGametopup26_bot';
-const TG_SHARE_URL = 'https://t.me/' + TG_BOT_USERNAME;
 const ADMIN_CONTACT_CLEAN = 'pyae_phyo_12327';
 
 let STATE = { user: null, games: [], items: [], selectedMethod: null, selectedItem: null, selectedGame: null, payments: {}, banners: [], wishlist: JSON.parse(localStorage.getItem('wishlist') || '[]') };
@@ -100,28 +99,71 @@ if ($('loginBtn')) $('loginBtn').addEventListener('click', async () => {
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
+// REGISTER with Referral Code
 if ($('registerBtn')) $('registerBtn').addEventListener('click', async () => {
   const name = $('nameInput').value.trim();
   const phone = $('phoneInput').value.trim();
   const password = $('passwordInput').value;
   const password2 = $('passwordInput2').value;
+  const referralCode = $('referralInput') ? $('referralInput').value.trim().toUpperCase() : '';
+
   if (name.length < 2) return toast('နာမည် ထည့်ပါ', 'error');
   if (!/^[0-9+\-\s]{6,}$/.test(phone)) return toast('ဖုန်းနံပါတ် မှန်ကန်စွာ', 'error');
   if (password.length < 4) return toast('စကားဝှက် 4 လုံး+', 'error');
   if (password !== password2) return toast('စကားဝှက် မတူပါ', 'error');
-  const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ name, phone, password, password2 }) });
+
+  const termsCheck = $('termsCheck');
+  if (termsCheck && !termsCheck.checked) {
+    shakeElement(termsCheck.parentElement);
+    return toast('⚠️ Terms & Privacy ကို သဘောတူပါ', 'error');
+  }
+
+  const btn = $('registerBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ စောင့်ပါ...';
+
+  const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ name, phone, password, password2, referral_code: referralCode || null }) });
+
+  btn.disabled = false;
+  btn.textContent = '✨ Register';
+
   if (res.ok) {
     STATE.user = res.user;
+    sessionStorage.removeItem('pending_referral');
     hide('register'); show('main');
     if ($('bottomNav')) $('bottomNav').classList.remove('hidden');
     renderMain(); loadGames(); loadBanners(); refreshFeatures(); loadFeatured();
     try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
-    toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
+    showConfetti();
+
+    if (res.referral && res.referral.ok) {
+      setTimeout(() => toast('🎁 Bonus ' + Number(res.referral.inviteeBonus || 0).toLocaleString() + ' Ks ရပါပြီ!', 'success'), 1200);
+      setTimeout(() => toast('🎉 ဖိတ်ခေါ်သူကိုလည်း ' + Number(res.referral.inviterBonus || 0).toLocaleString() + ' Ks Bonus ပေးပါပြီ', 'success'), 4200);
+    } else if (referralCode && res.referral && !res.referral.ok) {
+      setTimeout(() => toast('⚠️ Code မမှန်ပါ — ဒါပေမယ့် Register အောင်မြင်ပါပြီ', 'error'), 1000);
+    } else {
+      toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
+    }
   } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 });
 
 if ($('showLoginBtn')) $('showLoginBtn').addEventListener('click', () => { hide('register'); show('login'); });
-if ($('showRegisterBtn')) $('showRegisterBtn').addEventListener('click', () => { hide('login'); show('register'); });
+if ($('showRegisterBtn')) $('showRegisterBtn').addEventListener('click', () => {
+  hide('login'); show('register');
+  // Referral code auto-fill
+  setTimeout(() => {
+    const refInput = $('referralInput');
+    const pending = sessionStorage.getItem('pending_referral');
+    if (refInput && pending && !refInput.value) refInput.value = pending;
+  }, 100);
+});
+
+// Auto-fill referral code စတင်ချိန်မှာ
+setTimeout(() => {
+  const refInput = $('referralInput');
+  const pending = sessionStorage.getItem('pending_referral');
+  if (refInput && pending) refInput.value = pending;
+}, 500);
 
 if ($('profileBtn')) $('profileBtn').addEventListener('click', () => {
   const u = STATE.user; if (!u) return;
@@ -552,22 +594,13 @@ setInterval(checkUnread, 15000);
 async function refreshFeatures() {
   if (!STATE.user) return;
   if (FEATURES.loyalty) {
-    try {
-      const res = await api('/api/points/balance', { method: 'POST', body: '{}' });
-      if (res.ok) { const el = $('dashPoints'); if (el) el.textContent = Number(res.points || 0).toLocaleString(); }
-    } catch(e) {}
+    try { const res = await api('/api/points/balance', { method: 'POST', body: '{}' }); if (res.ok) { const el = $('dashPoints'); if (el) el.textContent = Number(res.points || 0).toLocaleString(); } } catch(e) {}
   }
   if (FEATURES.referral) {
-    try {
-      const res = await api('/api/referral/info', { method: 'POST', body: '{}' });
-      if (res.ok) { const el = $('dashReferral'); if (el) el.textContent = (res.stats && res.stats.count) || 0; }
-    } catch(e) {}
+    try { const res = await api('/api/referral/info', { method: 'POST', body: '{}' }); if (res.ok) { const el = $('dashReferral'); if (el) el.textContent = (res.stats && res.stats.count) || 0; } } catch(e) {}
   }
   if (FEATURES.spin) {
-    try {
-      const res = await api('/api/spin/info', { method: 'POST', body: '{}' });
-      if (res.ok) { const el = $('dashSpin'); if (el) el.textContent = res.canSpin ? 'Play' : '✓ Done'; }
-    } catch(e) {}
+    try { const res = await api('/api/spin/info', { method: 'POST', body: '{}' }); if (res.ok) { const el = $('dashSpin'); if (el) el.textContent = res.canSpin ? 'Play' : '✓ Done'; } } catch(e) {}
   }
   const ptCard = document.querySelector('.dashboard-card.points');
   if (ptCard) ptCard.style.display = FEATURES.loyalty ? 'block' : 'none';
@@ -614,6 +647,7 @@ window.openReferralModal = async () => {
     if ($('refCodeDisplay')) $('refCodeDisplay').textContent = res.code || '------';
     if ($('refCount')) $('refCount').textContent = (res.stats && res.stats.count) || 0;
     if ($('refEarned')) $('refEarned').textContent = Number((res.stats && res.stats.earned) || 0).toLocaleString();
+    if (res.tgLink) window._lastTgLink = res.tgLink;
   }
 };
 
@@ -624,12 +658,19 @@ window.copyRefCode = () => {
   catch(e) { toast('Code: ' + code, 'info'); }
 };
 
-window.shareRefCode = () => {
+window.shareRefCode = async () => {
   const code = $('refCodeDisplay') ? $('refCodeDisplay').textContent : '';
   if (!code || code === '------') return;
-  const text = '🎁 Safe Zone Game Topup မှာ ကျွန်တော့်ရဲ့ Referral Code "' + code + '" နဲ့ အကောင့်ဖွင့်ပြီး Bonus ငွေ ရယူပါ!';
-  const url = 'https://t.me/share/url?url=' + encodeURIComponent(TG_SHARE_URL) + '&text=' + encodeURIComponent(text);
-  window.open(url, '_blank');
+  try {
+    const res = await api('/api/referral/info', { method: 'POST', body: '{}' });
+    const tgLink = (res.ok && res.tgLink) ? res.tgLink : ('https://t.me/' + TG_BOT_USERNAME + '?start=' + code);
+    const text = '🎁 Safe Zone Game Topup မှာ ကျွန်တော့်ရဲ့ Referral Code "' + code + '" နဲ့ အကောင့်ဖွင့်ပြီး Bonus ငွေ ရယူပါ!';
+    const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(tgLink) + '&text=' + encodeURIComponent(text);
+    window.open(shareUrl, '_blank');
+  } catch(e) {
+    const fallback = 'https://t.me/share/url?url=' + encodeURIComponent('https://t.me/' + TG_BOT_USERNAME + '?start=' + code);
+    window.open(fallback, '_blank');
+  }
 };
 
 window.openSpinModal = async function() {
@@ -758,19 +799,6 @@ async function loadFeatured() {
     const gamesTitle = main.querySelector('.section-title');
     if (gamesTitle && gamesTitle.parentNode) gamesTitle.parentNode.insertBefore(section, gamesTitle);
     else main.appendChild(section);
-    section.querySelectorAll('.featured-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const id = Number(card.dataset.id);
-        const gameId = card.dataset.game;
-        const game = STATE.games.find(g => g.id === gameId);
-        if (!game) return;
-        api('/api/items/' + gameId).then(res => {
-          if (!res.ok) return;
-          const item = (res.items || []).find(i => i.id === id);
-          if (item) { STATE.selectedGame = game; STATE.selectedItem = item; openBuy(item); }
-        });
-      });
-    });
   } catch(e) {}
 }
 
@@ -787,7 +815,6 @@ async function autoRefresh() {
       if (newBal > oldBal) {
         const diff = newBal - oldBal;
         toast('💰 +' + diff.toLocaleString() + ' MMK ရောက်ပါပြီ!', 'success');
-        try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
       }
     }
   } catch(e) {}
@@ -804,29 +831,12 @@ document.querySelectorAll('.modal').forEach(m => {
   m.addEventListener('click', (e) => { if (e.target === m) { m.classList.add('hidden'); if (m.id === 'chatModal') closeChat(); } });
 });
 
-// ANIMATED MAINTENANCE SCREEN
 function showMaintenanceScreen() {
   if ($('maintenanceOverlay')) return;
   const overlay = document.createElement('div');
   overlay.id = 'maintenanceOverlay';
-  overlay.innerHTML =
-    '<div class="mt-bg-blob mt-blob-1"></div>' +
-    '<div class="mt-bg-blob mt-blob-2"></div>' +
-    '<div class="mt-content">' +
-    '<div class="mt-icon">' +
-    '<div class="mt-gear mt-gear-1">⚙️</div>' +
-    '<div class="mt-gear mt-gear-2">⚙️</div>' +
-    '<div class="mt-center">🛠️</div>' +
-    '</div>' +
-    '<h1 class="mt-title">ခဏစောင့်ပါ</h1>' +
-    '<p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p>' +
-    '<div class="mt-progress"><div class="mt-progress-bar"></div></div>' +
-    '<p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p>' +
-    '</div>';
+  overlay.innerHTML = '<div class="mt-bg-blob mt-blob-1"></div><div class="mt-bg-blob mt-blob-2"></div><div class="mt-content"><div class="mt-icon"><div class="mt-gear mt-gear-1">⚙️</div><div class="mt-gear mt-gear-2">⚙️</div><div class="mt-center">🛠️</div></div><h1 class="mt-title">ခဏစောင့်ပါ</h1><p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p><div class="mt-progress"><div class="mt-progress-bar"></div></div><p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p></div>';
   document.body.appendChild(overlay);
-  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-    try { window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning'); } catch(e) {}
-  }
 }
 
 function showConfetti() {
@@ -862,11 +872,10 @@ document.head.appendChild(extraStyle);
   const btn = $('themeToggleBtn');
   if (btn) btn.addEventListener('click', function() {
     document.body.classList.toggle('light');
-    const isLight = document.body.classList.contains('light');
-    localStorage.setItem('app_theme', isLight ? 'light' : 'dark');
+    localStorage.setItem('app_theme', document.body.classList.contains('light') ? 'light' : 'dark');
     updateIcon();
     try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
-    toast(isLight ? '☀️ Light Mode' : '🌙 Dark Mode', 'success');
+    toast(document.body.classList.contains('light') ? '☀️ Light Mode' : '🌙 Dark Mode', 'success');
   });
 })();
 
@@ -901,183 +910,16 @@ document.head.appendChild(extraStyle);
     } catch(e) {}
   }
   function handleClick(e) {
-    var el = e.target; if (!el) return;
-    var target = el.closest('button, .btn, .nav-btn, .game-card, .item-card, .dashboard-card, .pay-btn, .qa-btn, .header-btn, .modal-close, .banner, .spin-btn, .referral-share, .item-buy, .wish-heart, .reorder-btn, a');
+    var target = e.target ? e.target.closest('button, .btn, .nav-btn, .game-card, .item-card, .dashboard-card, .pay-btn, .qa-btn, .header-btn, .modal-close, .spin-btn, .item-buy, .wish-heart, .reorder-btn, a') : null;
     if (!target) return;
     var cls = target.className || '';
     var strength = 'light';
     if (cls.indexOf('spin-btn') >= 0) strength = 'heavy';
-    else if (cls.indexOf('item-buy') >= 0 || cls.indexOf('confirmBuy') >= 0 || cls.indexOf('submitDeposit') >= 0) strength = 'medium';
-    else if (cls.indexOf('dashboard-card') >= 0 || cls.indexOf('game-card') >= 0 || cls.indexOf('reorder-btn') >= 0) strength = 'medium';
-    else if (cls.indexOf('btn-primary') >= 0 || cls.indexOf('btn-success') >= 0) strength = 'medium';
+    else if (cls.indexOf('item-buy') >= 0 || cls.indexOf('dashboard-card') >= 0 || cls.indexOf('game-card') >= 0) strength = 'medium';
     vibrate(strength);
   }
   document.addEventListener('touchstart', handleClick, { passive: true });
-  document.addEventListener('mousedown', handleClick, { passive: true });
 })();
 
 updateWishBadge();
 init();
-
-// ==========================================
-// SECTION 2: PROFESSIONAL BUSINESS FEATURES
-// ==========================================
-
-// ---------- 2.1 TERMS & PRIVACY ----------
-const TERMS_DATA = {
-  terms: {
-    title: '📜 သတ်မှတ်ချက်များ',
-    content:
-      '<h3>၁။ အကောင့်ဖွင့်ခြင်း</h3>' +
-      '<p>အသက် ၁၃ နှစ်အထက် ဖြစ်ရပါမည်။ မှန်ကန်သော အချက်အလက်များ ဖြည့်စွက်ရပါမည်။ တစ်ဦးလျှင် အကောင့် ၁ ခုသာ ဖွင့်ခွင့်ရှိသည်။</p>' +
-      '<h3>၂။ ဝယ်ယူခြင်း</h3>' +
-      '<p>Order တင်ပြီးနောက် Admin မှ စစ်ဆေးပြီး ဆောင်ရွက်ပါမည်။ Game ID မှားထည့်ခြင်းကြောင့် ဖြစ်ပေါ်သော ဆုံးရှုံးမှုအတွက် ကျွန်ုပ်တို့ တာဝန်မခံပါ။</p>' +
-      '<h3>၃။ ငွေပြန်အမ်းခြင်း</h3>' +
-      '<p>Order မဆောင်ရွက်ရသေးပါက Refund ရနိုင်သည်။ ဆောင်ရွက်ပြီးပါက Refund မရနိုင်ပါ။</p>' +
-      '<h3>၄။ ပိတ်ပင်ခြင်း</h3>' +
-      '<p>Rule ချိုးဖောက်ပါက အကောင့်ကို ပိတ်ပင်နိုင်သည်။ Balance များ ဆုံးရှုံးနိုင်သည်။</p>' +
-      '<h3>၅။ ပြောင်းလဲမှု</h3>' +
-      '<p>သတ်မှတ်ချက်များကို ကြိုတင်အသိပေးခြင်းမရှိဘဲ ပြောင်းလဲနိုင်သည်။</p>'
-  },
-  privacy: {
-    title: '🔒 Privacy Policy',
-    content:
-      '<h3>၁။ ကောက်ခံသော အချက်အလက်များ</h3>' +
-      '<ul><li>Telegram User ID</li><li>နာမည်</li><li>ဖုန်းနံပါတ်</li><li>Order မှတ်တမ်းများ</li></ul>' +
-      '<h3>၂။ အသုံးပြုသည့် ရည်ရွယ်ချက်</h3>' +
-      '<p>Order ဆောင်ရွက်ရန်၊ Customer Service ပေးရန်၊ လုံခြုံရေးအတွက် အသုံးပြုသည်။</p>' +
-      '<h3>၃။ မျှဝေခြင်း</h3>' +
-      '<p>သင့်အချက်အလက်များကို တတိယပါတီသို့ မျှဝေမည် မဟုတ်ပါ။ ဥပဒေအရ တောင်းခံပါက မှလွဲ၍။</p>' +
-      '<h3>၄။ လုံခြုံရေး</h3>' +
-      '<p>Password များကို Hash လုပ်ပြီး သိမ်းဆည်းသည်။ သင့် Password ကို ဘယ်သူ့ကိုမှ မပေးပါနှင့်။</p>' +
-      '<h3>၅။ သင့်အခွင့်အရေး</h3>' +
-      '<p>သင့်အချက်အလက်များကို ကြည့်ရှုရန်၊ ပြင်ဆင်ရန်၊ ဖျက်ရန် Admin ကို ဆက်သွယ်နိုင်သည်။</p>'
-  }
-};
-
-window.openTermsModal = function(tab) {
-  show('termsModal');
-  switchTermsTab(tab || 'terms');
-};
-
-window.switchTermsTab = function(tab) {
-  const data = TERMS_DATA[tab] || TERMS_DATA.terms;
-  const titleEl = document.getElementById('termsTitle');
-  const contentEl = document.getElementById('termsContent');
-  const termsBtn = document.getElementById('termsTabBtn');
-  const privBtn = document.getElementById('privacyTabBtn');
-  if (titleEl) titleEl.textContent = data.title;
-  if (contentEl) contentEl.innerHTML = data.content;
-  if (termsBtn && privBtn) {
-    termsBtn.className = 'terms-tab-btn ' + (tab === 'terms' ? 'active' : 'inactive');
-    privBtn.className = 'terms-tab-btn ' + (tab === 'privacy' ? 'active' : 'inactive');
-  }
-};
-
-// ---------- 2.2 ABOUT US ----------
-window.openAboutModal = function() {
-  show('aboutModal');
-  const el = document.getElementById('aboutContent');
-  if (!el) return;
-  el.innerHTML =
-    '<h3>🛡️ Safe Zone Game Topup</h3>' +
-    '<p>မြန်မာနိုင်ငံရှိ ဂိမ်းကစားသူများအတွက် လျင်မြန်လုံခြုံသော Top-up ဝန်ဆောင်မှုကို ပေးအပ်လျက်ရှိပါသည်။</p>' +
-    '<h3>🎯 ကျွန်ုပ်တို့၏ ရည်မှန်းချက်</h3>' +
-    '<ul><li>⚡ လျင်မြန်သော ဝန်ဆောင်မှု (၅ မိနစ် ~ ၁ နာရီ)</li>' +
-    '<li>🔒 လုံခြုံသော ငွေပေးချေမှု</li>' +
-    '<li>💬 ၂၄/၇ Customer Support</li>' +
-    '<li>💰 ဈေးနှုန်းသက်သာမှု</li></ul>' +
-    '<h3>🏢 ဆိုင်အချက်အလက်</h3>' +
-    '<ul><li><b>ဆိုင်အမည်:</b> Safe Zone Game Topup</li>' +
-    '<li><b>တည်နေရာ:</b> မြန်မာနိုင်ငံ</li>' +
-    '<li><b>ဝန်ဆောင်မှု:</b> MLBB, PUBG, Magic Chess, App Premium</li>' +
-    '<li><b>ငွေပေးချေမှု:</b> KBZ, Wave, UAB, AYA</li></ul>' +
-    '<h3>📞 ဆက်သွယ်ရန်</h3>' +
-    '<ul><li><b>Telegram:</b> @pyae_phyo_12327</li>' +
-    '<li><b>Chat:</b> Mini App ထဲမှ 💬 Chat</li></ul>' +
-    '<h3>🕐 ဖွင့်ချိန်</h3>' +
-    '<p>မနက် ၉:၀၀ ~ ည ၁၁:၀၀ (တစ်ပတ်လုံး)</p>' +
-    '<p style="text-align:center;color:#8a90a0;font-size:11px;margin-top:16px">© 2026 Safe Zone Game Topup. All rights reserved.</p>';
-};
-
-// ---------- 2.4 BUSINESS HOURS ----------
-function updateBusinessHours() {
-  const el = document.getElementById('businessHours');
-  const statusEl = document.getElementById('hoursStatus');
-  if (!el || !statusEl) return;
-  el.style.display = 'flex';
-
-  const now = new Date();
-  const hour = now.getHours();
-  const isOpen = hour >= 9 && hour < 23;
-
-  if (isOpen) {
-    statusEl.className = 'hours-status open';
-    statusEl.textContent = '🟢 ဖွင့်ထားသည်';
-  } else {
-    statusEl.className = 'hours-status closed';
-    statusEl.textContent = '🔴 ပိတ်ထားသည်';
-  }
-}
-setInterval(updateBusinessHours, 60000);
-
-// ---------- 2.5 VERIFIED BADGE ----------
-// renderMain ကို override
-const _origRenderMainPro = window.renderMain;
-if (typeof _origRenderMainPro === 'function') {
-  window.renderMain = function() {
-    _origRenderMainPro();
-    const ul = document.getElementById('userLabel');
-    if (ul && !ul.querySelector('.verified-badge')) {
-      ul.innerHTML = ul.textContent + '<span class="verified-badge">✅ Verified</span>';
-    }
-    updateBusinessHours();
-  };
-}
-
-// ---------- REGISTER TERMS CHECK ----------
-const _origRegisterBtn = document.getElementById('registerBtn');
-if (_origRegisterBtn) {
-  const _origHandler = _origRegisterBtn.onclick;
-  // existing addEventListener ကို clone လုပ်ပြီး override
-  const btn = _origRegisterBtn;
-  const clone = btn.cloneNode(true);
-  btn.parentNode.replaceChild(clone, btn);
-
-  clone.addEventListener('click', async function(e) {
-    const termsCheck = document.getElementById('termsCheck');
-    if (termsCheck && !termsCheck.checked) {
-      if (typeof shakeElement === 'function') shakeElement(termsCheck.parentElement);
-      if (typeof toast === 'function') toast('⚠️ သတ်မှတ်ချက်များကို သဘောတူပါ', 'error');
-      return;
-    }
-    // original register logic ကို လက်ဖြင့် ပြန်လုပ်ပါ
-    const name = document.getElementById('nameInput').value.trim();
-    const phone = document.getElementById('phoneInput').value.trim();
-    const password = document.getElementById('passwordInput').value;
-    const password2 = document.getElementById('passwordInput2').value;
-    if (name.length < 2) return toast('နာမည် ထည့်ပါ', 'error');
-    if (!/^[0-9+\-\s]{6,}$/.test(phone)) return toast('ဖုန်းနံပါတ် မှန်ကန်စွာ', 'error');
-    if (password.length < 4) return toast('စကားဝှက် 4 လုံး+', 'error');
-    if (password !== password2) return toast('စကားဝှက် မတူပါ', 'error');
-    const res = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: name, phone: phone, password: password, password2: password2 }) });
-    if (res.ok) {
-      STATE.user = res.user;
-      hide('register'); show('main');
-      const bn = document.getElementById('bottomNav'); if (bn) bn.classList.remove('hidden');
-      renderMain();
-      if (typeof loadGames === 'function') loadGames();
-      if (typeof loadBanners === 'function') loadBanners();
-      if (typeof refreshFeatures === 'function') refreshFeatures();
-      if (typeof loadFeatured === 'function') loadFeatured();
-      updateBusinessHours();
-      try { tg.HapticFeedback.notificationOccurred('success'); } catch(e){}
-      toast('အကောင့်ဖွင့်ပြီးပါပြီ 🎉', 'success');
-    } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
-  });
-}
-
-// စတင်ချိန်မှာ Business Hours ပြ
-setTimeout(updateBusinessHours, 1000);
-
-console.log('✅ Section 2: Business features loaded');
