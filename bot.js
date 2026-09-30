@@ -39,10 +39,10 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 function defaultDB() {
   return {
     users: [], games: [], items: [], deposits: [], orders: [],
-    transactions: [], logs: [], messages: [], banners: [],
+    transactions: [], logs: [], messages: [], banners: [], admins: [],
     promoCodes: [], stocks: [], pointsHistory: [], referrals: [], spins: [],
     settings: {},
-    _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1, banners: 1, promoCodes: 1, stocks: 1, pointsHistory: 1, referrals: 1, spins: 1 }
+    _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1, banners: 1, promoCodes: 1, stocks: 1, pointsHistory: 1, referrals: 1, spins: 1, admins: 1 }
   };
 }
 function loadDB() {
@@ -51,6 +51,8 @@ function loadDB() {
     const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     if (!d.messages) d.messages = [];
     if (!d.logs) d.logs = [];
+    if (!d.admins) d.admins = [];
+    if (!d._seq.admins) d._seq.admins = 1;
     if (!d.transactions) d.transactions = [];
     if (!d.orders) d.orders = [];
     if (!d.deposits) d.deposits = [];
@@ -359,7 +361,37 @@ const H = {
     dbData.stocks.push(stock); saveDB(); return stock.id;
   },
   removeStock: (stockId) => { dbData.stocks = dbData.stocks.filter(s => s.id !== Number(stockId)); saveDB(); },
-  listStocks: (itemId) => dbData.stocks.filter(s => s.item_id === Number(itemId))
+  listStocks: (itemId) => dbData.stocks.filter(s => s.item_id === Number(itemId)),
+  // ===== MULTI ADMIN =====
+  listAdmins: () => dbData.admins.slice().reverse(),
+  getAdminById: (id) => dbData.admins.find(a => a.id === Number(id)) || null,
+  getAdminByUsername: (username) => dbData.admins.find(a => a.username.toLowerCase() === String(username).toLowerCase().trim()) || null,
+  addAdmin: ({ username, name, telegram_id, password_salt, password_hash }) => {
+    const a = { id: dbData._seq.admins++, username: username.toLowerCase().trim(), name, telegram_id: String(telegram_id), password_salt, password_hash, active: 1, created_at: now() };
+    dbData.admins.push(a); saveDB(); return a.id;
+  },
+  toggleAdmin: (id) => { const a = H.getAdminById(id); if (a) { a.active = a.active ? 0 : 1; saveDB(); return a.active; } return 0; },
+  removeAdmin: (id) => { dbData.admins = dbData.admins.filter(a => a.id !== Number(id)); saveDB(); },
+  getAllAdminTelegramIds: () => {
+    const ids = [String(ADMIN_ID)];
+    dbData.admins.filter(a => a.active).forEach(a => { if (!ids.includes(String(a.telegram_id))) ids.push(String(a.telegram_id)); });
+    return ids;
+  },
+  verifyAdminLogin: (username, password) => {
+    const uname = String(username || '').toLowerCase().trim();
+    // Master admin
+    if ((uname === 'admin' || uname === '') && password === ADMIN_PASSWORD) {
+      return { ok: true, admin: { id: 0, username: 'admin', name: 'Master Admin', telegram_id: ADMIN_ID, isMaster: true } };
+    }
+    // DB admins
+    const a = H.getAdminByUsername(uname);
+    if (!a) return { ok: false, error: 'Username မတွေ့ပါ' };
+    if (!a.active) return { ok: false, error: 'Admin ပိတ်ထားပါသည်' };
+    const hash = hashPassword(password, a.password_salt || '');
+    if (hash !== a.password_hash) return { ok: false, error: 'Password မှားနေပါသည်' };
+    return { ok: true, admin: { id: a.id, username: a.username, name: a.name, telegram_id: a.telegram_id, isMaster: false } };
+  },
+
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
@@ -400,7 +432,10 @@ function auth(req, res, next) {
 }
 function adminAuth(req, res, next) {
   const pwd = req.headers['x-admin-password'] || req.body?.password || req.query?.password;
-  if (pwd !== ADMIN_PASSWORD) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  const uname = req.headers['x-admin-username'] || req.body?.username || req.query?.username || 'admin';
+  const result = H.verifyAdminLogin(uname, pwd);
+  if (!result.ok) return res.status(401).json({ ok: false, error: result.error || 'unauthorized' });
+  req.adminUser = result.admin;
   H.setSetting('admin_last_seen', String(now()));
   next();
 }
@@ -588,7 +623,7 @@ app.post('/api/purchase', auth, async (req, res) => {
     }
     try { await bot.telegram.sendMessage(u.telegram_id, `🎉 Order #${orderId} — Auto Delivered\n\n📦 ${item.name}\n💵 ${item.price} Ks\n\n${content}`); } catch (e) {}
     if (spinsGiven > 0) { try { await bot.telegram.sendMessage(u.telegram_id, `🎰 ဝယ်ယူမှုအတွက် Spin ${spinsGiven} ခါ ရပါပြီ!\n🎯 Spin ကျန်: ${H.getAvailableSpins(u.id)} ခါ`); } catch (e) {} }
-    try { await bot.telegram.sendMessage(ADMIN_ID, `✅ Auto-Delivered\n🛒 Order #${orderId}\n👤 ${u.name}\n📦 ${item.name}`); } catch (e) {}
+    try { await notifyAllAdmins(`✅ Auto-Delivered\n🛒 Order #${orderId}\n👤 ${u.name}\n📦 ${item.name}`); } catch (e) {}
     return res.json({ ok: true, order_id: orderId, auto_delivered: true, spins_given: spinsGiven });
   }
 
@@ -612,7 +647,7 @@ app.post('/api/purchase', auth, async (req, res) => {
   let cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''}\n📱 ${u.phone}\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n`;
   if (needsAccount) cap += `\n⚠️ App Premium`; else { cap += `🆔 ${game_account}`; if (server_id) cap += `\n🌐 Server: ${server_id}`; }
   try {
-    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
+    const sent = await notifyAllAdmins(cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) {}
   if (spinsGiven > 0) { try { await bot.telegram.sendMessage(u.telegram_id, `🎰 ဝယ်ယူမှုအတွက် Spin ${spinsGiven} ခါ ရပါပြီ!\n🎯 Spin ကျန်: ${H.getAvailableSpins(u.id)} ခါ`); } catch (e) {} }
@@ -704,9 +739,47 @@ app.post('/api/spin/play', auth, (req, res) => {
 
 // ============ ADMIN API ============
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  if (password === ADMIN_PASSWORD) return res.json({ ok: true });
-  res.status(401).json({ ok: false, error: 'Password မှားနေပါသည်' });
+  const { username, password } = req.body;
+  const result = H.verifyAdminLogin(username || 'admin', password);
+  if (result.ok) return res.json({ ok: true, admin: result.admin });
+  res.status(401).json({ ok: false, error: result.error || 'Password မှားနေပါသည်' });
+});
+
+// ===== ADMIN MANAGEMENT APIs =====
+app.get('/api/admin/admins', adminAuth, (req, res) => {
+  const admins = H.listAdmins().map(a => ({ id: a.id, username: a.username, name: a.name, telegram_id: a.telegram_id, active: a.active, created_at: a.created_at }));
+  res.json({ ok: true, admins, master: { username: 'admin', name: 'Master Admin', telegram_id: ADMIN_ID } });
+});
+
+app.post('/api/admin/admins/add', adminAuth, (req, res) => {
+  const { username, name, telegram_id, password } = req.body;
+  if (!username || username.length < 3) return res.status(400).json({ ok: false, error: 'Username အနည်းဆုံး 3 လုံး' });
+  if (username.toLowerCase() === 'admin') return res.status(400).json({ ok: false, error: 'admin ဆိုတဲ့နာမည် မသုံးရပါ' });
+  if (!name) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
+  if (!telegram_id || !/^[0-9]+$/.test(String(telegram_id))) return res.status(400).json({ ok: false, error: 'Telegram ID မှန်ကန်စွာထည့်ပါ' });
+  if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'Password 4 လုံး+' });
+  if (H.getAdminByUsername(username)) return res.status(400).json({ ok: false, error: 'Username ရှိပြီးသား' });
+  const existing = H.listAdmins().find(a => String(a.telegram_id) === String(telegram_id));
+  if (existing) return res.status(400).json({ ok: false, error: 'Telegram ID ရှိပြီးသား' });
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = hashPassword(password, salt);
+  const id = H.addAdmin({ username: username, name: name, telegram_id: telegram_id, password_salt: salt, password_hash: hash });
+  H.addLog('admin-panel', 'add_admin', 'admin#' + id, username);
+  res.json({ ok: true, id });
+});
+
+app.post('/api/admin/admins/toggle', adminAuth, (req, res) => {
+  const { admin_id } = req.body;
+  const active = H.toggleAdmin(Number(admin_id));
+  H.addLog('admin-panel', active ? 'admin_enable' : 'admin_disable', 'admin#' + admin_id, null);
+  res.json({ ok: true, active });
+});
+
+app.post('/api/admin/admins/delete', adminAuth, (req, res) => {
+  const { admin_id } = req.body;
+  H.removeAdmin(Number(admin_id));
+  H.addLog('admin-panel', 'delete_admin', 'admin#' + admin_id, null);
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/stats', adminAuth, (req, res) => {
@@ -991,6 +1064,16 @@ app.post('/api/admin/backup', adminAuth, async (req, res) => { await sendBackupT
 // ============ BOT ============
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
+
+async function notifyAllAdmins(text, options = {}) {
+  const adminIds = H.getAllAdminTelegramIds();
+  for (const id of adminIds) {
+    try { await bot.telegram.sendMessage(id, text, options); }
+    catch (e) { console.log('Notify ' + id + ' failed: ' + e.message); }
+  }
+}
+
+
 
 bot.use(async (ctx, next) => { if (ctx.from && isAdmin(ctx.from.id)) H.setSetting('admin_last_seen', String(now())); return next(); });
 

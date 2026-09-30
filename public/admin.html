@@ -47,6 +47,7 @@
     <button class="tab" data-tab="settings">⚙️ Settings</button>
     <button class="tab" data-tab="export">📥 Export</button>
     <button class="tab" data-tab="targeted">🎯 Targeted</button>
+    <button class="tab" data-tab="admins">👤 Admins</button>
     <button class="tab" data-tab="logs">📜 Logs</button>
   </div>
   <main class="admin-main">
@@ -249,7 +250,18 @@
       </div>
     </section>
 
-    <section id="tab-logs" class="tab-content">
+    <section id="tab-admins" class="tab-content">
+      <div class="card" style="margin-bottom:16px;padding:14px;background:#1a1d26;border-radius:12px">
+        <div style="font-weight:700;color:#2ea6ff;margin-bottom:8px">👑 Master Admin</div>
+        <div id="masterAdminInfo" style="font-size:13px;color:#8a90a0"></div>
+      </div>
+      <div class="filter-bar">
+        <button id="addAdminBtn" class="btn-primary">➕ Admin အသစ်</button>
+      </div>
+      <div id="adminsList" class="list"></div>
+    </section>
+
+<section id="tab-logs" class="tab-content">
       <div id="logsList" class="list"></div>
     </section>
   </main>

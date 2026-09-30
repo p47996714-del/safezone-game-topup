@@ -822,3 +822,82 @@ if (typeof _origLoadTab === 'function') {
 }
 
 console.log('✅ Part B: Admin features loaded');
+
+// ==========================================
+// MULTI ADMIN MANAGEMENT
+// ==========================================
+async function loadAdmins() {
+  const box = document.getElementById('adminsList');
+  const masterBox = document.getElementById('masterAdminInfo');
+  if (!box) return;
+  box.innerHTML = '<div class="empty">ခဏစောင့်ပါ...</div>';
+  try {
+    const res = await api('/api/admin/admins', null, 'GET');
+    if (!res.ok) { box.innerHTML = '<div class="empty">Error</div>'; return; }
+
+    if (masterBox && res.master) {
+      masterBox.innerHTML = '👤 <b style="color:#fff">admin</b> • ' + (res.master.name || 'Master') + '<br>📱 TG: ' + res.master.telegram_id + '<br><span style="color:#e74c3c;font-size:11px">⚠️ ဖျက်လို့မရပါ</span>';
+    }
+
+    if (!res.admins.length) {
+      box.innerHTML = '<div class="empty">👥 Admin မရှိသေးပါ</div>';
+      return;
+    }
+
+    box.innerHTML = '';
+    res.admins.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<div class="card-header"><div><div class="card-title">👤 ' + a.username + '</div><div class="card-meta">📛 ' + (a.name || '-') + '<br>📱 TG ID: ' + a.telegram_id + '<br>📅 ' + new Date((a.created_at || 0) * 1000).toLocaleDateString() + '<br>Status: ' + (a.active ? '<span style="color:#27ae60">🟢 Active</span>' : '<span style="color:#e74c3c">🔴 Disabled</span>') + '</div></div></div><div class="card-actions"><button class="btn-gray" onclick="toggleAdminAcc(' + a.id + ')">' + (a.active ? '🔴 Disable' : '🟢 Enable') + '</button><button class="btn-no" onclick="deleteAdminAcc(' + a.id + ')">🗑️ Delete</button></div>';
+      box.appendChild(card);
+    });
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Error</div>';
+  }
+}
+
+const addAdminBtn = document.getElementById('addAdminBtn');
+if (addAdminBtn) {
+  addAdminBtn.addEventListener('click', function() {
+    showModal('<h2>➕ Admin အသစ်</h2><label>Username</label><input id="newAdminUser" placeholder="john" style="text-transform:lowercase" /><label>နာမည်</label><input id="newAdminName" placeholder="John Doe" /><label>Telegram ID</label><input id="newAdminTg" placeholder="123456789" /><label>Password</label><input id="newAdminPwd" type="password" placeholder="4 လုံး+" /><button class="btn-submit" onclick="confirmAddAdmin()">💾 Save</button>');
+  });
+}
+
+window.confirmAddAdmin = async function() {
+  const username = document.getElementById('newAdminUser').value.trim().toLowerCase();
+  const name = document.getElementById('newAdminName').value.trim();
+  const telegram_id = document.getElementById('newAdminTg').value.trim();
+  const password = document.getElementById('newAdminPwd').value;
+  if (!username || !name || !telegram_id || !password) return toast('အားလုံး ဖြည့်ပါ', 'error');
+  const res = await api('/api/admin/admins/add', { username, name, telegram_id, password });
+  if (res.ok) { toast('✅ Admin ထည့်ပြီ', 'success'); closeModal(); loadAdmins(); }
+  else toast(res.error || 'Error', 'error');
+};
+
+window.toggleAdminAcc = async function(id) {
+  if (!confirm('Toggle admin status?')) return;
+  const res = await api('/api/admin/admins/toggle', { admin_id: id });
+  if (res.ok) { toast(res.active ? '🟢 Enabled' : '🔴 Disabled', 'success'); loadAdmins(); }
+};
+
+window.deleteAdminAcc = async function(id) {
+  if (!confirm('Admin ကို လုံးဝ ဖျက်မလား?')) return;
+  const res = await api('/api/admin/admins/delete', { admin_id: id });
+  if (res.ok) { toast('🗑️ ဖျက်ပြီ', 'success'); loadAdmins(); }
+};
+
+// loadTab ကို override - admins tab ထည့်
+const _origLoadTabMulti = window.loadTab;
+if (typeof _origLoadTabMulti === 'function') {
+  window.loadTab = function(name) {
+    if (name === 'admins') {
+      document.querySelectorAll('.tab').forEach(function(x) { x.classList.toggle('active', x.dataset.tab === name); });
+      document.querySelectorAll('.tab-content').forEach(function(x) { x.classList.toggle('active', x.id === 'tab-' + name); });
+      loadAdmins();
+      return;
+    }
+    return _origLoadTabMulti(name);
+  };
+}
+
+console.log('✅ Multi-Admin loaded');
