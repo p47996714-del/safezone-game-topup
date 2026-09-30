@@ -576,3 +576,249 @@ async function loadLogs() {
 // AUTO REFRESH
 // ===============================
 setInterval(() => { if (!ADMIN.pwd) return; if (ADMIN.currentTab === 'dash') loadDash(); }, 15000);
+
+// ==========================================
+// PART B: ADMIN FEATURES
+// ==========================================
+
+// ---------- 3. CSV EXPORT ----------
+window.exportCSV = async function(type) {
+  const url = '/api/admin/export/' + type + '?password=' + encodeURIComponent(ADMIN.pwd);
+  toast('📥 Download စတင်နေသည်...');
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = type + '-' + Date.now() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => toast('✅ Download ပြီးပါပြီ', 'success'), 500);
+  } catch(e) {
+    toast('Error', 'error');
+  }
+};
+
+// ---------- 33. TARGETED BROADCAST ----------
+const targetedBtn = document.getElementById('sendTargetedBtn');
+if (targetedBtn) {
+  targetedBtn.addEventListener('click', async function() {
+    const segment = document.getElementById('bcastSegment').value;
+    const message = document.getElementById('targetedMessage').value.trim();
+    const image_url = document.getElementById('targetedImage').value.trim();
+    if (!message && !image_url) return toast('စာသား ထည့်ပါ', 'error');
+    const segNames = { all: 'အားလုံး', vip: 'VIP', buyers: 'ဝယ်ဖူးသူ', non_buyers: 'မဝယ်ဖူးသူ', inactive_7d: '၇ရက်မဝင်သူ', referrers: 'Referral လုပ်သူ', points_100: 'Points 100+' };
+    if (!confirm('Send to "' + (segNames[segment] || segment) + '" segment?')) return;
+
+    targetedBtn.disabled = true;
+    document.getElementById('targetedStatus').textContent = '⏳ Sending...';
+
+    try {
+      const res = await fetch('/api/admin/broadcast/targeted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': ADMIN.pwd },
+        body: JSON.stringify({ segment, message, image_url })
+      }).then(r => r.json());
+
+      if (res.ok) {
+        document.getElementById('targetedStatus').textContent = '✅ ' + res.total + ' users ဆီ ပို့နေသည် (Total: ' + res.totalUsers + ')';
+        toast('✅ Broadcast Started', 'success');
+        document.getElementById('targetedMessage').value = '';
+        document.getElementById('targetedImage').value = '';
+      } else {
+        toast(res.error || 'Error', 'error');
+        document.getElementById('targetedStatus').textContent = '❌ Failed';
+      }
+    } catch(e) {
+      toast('Server Error', 'error');
+    }
+    targetedBtn.disabled = false;
+  });
+}
+
+// ---------- 15. ITEM IMAGE UPLOAD ----------
+window.uploadItemImage = function(itemId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    toast('⏳ Upload နေသည်...');
+    const fd = new FormData();
+    fd.append('image', file);
+    try {
+      const upRes = await fetch('/api/admin/item/upload-image', {
+        method: 'POST',
+        headers: { 'X-Admin-Password': ADMIN.pwd },
+        body: fd
+      }).then(r => r.json());
+      if (upRes.ok) {
+        const setRes = await api('/api/admin/item/set-image', { item_id: itemId, image: upRes.url });
+        if (setRes.ok) {
+          toast('✅ ပုံ တင်ပြီ', 'success');
+          loadItems();
+        }
+      } else toast(upRes.error || 'Error', 'error');
+    } catch(e) { toast('Upload Error', 'error'); }
+  };
+  input.click();
+};
+
+window.removeItemImage = async function(itemId) {
+  if (!confirm('ပုံ ဖျက်မလား?')) return;
+  const res = await api('/api/admin/item/set-image', { item_id: itemId, image: null });
+  if (res.ok) { toast('🗑️ ဖျက်ပြီ', 'success'); loadItems(); }
+};
+
+// loadItems ကို override — Image Upload Button ထည့်
+const _origLoadItems = window.loadItems;
+if (typeof _origLoadItems === 'function') {
+  window.loadItems = async function() {
+    await _origLoadItems();
+    // image row ထည့်
+    setTimeout(function() {
+      const box = document.getElementById('itemsList');
+      if (!box) return;
+      const cards = box.querySelectorAll('.card');
+      const items = (window.STATE && STATE.items) || [];
+      // items data ကို API ကနေ ပြန်ယူ
+      api('/api/admin/items', null, 'GET').then(function(res) {
+        if (!res.ok) return;
+        const itemsMap = {};
+        res.items.forEach(function(i) { itemsMap[i.id] = i; });
+        cards.forEach(function(card) {
+          const titleEl = card.querySelector('.card-title');
+          if (!titleEl) return;
+          const m = titleEl.textContent.match(/#(\d+)/);
+          if (!m) return;
+          const id = Number(m[1]);
+          const item = itemsMap[id];
+          if (!item) return;
+          if (card.querySelector('.img-upload-row')) return;
+          const row = document.createElement('div');
+          row.className = 'img-upload-row';
+          row.style.cssText = 'display:flex;gap:6px;margin-top:8px;align-items:center';
+          if (item.image) {
+            row.innerHTML = '<img src="' + item.image + '" style="width:40px;height:40px;object-fit:cover;border-radius:8px;background:#0a0c11" />' +
+              '<button class="btn-gray" onclick="uploadItemImage(' + id + ')" style="font-size:11px;padding:6px 10px">🖼️ Change</button>' +
+              '<button class="btn-no" onclick="removeItemImage(' + id + ')" style="font-size:11px;padding:6px 10px">🗑️</button>';
+          } else {
+            row.innerHTML = '<button class="btn-edit" onclick="uploadItemImage(' + id + ')" style="font-size:11px;padding:6px 10px">🖼️ Add Image</button>';
+          }
+          card.appendChild(row);
+        });
+      });
+    }, 100);
+  };
+}
+
+// ---------- 35. DETAILED AUDIT LOGS ----------
+// loadLogs override
+const _origLoadLogs = window.loadLogs;
+if (typeof _origLoadLogs === 'function') {
+  window.loadLogs = async function() {
+    const box = document.getElementById('logsList');
+    if (!box) return;
+    box.innerHTML = '<div class="empty">ခဏစောင့်ပါ...</div>';
+    try {
+      const res = await fetch('/api/admin/logs/detailed?limit=200', {
+        headers: { 'X-Admin-Password': ADMIN.pwd }
+      }).then(r => r.json());
+      if (!res.ok) { box.innerHTML = '<div class="empty">Error</div>'; return; }
+      let html = '<div style="background:#1a1d26;padding:14px;border-radius:12px;margin-bottom:12px">' +
+        '<div style="font-size:13px;color:#8a90a0;margin-bottom:8px">📊 Total: <b style="color:#2ea6ff">' + res.total + '</b> logs</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      Object.entries(res.actions || {}).slice(0, 12).forEach(function(entry) {
+        html += '<span style="background:#0a0c11;padding:4px 10px;border-radius:20px;font-size:11px;color:#8a90a0">' + entry[0] + ' <b style="color:#2ea6ff">' + entry[1] + '</b></span>';
+      });
+      html += '</div></div>';
+      box.innerHTML = html;
+      if (!res.logs.length) { box.innerHTML += '<div class="empty">📜 Log မရှိပါ။</div>'; return; }
+      res.logs.forEach(function(l) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.padding = '10px 14px';
+        const icon = (function(a) {
+          if (a.indexOf('order') >= 0) return '🛒';
+          if (a.indexOf('deposit') >= 0) return '📥';
+          if (a.indexOf('ban') >= 0) return '🚫';
+          if (a.indexOf('balance') >= 0) return '💰';
+          if (a.indexOf('point') >= 0) return '⭐';
+          if (a.indexOf('broadcast') >= 0) return '📢';
+          if (a.indexOf('promo') >= 0) return '🎟️';
+          if (a.indexOf('stock') >= 0) return '📦';
+          if (a.indexOf('banner') >= 0) return '🖼️';
+          if (a.indexOf('settings') >= 0) return '⚙️';
+          if (a.indexOf('broadcast') >= 0) return '📢';
+          return '📋';
+        })(l.action || '');
+        card.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px">' +
+          '<div style="flex:1;font-size:12px">' +
+          '<div><b style="color:#2ea6ff">' + icon + ' ' + l.action + '</b>' + (l.target ? ' • <span style="color:#f39c12">' + l.target + '</span>' : '') + '</div>' +
+          (l.details ? '<div style="color:#8a90a0;margin-top:4px">' + l.details + '</div>' : '') +
+          '</div>' +
+          '<div style="font-size:11px;color:#8a90a0;text-align:right;white-space:nowrap">' + l.timeFormatted + '<br>' + l.relative + '</div>' +
+          '</div>';
+        box.appendChild(card);
+      });
+    } catch(e) { box.innerHTML = '<div class="empty">Error</div>'; }
+  };
+}
+
+// ---------- 29. FEATURED (Dashboard မှာ ထည့်) ----------
+// loadDash override — Featured Items ထည့်
+const _origLoadDash = window.loadDash;
+if (typeof _origLoadDash === 'function') {
+  window.loadDash = async function() {
+    await _origLoadDash();
+    // Featured section ထည့်
+    setTimeout(async function() {
+      const dash = document.getElementById('tab-dash');
+      if (!dash || dash.querySelector('.featured-section')) return;
+      try {
+        const res = await fetch('/api/admin/analytics', { headers: { 'X-Admin-Password': ADMIN.pwd } }).then(r => r.json());
+        if (!res.ok || !res.topItems || !res.topItems.length) return;
+        const sec = document.createElement('div');
+        sec.className = 'featured-section';
+        sec.style.cssText = 'margin-top:20px;padding:16px;background:#1a1d26;border-radius:14px';
+        let html = '<h3 style="margin-bottom:12px;font-size:15px">🏪 Featured / Top Selling</h3>';
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
+        res.topItems.slice(0, 6).forEach(function(it, idx) {
+          html += '<div style="background:#0a0c11;padding:12px;border-radius:10px;border:1px solid #2a2d36">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
+            '<div style="font-size:13px;font-weight:600;flex:1">' + (idx + 1) + '. ' + it.name + '</div>' +
+            '<span style="background:#f39c12;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px">#' + (idx + 1) + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#8a90a0;margin-top:6px">' + it.game_id.toUpperCase() + ' • ' + it.count + ' sold</div>' +
+            '<div style="color:#27ae60;font-weight:700;font-size:13px;margin-top:4px">' + Number(it.revenue).toLocaleString() + ' Ks</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        sec.innerHTML = html;
+        dash.appendChild(sec);
+      } catch(e) {}
+    }, 200);
+  };
+}
+
+// Tab switching တွင် export / targeted ထည့်
+const _origLoadTab = window.loadTab;
+if (typeof _origLoadTab === 'function') {
+  window.loadTab = function(name) {
+    // Export tab — ဘာမှ လုပ်စရာ မလိုပါ
+    if (name === 'export') {
+      document.querySelectorAll('.tab').forEach(function(x) { x.classList.toggle('active', x.dataset.tab === name); });
+      document.querySelectorAll('.tab-content').forEach(function(x) { x.classList.toggle('active', x.id === 'tab-' + name); });
+      return;
+    }
+    // Targeted tab
+    if (name === 'targeted') {
+      document.querySelectorAll('.tab').forEach(function(x) { x.classList.toggle('active', x.dataset.tab === name); });
+      document.querySelectorAll('.tab-content').forEach(function(x) { x.classList.toggle('active', x.id === 'tab-' + name); });
+      return;
+    }
+    return _origLoadTab(name);
+  };
+}
+
+console.log('✅ Part B: Admin features loaded');

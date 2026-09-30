@@ -45,6 +45,8 @@
     <button class="tab" data-tab="qr">⚡ QR</button>
     <button class="tab" data-tab="broadcast">📢 Bcast</button>
     <button class="tab" data-tab="settings">⚙️ Settings</button>
+    <button class="tab" data-tab="export">📥 Export</button>
+    <button class="tab" data-tab="targeted">🎯 Targeted</button>
     <button class="tab" data-tab="logs">📜 Logs</button>
   </div>
   <main class="admin-main">
@@ -211,6 +213,42 @@
     </section>
 
     <!-- LOGS -->
+    <section id="tab-export" class="tab-content">
+      <div class="card" style="max-width: 700px;">
+        <h3>📥 CSV Export</h3>
+        <p style="color:#8a90a0;font-size:13px;margin:10px 0 16px">စာရင်းများကို Excel ဖိုင်အဖြစ် ဆွဲထုတ်နိုင်ပါသည်။</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+          <button class="btn-primary" onclick="exportCSV('users')">👥 Users CSV</button>
+          <button class="btn-primary" onclick="exportCSV('orders')">🛒 Orders CSV</button>
+          <button class="btn-primary" onclick="exportCSV('deposits')">📥 Deposits CSV</button>
+          <button class="btn-warn" onclick="exportCSV('all')">📦 Full Report</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-targeted" class="tab-content">
+      <div class="card" style="max-width: 700px;">
+        <h3>🎯 Targeted Broadcast</h3>
+        <p style="color:#8a90a0;font-size:13px;margin:10px 0 16px">User အုပ်စုအလိုက် စာပို့နိုင်ပါသည်။</p>
+        <label>User Segment</label>
+        <select id="bcastSegment" class="chat-select">
+          <option value="all">👥 အားလုံး</option>
+          <option value="vip">💎 VIP (Balance 10,000+)</option>
+          <option value="buyers">🛒 ဝယ်ဖူးသူများ</option>
+          <option value="non_buyers">🆕 မဝယ်ဖူးသေးသူများ</option>
+          <option value="inactive_7d">💤 ၇ ရက်ကျော် မဝင်သူများ</option>
+          <option value="referrers">🎁 Referral လုပ်ဖူးသူများ</option>
+          <option value="points_100">⭐ Points 100+</option>
+        </select>
+        <label>Message</label>
+        <textarea id="targetedMessage" rows="4" placeholder="စာသား ရိုက်ပါ..."></textarea>
+        <label>Image URL (Optional)</label>
+        <input id="targetedImage" placeholder="https://..." />
+        <button id="sendTargetedBtn" class="btn-primary" style="width:100%;margin-top:12px">🚀 Send to Segment</button>
+        <div id="targetedStatus" style="margin-top:10px;color:#8a90a0;font-size:13px;text-align:center"></div>
+      </div>
+    </section>
+
     <section id="tab-logs" class="tab-content">
       <div id="logsList" class="list"></div>
     </section>

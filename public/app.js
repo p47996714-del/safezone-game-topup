@@ -1105,3 +1105,84 @@ window.reOrder = async function(orderId) {
 };
 
 console.log('✅ Part A: Customer features loaded');
+
+// ==========================================
+// PART B: Featured / Popular Section (Customer App)
+// ==========================================
+async function loadFeatured() {
+  try {
+    const res = await api('/api/featured');
+    if (!res.ok || !res.topItems || !res.topItems.length) return;
+
+    const main = document.getElementById('main');
+    if (!main) return;
+    if (document.getElementById('featuredSection')) return;
+
+    const section = document.createElement('div');
+    section.id = 'featuredSection';
+    section.style.cssText = 'margin:0 16px 20px';
+
+    let html = '<div style="margin-bottom:10px;font-size:15px;font-weight:700;color:#fff">🔥 အရောင်းရဆုံး</div>';
+    html += '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none">';
+    res.topItems.slice(0, 8).forEach(function(it) {
+      const img = it.image ? '<img src="' + it.image + '" style="width:100%;height:60px;object-fit:contain;border-radius:8px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>' : '<div style="font-size:28px;text-align:center;margin-bottom:6px">🎮</div>';
+      html += '<div class="featured-card" data-id="' + it.id + '" style="min-width:130px;background:#1a1d26;border-radius:12px;padding:10px;border:1px solid #2a2d36;cursor:pointer;flex-shrink:0">' +
+        img +
+        '<div style="font-size:11px;font-weight:600;color:#fff;min-height:28px;overflow:hidden">' + it.name + '</div>' +
+        '<div style="font-size:12px;font-weight:800;color:#2ea6ff;margin-top:4px">' + Number(it.price).toLocaleString() + ' Ks</div>' +
+        '<div style="font-size:10px;color:#8a90a0;margin-top:2px">🔥 ' + it.sold + ' sold</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    section.innerHTML = html;
+
+    const gamesSection = main.querySelector('.section-title');
+    if (gamesSection && gamesSection.parentNode) {
+      gamesSection.parentNode.insertBefore(section, gamesSection);
+    } else {
+      main.appendChild(section);
+    }
+
+    section.querySelectorAll('.featured-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        const id = Number(card.dataset.id);
+        // item ကို fetch လုပ်ပြီး Buy Modal ဖွင့်
+        api('/api/games').then(function(gres) {
+          if (!gres.ok) return;
+          const allGames = gres.games || [];
+          // item ရှာဖို့ games အားလုံးကို search
+          let found = false;
+          allGames.forEach(function(g) {
+            if (found) return;
+            api('/api/items/' + g.id).then(function(res2) {
+              if (found || !res2.ok) return;
+              const item = (res2.items || []).find(function(i) { return i.id === id; });
+              if (item) {
+                found = true;
+                STATE.selectedGame = g;
+                STATE.selectedItem = item;
+                openBuy(item);
+              }
+            });
+          });
+        });
+      });
+    });
+  } catch(e) {}
+}
+
+// init ပြီးတာနဲ့ Featured ခေါ်
+setTimeout(function() {
+  if (STATE.user) loadFeatured();
+}, 2500);
+
+// Login ပြီးတာနဲ့ Featured ခေါ်
+const _origRenderMain = window.renderMain;
+if (typeof _origRenderMain === 'function') {
+  window.renderMain = function() {
+    _origRenderMain();
+    setTimeout(function() { if (STATE.user && !document.getElementById('featuredSection')) loadFeatured(); }, 500);
+  };
+}
+
+console.log('✅ Part B: Featured loaded');

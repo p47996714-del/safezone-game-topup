@@ -1266,3 +1266,232 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('uncaughtException', (err) => { LOG.error('Uncaught:', err.message); if (!isShuttingDown) gracefulShutdown('uncaughtException'); });
 process.on('unhandledRejection', (r) => { LOG.warn('Unhandled:', r); });
+
+// ==========================================
+// PART B: ADMIN PANEL FEATURES
+// ==========================================
+
+// ---------- 3. CSV EXPORT ----------
+function toCSV(rows, headers) {
+  if (!rows || !rows.length) return headers.join(',') + '\n';
+  const escapeCSV = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v).replace(/"/g, '""');
+    return '"' + s + '"';
+  };
+  let csv = headers.join(',') + '\n';
+  rows.forEach(row => {
+    csv += headers.map(h => escapeCSV(row[h])).join(',') + '\n';
+  });
+  return csv;
+}
+
+app.get('/api/admin/export/users', adminAuth, (req, res) => {
+  const users = dbData.users.map(u => ({
+    id: u.id, telegram_id: u.telegram_id, name: u.name || u.first_name || '',
+    phone: u.phone || '', balance: u.balance || 0, points: u.points || 0,
+    spins: u.spins_available || 0, banned: u.banned || 0,
+    referral_code: u.referral_code || '',
+    created_at: new Date((u.created_at || 0) * 1000).toISOString()
+  }));
+  const csv = toCSV(users, ['id', 'telegram_id', 'name', 'phone', 'balance', 'points', 'spins', 'banned', 'referral_code', 'created_at']);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="users-' + Date.now() + '.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/admin/export/orders', adminAuth, (req, res) => {
+  const orders = dbData.orders.map(o => {
+    const u = H.getUserById(o.user_id);
+    return {
+      id: o.id, user_id: o.user_id, user_name: (u && u.name) || '',
+      user_phone: (u && u.phone) || '',
+      item_name: o.item_name, game_id: o.game_id, price: o.price,
+      game_account: o.game_account || '', server_id: o.server_id || '',
+      status: o.status,
+      created_at: new Date((o.created_at || 0) * 1000).toISOString(),
+      processed_at: o.processed_at ? new Date(o.processed_at * 1000).toISOString() : ''
+    };
+  });
+  const csv = toCSV(orders, ['id', 'user_id', 'user_name', 'user_phone', 'item_name', 'game_id', 'price', 'game_account', 'server_id', 'status', 'created_at', 'processed_at']);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="orders-' + Date.now() + '.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/admin/export/deposits', adminAuth, (req, res) => {
+  const deposits = dbData.deposits.map(d => {
+    const u = H.getUserById(d.user_id);
+    return {
+      id: d.id, user_id: d.user_id, user_name: (u && u.name) || '',
+      user_phone: (u && u.phone) || '',
+      amount: d.amount, method: d.method, status: d.status,
+      created_at: new Date((d.created_at || 0) * 1000).toISOString(),
+      processed_at: d.processed_at ? new Date(d.processed_at * 1000).toISOString() : ''
+    };
+  });
+  const csv = toCSV(deposits, ['id', 'user_id', 'user_name', 'user_phone', 'amount', 'method', 'status', 'created_at', 'processed_at']);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="deposits-' + Date.now() + '.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+app.get('/api/admin/export/all', adminAuth, async (req, res) => {
+  try {
+    const usersCSV = toCSV(dbData.users.map(u => ({ id: u.id, name: u.name || u.first_name || '', phone: u.phone || '', balance: u.balance || 0, points: u.points || 0, spins: u.spins_available || 0, created_at: new Date((u.created_at || 0) * 1000).toISOString() })), ['id', 'name', 'phone', 'balance', 'points', 'spins', 'created_at']);
+    const ordersCSV = toCSV(dbData.orders.map(o => { const u = H.getUserById(o.user_id); return { id: o.id, user_name: (u && u.name) || '', item_name: o.item_name, price: o.price, status: o.status, created_at: new Date((o.created_at || 0) * 1000).toISOString() }; }), ['id', 'user_name', 'item_name', 'price', 'status', 'created_at']);
+    const depositsCSV = toCSV(dbData.deposits.map(d => { const u = H.getUserById(d.user_id); return { id: d.id, user_name: (u && u.name) || '', amount: d.amount, method: d.method, status: d.status, created_at: new Date((d.created_at || 0) * 1000).toISOString() }; }), ['id', 'user_name', 'amount', 'method', 'status', 'created_at']);
+    const combined = '=== USERS ===\n' + usersCSV + '\n\n=== ORDERS ===\n' + ordersCSV + '\n\n=== DEPOSITS ===\n' + depositsCSV;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="full-report-' + Date.now() + '.csv"');
+    res.send('\uFEFF' + combined);
+  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---------- 15. ITEM IMAGE UPLOAD ----------
+const itemImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const imgDir = path.join(__dirname, 'public', 'item-images');
+      if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
+      cb(null, imgDir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.png';
+      cb(null, 'item-' + Date.now() + '-' + Math.floor(Math.random() * 9999) + ext);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only images allowed'));
+  }
+});
+
+app.post('/api/admin/item/upload-image', adminAuth, itemImageUpload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'No file' });
+  const imageUrl = '/item-images/' + req.file.filename;
+  res.json({ ok: true, url: imageUrl });
+});
+
+app.post('/api/admin/item/set-image', adminAuth, (req, res) => {
+  const { item_id, image } = req.body;
+  const it = H.getItem(Number(item_id));
+  if (!it) return res.status(400).json({ ok: false, error: 'Item not found' });
+  it.image = image || null;
+  saveDB();
+  res.json({ ok: true });
+});
+
+// ---------- 29. FEATURED / POPULAR ----------
+app.get('/api/featured', auth, (req, res) => {
+  // အရောင်းရဆုံး Items 5 ခု
+  const itemStats = {};
+  dbData.orders.forEach(o => {
+    if (o.status === 'completed' || o.status === 'pending') {
+      const key = o.item_id;
+      if (!key) return;
+      if (!itemStats[key]) itemStats[key] = { item_id: key, count: 0, revenue: 0 };
+      itemStats[key].count++;
+      itemStats[key].revenue += o.price;
+    }
+  });
+  const topItems = Object.values(itemStats)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+    .map(s => {
+      const it = H.getItem(s.item_id);
+      if (!it || !it.active) return null;
+      return { ...it, sold: s.count };
+    })
+    .filter(x => x);
+
+  const topGames = {};
+  dbData.orders.forEach(o => {
+    if (!topGames[o.game_id]) topGames[o.game_id] = 0;
+    topGames[o.game_id]++;
+  });
+  const popularGames = Object.entries(topGames)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([id]) => H.listGames().find(g => g.id === id))
+    .filter(x => x);
+
+  res.json({ ok: true, topItems, popularGames });
+});
+
+// ---------- 33. TARGETED BROADCAST ----------
+app.post('/api/admin/broadcast/targeted', adminAuth, async (req, res) => {
+  const { segment, message, image_url } = req.body;
+  if (!segment || (!message && !image_url)) return res.status(400).json({ ok: false, error: 'Invalid' });
+
+  let users = dbData.users.filter(u => u.telegram_id && !u.banned);
+  const totalUsers = dbData.users.length;
+
+  if (segment === 'vip') {
+    // Balance 10,000 Ks အထက်
+    users = users.filter(u => Number(u.balance || 0) >= 10000);
+  } else if (segment === 'buyers') {
+    // ဝယ်ဖူးသူများ
+    const buyerIds = new Set(dbData.orders.map(o => o.user_id));
+    users = users.filter(u => buyerIds.has(u.id));
+  } else if (segment === 'non_buyers') {
+    // မဝယ်ဖူးသေးသူများ
+    const buyerIds = new Set(dbData.orders.map(o => o.user_id));
+    users = users.filter(u => !buyerIds.has(u.id));
+  } else if (segment === 'inactive_7d') {
+    // ၇ ရက်ကျော် မဝင်တော့သူများ
+    const weekAgo = now() - 7 * 86400;
+    const activeIds = new Set();
+    dbData.orders.filter(o => o.created_at >= weekAgo).forEach(o => activeIds.add(o.user_id));
+    dbData.transactions.filter(t => t.created_at >= weekAgo).forEach(t => activeIds.add(t.user_id));
+    users = users.filter(u => !activeIds.has(u.id));
+  } else if (segment === 'referrers') {
+    // Referral လုပ်ဖူးသူများ
+    const refIds = new Set(dbData.referrals.map(r => r.referrer_id));
+    users = users.filter(u => refIds.has(u.id));
+  } else if (segment === 'points_100') {
+    // Points 100 အထက်
+    users = users.filter(u => Number(u.points || 0) >= 100);
+  }
+  // segment === 'all' → အားလုံး
+
+  res.json({ ok: true, total: users.length, totalUsers });
+
+  (async () => {
+    let success = 0, failed = 0;
+    for (const user of users) {
+      try {
+        if (image_url) await bot.telegram.sendPhoto(user.telegram_id, image_url, { caption: message });
+        else await bot.telegram.sendMessage(user.telegram_id, message);
+        success++;
+      } catch (e) { failed++; }
+      await new Promise(r => setTimeout(r, 50));
+    }
+    H.addLog('admin-panel', 'targeted_broadcast', segment, `${success} sent, ${failed} failed`);
+  })();
+});
+
+// ---------- 35. DETAILED AUDIT LOGS ----------
+app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
+  const limit = Number(req.query.limit) || 200;
+  const filter = req.query.action || '';
+  let logs = dbData.logs.slice(-limit).reverse();
+  if (filter) logs = logs.filter(l => l.action && l.action.includes(filter));
+  const enriched = logs.map(l => ({
+    ...l,
+    timeFormatted: new Date(l.created_at * 1000).toLocaleString(),
+    relative: (() => {
+      const diff = now() - l.created_at;
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    })()
+  }));
+  // Action breakdown
+  const actions = {};
+  dbData.logs.forEach(l => { if (l.action) actions[l.action] = (actions[l.action] || 0) + 1; });
+  res.json({ ok: true, logs: enriched, actions, total: dbData.logs.length });
+});
+
