@@ -6,10 +6,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .login-card h1{text-align:center;margin-bottom:8px;font-size:24px}
 .login-card p{text-align:center;color:#8a90a0;margin-bottom:24px}
 .login-card input{width:100%;padding:14px;border-radius:10px;border:1px solid #2a2d36;background:#0a0c11;color:#fff;font-size:15px;margin-bottom:12px;font-family:inherit}
-.login-card button{width:100%;padding:14px;border-radius:10px;border:none;background:#2ea6ff;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.login-card input:focus{outline:none;border-color:#2ea6ff;box-shadow:0 0 0 3px rgba(46,166,255,0.15)}
+.login-card button{width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.login-card code{font-family:monospace;color:#2ea6ff}
 .login-error{color:#e74c3c;text-align:center;margin-top:12px;font-size:13px}
 .admin-header{background:#1a1d26;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a2d36;position:sticky;top:0;z-index:50}
-.logo{font-weight:700;font-size:16px}
+.logo{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.admin-badge{background:#0a0c11;color:#8a90a0;font-size:11px;padding:4px 10px;border-radius:12px;font-weight:600;border:1px solid #2a2d36}
 .header-actions{display:flex;gap:8px}
 .header-actions button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit}
 .btn-toggle{background:#27ae60;color:#fff}
@@ -36,8 +39,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .list{display:flex;flex-direction:column;gap:10px}
 .card{background:#1a1d26;padding:16px;border-radius:12px;border:1px solid #2a2d36}
 .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px}
-.card-title{font-weight:700;font-size:15px}
-.card-meta{font-size:12px;color:#8a90a0;line-height:1.6;margin-top:4px}
+.card-title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card-title code{background:#0a0c11;padding:2px 8px;border-radius:6px;font-size:12px;font-family:monospace;color:#2ea6ff}
+.card-meta{font-size:12px;color:#8a90a0;line-height:1.7;margin-top:4px}
 .card-price{color:#2ea6ff;font-weight:700;font-size:16px;white-space:nowrap}
 .card-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .card-actions button{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit}
@@ -47,6 +51,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .btn-gray{background:#2a2d36;color:#e5e7eb}
 .btn-warn{background:#f39c12;color:#fff}
 .btn-purple{background:#6a5cff;color:#fff}
+.badge-super{background:#2ea6ff;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+.badge-full{background:#27ae60;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+.badge-view{background:#f39c12;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
+.badge-active{background:#27ae60;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px}
+.badge-off{background:#e74c3c;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px}
+.badge-you{background:#6a5cff;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800}
 .status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .status-pending{background:#f39c12;color:#fff}
 .status-approved{background:#27ae60;color:#fff}
@@ -88,4 +98,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .setting-row .toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform 0.3s}
 .setting-row .toggle.on::after{transform:translateX(24px)}
 .save-settings-btn{width:100%;padding:14px;border-radius:10px;border:none;background:#2ea6ff;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:20px}
+.log-action{background:#0a0c11;padding:4px 10px;border-radius:20px;font-size:11px;color:#8a90a0;display:inline-block;margin:2px 3px}
+.log-action b{color:#2ea6ff}
 @media (max-width:600px){.setting-row{flex-direction:column;align-items:flex-start}.setting-row input[type="text"],.setting-row input[type="number"]{width:100%}}
