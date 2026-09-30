@@ -50,6 +50,11 @@ function loadDB() {
   try {
     const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     if (!d.messages) d.messages = [];
+    if (!d.logs) d.logs = [];
+    if (!d.transactions) d.transactions = [];
+    if (!d.orders) d.orders = [];
+    if (!d.deposits) d.deposits = [];
+    if (!d.users) d.users = [];
     if (!d.banners) d.banners = [];
     if (!d.promoCodes) d.promoCodes = [];
     if (!d.stocks) d.stocks = [];
@@ -233,7 +238,7 @@ const H = {
   toggleBanner: (id) => { const b = H.getBanner(id); if (b) { b.active = b.active ? 0 : 1; saveDB(); } },
   removeBanner: (id) => { dbData.banners = dbData.banners.filter(b => b.id !== Number(id)); saveDB(); },
   addLog: (actor, action, target = null, details = null) => { dbData.logs.push({ id: dbData._seq.logs++, actor, action, target, details, created_at: now() }); if (dbData.logs.length > 5000) dbData.logs = dbData.logs.slice(-5000); saveDB(); },
-  listLogs: (limit = 100) => dbData.logs.slice(-limit).reverse(),
+  listLogs: (limit = 100) => { if (!dbData.logs || !Array.isArray(dbData.logs)) dbData.logs = []; return dbData.logs.slice(-limit).reverse(); },
   listAllUsers: () => dbData.users.slice().reverse(),
   stats: () => ({ users: dbData.users.length, pendingDeposits: dbData.deposits.filter(d => d.status === 'pending').length, pendingOrders: dbData.orders.filter(o => o.status === 'pending').length, totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0), totalSales: dbData.orders.reduce((s, o) => s + o.price, 0) }),
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
@@ -1197,6 +1202,36 @@ bot.action(/^ord:no:(\d+)$/, async (ctx) => {
 });
 
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup sent'); });
+
+
+// ===== DETAILED LOGS (Admin Panel အတွက်) =====
+app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 200;
+    if (!dbData.logs || !Array.isArray(dbData.logs)) dbData.logs = [];
+    const logs = dbData.logs.slice(-limit).reverse().map(l => ({
+      id: l.id,
+      actor: l.actor || 'system',
+      action: l.action || 'unknown',
+      target: l.target || null,
+      details: l.details || null,
+      created_at: l.created_at,
+      timeFormatted: new Date(l.created_at * 1000).toLocaleString(),
+      relative: (function() {
+        const diff = now() - l.created_at;
+        if (diff < 60) return diff + 's ago';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+      })()
+    }));
+    const actions = {};
+    dbData.logs.forEach(l => { if (l.action) actions[l.action] = (actions[l.action] || 0) + 1; });
+    res.json({ ok: true, logs, actions, total: dbData.logs.length });
+  } catch (e) {
+    res.json({ ok: true, logs: [], actions: {}, total: 0, error: e.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`\n═══════════════════════════`);
