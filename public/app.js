@@ -81,12 +81,7 @@ async function init() {
     STATE.user = me.user;
     show('main');
     if ($('bottomNav')) $('bottomNav').classList.remove('hidden');
-    renderMain();
-    loadGames();
-    loadBanners();
-    checkUnread();
-    refreshFeatures();
-    loadFeatured();
+    renderMain(); loadGames(); loadBanners(); checkUnread(); refreshFeatures(); loadFeatured();
   }
 }
 
@@ -166,11 +161,9 @@ async function loadBanners() {
   const res = await api('/api/banners');
   STATE.banners = res.banners || [];
   if (!STATE.banners.length) { hide('bannerSlider'); return; }
-  const track = $('bannerTrack');
-  const dots = $('bannerDots');
+  const track = $('bannerTrack'); const dots = $('bannerDots');
   if (!track || !dots) return;
-  track.innerHTML = '';
-  dots.innerHTML = '';
+  track.innerHTML = ''; dots.innerHTML = '';
   STATE.banners.forEach((b, i) => {
     const div = document.createElement('div');
     div.className = 'banner';
@@ -292,10 +285,8 @@ function makeItemCard(it) {
 
 function openPreview(item) {
   show('previewModal');
-  const title = $('previewTitle');
-  if (title) title.textContent = item.name;
-  const box = $('previewContent');
-  if (!box) return;
+  if ($('previewTitle')) $('previewTitle').textContent = item.name;
+  const box = $('previewContent'); if (!box) return;
   const autoBadge = item.auto_delivery ? '<span style="background:#27ae60;color:#fff;font-size:10px;padding:3px 8px;border-radius:10px;margin-left:6px">⚡ Auto</span>' : '';
   const priceText = item.price > 0 ? Number(item.price).toLocaleString() + ' Ks' : 'စျေးမသတ်ရသေး';
   box.innerHTML =
@@ -319,13 +310,9 @@ function openBuy(item) {
   if ($('buyServerId')) $('buyServerId').value = '';
   const gameId = item.game_id;
   const isAppPremium = gameId === 'app-premium';
-  hide('fieldServerId');
-  hide('fieldNote');
-  show('fieldGameId');
+  hide('fieldServerId'); hide('fieldNote'); show('fieldGameId');
   if (isAppPremium) {
-    hide('fieldGameId');
-    show('fieldNote');
-    hide('saveGameIdRow');
+    hide('fieldGameId'); show('fieldNote'); hide('saveGameIdRow');
   } else {
     show('saveGameIdRow');
     if (gameId === 'mlbb' || gameId === 'magic-chess') {
@@ -336,7 +323,6 @@ function openBuy(item) {
       if ($('gameIdLabel')) $('gameIdLabel').textContent = 'PUBG ID';
       if ($('buyGameAccount')) $('buyGameAccount').placeholder = 'PUBG ID ထည့်ပါ';
     }
-    // Bookmark Auto-fill
     try {
       const saved = JSON.parse(localStorage.getItem('saved_game_ids') || '{}')[gameId];
       if (saved && saved.account) {
@@ -348,9 +334,7 @@ function openBuy(item) {
       }
     } catch(e) {}
   }
-  hide('itemsModal');
-  hide('previewModal');
-  show('buyModal');
+  hide('itemsModal'); hide('previewModal'); show('buyModal');
 }
 
 if ($('confirmBuy')) $('confirmBuy').addEventListener('click', async () => {
@@ -365,7 +349,6 @@ if ($('confirmBuy')) $('confirmBuy').addEventListener('click', async () => {
       serverId = $('buyServerId').value.trim();
       if (serverId.length < 1) return toast('Server ID ထည့်ပါ', 'error');
     }
-    // Bookmark သိမ်း
     if ($('saveGameIdCheck') && $('saveGameIdCheck').checked && account) {
       try {
         const saved = JSON.parse(localStorage.getItem('saved_game_ids') || '{}');
@@ -380,7 +363,6 @@ if ($('confirmBuy')) $('confirmBuy').addEventListener('click', async () => {
     showConfetti();
     hide('buyModal');
     await refreshMe();
-
     if (isAppPremium) {
       const orderId = res.order_id || '-';
       const infoEl = $('contactOrderInfo');
@@ -404,8 +386,7 @@ if ($('depositBtn')) $('depositBtn').addEventListener('click', () => {
   if ($('receiptInput')) $('receiptInput').value = '';
   STATE.selectedMethod = null;
   document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
-  hide('payInfo');
-  show('depositModal');
+  hide('payInfo'); show('depositModal');
 });
 document.querySelectorAll('.qa-btn').forEach(b => {
   b.addEventListener('click', () => { if ($('depAmount')) $('depAmount').value = b.dataset.amt; });
@@ -494,15 +475,10 @@ window.openTrack = async (orderId) => {
   box.innerHTML = '<p class="hint" style="text-align:center">ခဏစောင့်ပါ...</p>';
   const res = await api('/api/order/' + orderId);
   if (!res.ok) { box.innerHTML = '<p class="hint" style="text-align:center">Order မတွေ့ပါ။</p>'; return; }
-  const order = res.order;
-  const timeline = res.timeline;
+  const order = res.order; const timeline = res.timeline;
   let html = '<div style="margin-bottom:14px;padding:12px;background:#1a1d26;border-radius:10px"><div style="font-weight:700;font-size:15px">#' + order.id + ' ' + order.item_name + '</div><div class="hint" style="margin-top:4px">' + order.price + ' Ks • ' + order.game_id + '</div></div>';
   timeline.forEach(t => {
-    html += '<div class="track-step ' + (t.done ? 'done' : '') + '">' +
-      '<div class="track-dot">' + (t.done ? '✓' : '○') + '</div>' +
-      '<div class="track-info"><div class="track-label">' + t.label + '</div>' +
-      (t.at ? '<div class="track-time">' + new Date(t.at * 1000).toLocaleString() + '</div>' : '') +
-      '</div></div>';
+    html += '<div class="track-step ' + (t.done ? 'done' : '') + '"><div class="track-dot">' + (t.done ? '✓' : '○') + '</div><div class="track-info"><div class="track-label">' + t.label + '</div>' + (t.at ? '<div class="track-time">' + new Date(t.at * 1000).toLocaleString() + '</div>' : '') + '</div></div>';
   });
   box.innerHTML = html;
 };
@@ -527,17 +503,13 @@ async function loadChat(scrollBottom) {
   const res = await api('/api/chat/history', { method: 'POST', body: '{}' });
   const msgs = res.messages || [];
   const box = $('chatMessages'); if (!box) return;
-  if (!msgs.length) {
-    box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။</p>';
-    return;
-  }
+  if (!msgs.length) { box.innerHTML = '<p class="hint" style="text-align:center">စကားပြောဆိုမှု မရှိသေးပါ။</p>'; return; }
   if (CHAT.open && msgs.length > CHAT.lastCount && CHAT.lastCount > 0) {
     const newAdmin = msgs.slice(CHAT.lastCount).filter(m => m.from === 'admin');
     if (newAdmin.length > 0) notifySound('message');
   }
   CHAT.lastCount = msgs.length;
-  let lastDate = '';
-  let html = '';
+  let lastDate = ''; let html = '';
   msgs.forEach(m => {
     const d = new Date(m.created_at * 1000);
     const dateStr = d.toLocaleDateString();
@@ -562,10 +534,8 @@ async function sendChat() {
   if ($('chatSendBtn')) $('chatSendBtn').disabled = true;
   const res = await api('/api/chat/send', { method: 'POST', body: JSON.stringify({ text: text }) });
   if ($('chatSendBtn')) $('chatSendBtn').disabled = false;
-  if (res.ok) {
-    try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
-    await loadChat(true);
-  } else { toast(res.error || 'မပို့နိုင်ပါ', 'error'); input.value = text; }
+  if (res.ok) { try { tg.HapticFeedback.impactOccurred('light'); } catch(e){} await loadChat(true); }
+  else { toast(res.error || 'မပို့နိုင်ပါ', 'error'); input.value = text; }
 }
 
 async function checkUnread() {
@@ -632,13 +602,8 @@ window.redeemPoints = async () => {
   const points = Number(input.value);
   if (!points) return toast('Points ထည့်ပါ', 'error');
   const res = await api('/api/points/redeem', { method: 'POST', body: JSON.stringify({ points: points }) });
-  if (res.ok) {
-    toast('✅ +' + res.ksValue.toLocaleString() + ' Ks!', 'success');
-    showConfetti();
-    await refreshMe();
-    await refreshFeatures();
-    openPointsModal();
-  } else toast(res.error || 'မအောင်မြင်ပါ', 'error');
+  if (res.ok) { toast('✅ +' + res.ksValue.toLocaleString() + ' Ks!', 'success'); showConfetti(); await refreshMe(); await refreshFeatures(); openPointsModal(); }
+  else toast(res.error || 'မအောင်မြင်ပါ', 'error');
 };
 
 window.openReferralModal = async () => {
@@ -677,8 +642,7 @@ window.openSpinModal = async function() {
     renderSpinWheel(rewards);
     const info = $('spinRewardsInfo');
     if (info) info.innerHTML = '🎁 <b>ရနိုင်တဲ့ ဆုများ:</b> ' + rewards.map(r => r >= 1000 ? (r / 1000) + 'K' : r).join(' • ');
-    const btn = $('spinBtn');
-    const limitEl = $('spinLimit');
+    const btn = $('spinBtn'); const limitEl = $('spinLimit');
     if (limitEl) limitEl.textContent = res.available || 0;
     if (btn) {
       if (!res.canSpin) { btn.disabled = true; btn.textContent = '❌ Spin အခွင့်အရေး မရှိပါ'; }
@@ -690,18 +654,14 @@ window.openSpinModal = async function() {
 function renderSpinWheel(rewards) {
   const wheel = $('spinWheel'); if (!wheel) return;
   wheel.innerHTML = '';
-  wheel.style.position = 'relative';
-  wheel.style.overflow = 'hidden';
+  wheel.style.position = 'relative'; wheel.style.overflow = 'hidden';
   const colors = ['#e74c3c', '#f39c12', '#27ae60', '#2ea6ff', '#6a5cff', '#e91e63', '#ff9800', '#00bcd4'];
   const count = rewards.length;
   const anglePer = 360 / count;
   const conicParts = [];
-  for (let i = 0; i < count; i++) {
-    conicParts.push(colors[i % colors.length] + ' ' + (i * anglePer) + 'deg ' + ((i + 1) * anglePer) + 'deg');
-  }
+  for (let i = 0; i < count; i++) conicParts.push(colors[i % colors.length] + ' ' + (i * anglePer) + 'deg ' + ((i + 1) * anglePer) + 'deg');
   wheel.style.background = 'conic-gradient(' + conicParts.join(',') + ')';
-  const wheelRadius = 150;
-  const labelRadius = wheelRadius * 0.62;
+  const labelRadius = 150 * 0.62;
   for (let i = 0; i < count; i++) {
     const midAngle = (i * anglePer) + (anglePer / 2);
     const rad = (midAngle - 90) * Math.PI / 180;
@@ -709,20 +669,13 @@ function renderSpinWheel(rewards) {
     const y = labelRadius * Math.sin(rad);
     const label = document.createElement('div');
     label.style.position = 'absolute';
-    label.style.left = '50%';
-    label.style.top = '50%';
+    label.style.left = '50%'; label.style.top = '50%';
     label.style.transform = 'translate(calc(-50% + ' + x + 'px), calc(-50% + ' + y + 'px))';
-    label.style.fontSize = '15px';
-    label.style.fontWeight = '900';
-    label.style.color = '#ffffff';
-    label.style.textShadow = '0 2px 6px rgba(0,0,0,0.95)';
-    label.style.whiteSpace = 'nowrap';
-    label.style.pointerEvents = 'none';
-    label.style.zIndex = '5';
-    label.style.padding = '2px 6px';
-    label.style.background = 'rgba(0,0,0,0.35)';
-    label.style.borderRadius = '6px';
-    label.style.border = '1px solid rgba(255,255,255,0.2)';
+    label.style.fontSize = '15px'; label.style.fontWeight = '900';
+    label.style.color = '#ffffff'; label.style.textShadow = '0 2px 6px rgba(0,0,0,0.95)';
+    label.style.whiteSpace = 'nowrap'; label.style.pointerEvents = 'none'; label.style.zIndex = '5';
+    label.style.padding = '2px 6px'; label.style.background = 'rgba(0,0,0,0.35)';
+    label.style.borderRadius = '6px'; label.style.border = '1px solid rgba(255,255,255,0.2)';
     const reward = rewards[i];
     let text;
     if (reward >= 1000000) text = (reward / 1000000) + 'M';
@@ -734,8 +687,7 @@ function renderSpinWheel(rewards) {
 }
 
 window.playSpin = async function() {
-  const btn = $('spinBtn');
-  if (!btn || btn.disabled) return;
+  const btn = $('spinBtn'); if (!btn || btn.disabled) return;
   btn.disabled = true;
   btn.textContent = '🎰 လှည့်နေသည်...';
   try {
@@ -852,12 +804,29 @@ document.querySelectorAll('.modal').forEach(m => {
   m.addEventListener('click', (e) => { if (e.target === m) { m.classList.add('hidden'); if (m.id === 'chatModal') closeChat(); } });
 });
 
+// ANIMATED MAINTENANCE SCREEN
 function showMaintenanceScreen() {
   if ($('maintenanceOverlay')) return;
   const overlay = document.createElement('div');
   overlay.id = 'maintenanceOverlay';
-  overlay.innerHTML = '<div class="mt-content"><div class="mt-center">🛠️</div><h1 class="mt-title">ခဏစောင့်ပါ</h1><p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p><div class="mt-progress"><div class="mt-progress-bar"></div></div></div>';
+  overlay.innerHTML =
+    '<div class="mt-bg-blob mt-blob-1"></div>' +
+    '<div class="mt-bg-blob mt-blob-2"></div>' +
+    '<div class="mt-content">' +
+    '<div class="mt-icon">' +
+    '<div class="mt-gear mt-gear-1">⚙️</div>' +
+    '<div class="mt-gear mt-gear-2">⚙️</div>' +
+    '<div class="mt-center">🛠️</div>' +
+    '</div>' +
+    '<h1 class="mt-title">ခဏစောင့်ပါ</h1>' +
+    '<p class="mt-subtitle">ဆိုင်ကို ခေတ္တပြင်ဆင်နေပါသည်</p>' +
+    '<div class="mt-progress"><div class="mt-progress-bar"></div></div>' +
+    '<p class="mt-note">ခဏနေမှ ပြန်လာကြည့်ပေးပါ 🙏</p>' +
+    '</div>';
   document.body.appendChild(overlay);
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+    try { window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning'); } catch(e) {}
+  }
 }
 
 function showConfetti() {
@@ -881,7 +850,7 @@ const extraStyle = document.createElement('style');
 extraStyle.textContent = '@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}';
 document.head.appendChild(extraStyle);
 
-// THEME TOGGLE
+// THEME
 (function() {
   const savedTheme = localStorage.getItem('app_theme') || 'dark';
   if (savedTheme === 'light') document.body.classList.add('light');
