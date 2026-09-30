@@ -829,3 +829,49 @@ document.head.appendChild(confettiStyle);
 
 updateWishBadge();
 init();
+
+// ==========================================
+// GLOBAL HAPTIC FEEDBACK
+// ==========================================
+(function() {
+  if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.HapticFeedback) return;
+
+  function vibrate(type) {
+    try {
+      var hf = window.Telegram.WebApp.HapticFeedback;
+      if (type === 'heavy') hf.impactOccurred('heavy');
+      else if (type === 'medium') hf.impactOccurred('medium');
+      else if (type === 'rigid') hf.impactOccurred('rigid');
+      else hf.impactOccurred('light');
+    } catch(e) {}
+  }
+
+  function handleClick(e) {
+    var el = e.target;
+    if (!el) return;
+
+    // ဘယ်အရာတွေကို နှိပ်ရင် တုန်ခါမလဲ
+    var target = el.closest('button, .btn, .nav-btn, .game-card, .item-card, .dashboard-card, .pay-btn, .qa-btn, .header-btn, .modal-close, .banner, .spin-btn, .referral-share, .item-buy, .wish-heart, a, [role="button"]');
+
+    if (!target) return;
+
+    // Class အလိုက် တုန်ခါမှု ပမာဏ ကွဲ
+    var cls = target.className || '';
+    var strength = 'light';
+
+    if (cls.indexOf('spin-btn') >= 0) strength = 'heavy';
+    else if (cls.indexOf('item-buy') >= 0 || cls.indexOf('confirmBuy') >= 0 || cls.indexOf('submitDeposit') >= 0) strength = 'medium';
+    else if (cls.indexOf('dashboard-card') >= 0 || cls.indexOf('game-card') >= 0) strength = 'medium';
+    else if (cls.indexOf('nav-btn') >= 0) strength = 'light';
+    else if (cls.indexOf('btn-primary') >= 0 || cls.indexOf('btn-success') >= 0) strength = 'medium';
+    else if (cls.indexOf('wish-heart') >= 0) strength = 'light';
+    else if (cls.indexOf('header-btn') >= 0) strength = 'light';
+    else if (cls.indexOf('modal-close') >= 0) strength = 'light';
+    else if (cls.indexOf('pay-btn') >= 0 || cls.indexOf('qa-btn') >= 0) strength = 'light';
+
+    vibrate(strength);
+  }
+
+  document.addEventListener('touchstart', handleClick, { passive: true });
+  document.addEventListener('mousedown', handleClick, { passive: true });
+})();
