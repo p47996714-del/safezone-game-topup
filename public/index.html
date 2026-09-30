@@ -14,6 +14,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .spinner{width:50px;height:50px;border:4px solid #1a1d26;border-top-color:#2ea6ff;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #loading p{margin-top:16px;color:#8a90a0;font-size:13px}
+#splashScreen{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11,#141821);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.6s,visibility 0.6s}
+#splashScreen.hide{opacity:0;visibility:hidden}
+.splash-logo{font-size:90px;animation:splashBounce 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 30px rgba(46,166,255,0.6))}
+@keyframes splashBounce{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(5deg)}}
+.splash-name{font-size:32px;font-weight:900;margin-top:20px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px}
+.splash-sub{font-size:14px;color:#8a90a0;margin-top:8px;letter-spacing:6px}
 #login,#register{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .form-card{background:linear-gradient(160deg,#1a1d26,#141821);border-radius:24px;padding:28px 24px;border:1px solid #2a2d36;box-shadow:0 20px 60px rgba(0,0,0,0.6);position:relative;overflow:hidden;width:100%;max-width:400px}
 .form-card::before{content:'';position:absolute;top:-50%;right:-30%;width:220px;height:220px;background:radial-gradient(circle,rgba(46,166,255,0.15),transparent 70%);border-radius:50%;pointer-events:none}
@@ -146,88 +152,49 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
 .toast.success{background:#27ae60}
 .toast.error{background:#e74c3c}
-#maintenanceOverlay{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11 0%,#141821 50%,#0a0c11 100%);z-index:999999;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.mt-bg-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.4;animation:mtBlob 8s ease-in-out infinite}
-.mt-blob-1{width:300px;height:300px;background:#2ea6ff;top:-100px;left:-100px}
-.mt-blob-2{width:250px;height:250px;background:#e74c3c;bottom:-80px;right:-80px;animation-delay:2s}
-@keyframes mtBlob{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.2) translate(20px,-20px)}}
-.mt-content{position:relative;z-index:2;text-align:center;padding:30px;max-width:400px}
-.mt-icon{position:relative;width:140px;height:140px;margin:0 auto 30px}
-.mt-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:60px;animation:mtPulse 2s ease-in-out infinite}
-@keyframes mtPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.1)}}
-.mt-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:10px}
-.mt-subtitle{font-size:14px;color:#8a90a0;margin-bottom:25px}
-.mt-progress{width:200px;height:4px;background:#1a1d26;border-radius:4px;margin:0 auto 20px;overflow:hidden}
-.mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
-@keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
-.mt-note{font-size:13px;color:#6b7280;margin-top:10px}
-
-/* SPLASH SCREEN */
-#splashScreen{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11,#141821);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.6s,visibility 0.6s}
-#splashScreen.hide{opacity:0;visibility:hidden}
-.splash-logo{font-size:90px;animation:splashBounce 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 30px rgba(46,166,255,0.6))}
-@keyframes splashBounce{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(5deg)}}
-.splash-name{font-size:32px;font-weight:900;margin-top:20px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px}
-.splash-sub{font-size:14px;color:#8a90a0;margin-top:8px;letter-spacing:6px}
-
-/* LIGHT THEME */
 body.light{background:#f4f6f9;color:#1f2937}
-body.light .app-header{background:#ffffff;border-bottom-color:#e5e7eb}
+body.light .app-header{background:#fff;border-bottom-color:#e5e7eb}
 body.light .user-name{color:#111827}
-body.light .user-phone{color:#6b7280}
 body.light .header-btn{background:#f3f4f6;color:#374151}
-body.light .dashboard-card{background:linear-gradient(135deg,#ffffff,#f9fafb);border-color:#e5e7eb}
-body.light .dc-title{color:#6b7280}
-body.light .dc-value{color:#111827}
-body.light .section-title{color:#111827}
-body.light .game-card{background:#ffffff;border-color:#e5e7eb}
+body.light .dashboard-card{background:linear-gradient(135deg,#fff,#f9fafb);border-color:#e5e7eb}
+body.light .game-card{background:#fff;border-color:#e5e7eb}
 body.light .game-card .name{color:#111827}
-body.light .bottom-nav{background:#ffffff;border-top-color:#e5e7eb}
-body.light .nav-btn{color:#6b7280}
-body.light .modal-content{background:#ffffff;color:#111827}
+body.light .bottom-nav{background:#fff;border-top-color:#e5e7eb}
+body.light .modal-content{background:#fff;color:#111827}
 body.light .modal-content h2{color:#111827}
-body.light .modal-close{background:#f3f4f6;color:#6b7280}
 body.light .modal-content input,body.light .modal-content select,body.light .modal-content textarea{background:#f9fafb;color:#111827;border-color:#e5e7eb}
-body.light .modal-content label{color:#6b7280}
-body.light .item-card{background:#ffffff;border-color:#e5e7eb}
+body.light .item-card{background:#fff;border-color:#e5e7eb}
 body.light .item-card .item-name{color:#111827}
 body.light .item-row{background:#f9fafb}
-body.light .pay-btn{background:#f9fafb;color:#6b7280;border-color:#e5e7eb}
-body.light .qa-btn{background:#f9fafb;color:#374151;border-color:#e5e7eb}
-body.light .pay-info{background:#f9fafb;color:#374151}
-body.light .chat-msg.admin{background:#f3f4f6;color:#111827}
-body.light #chatMessages{background:#f9fafb}
-body.light #chatInput{background:#f9fafb;color:#111827;border-color:#e5e7eb}
-body.light .form-card{background:linear-gradient(160deg,#ffffff,#f9fafb);border-color:#e5e7eb}
-body.light .form-card h1{color:#111827}
-body.light .form-card input{background:#f9fafb!important;color:#111827!important;border-color:#e5e7eb!important}
-body.light .form-card .switch-text{color:#6b7280}
-body.light .toast{background:#1f2937}
-
-/* TOGGLE SWITCH */
 .toggle-switch{width:52px;height:28px;border-radius:14px;background:#2a2d36;position:relative;cursor:pointer;transition:background 0.3s}
 .toggle-switch.on{background:#27ae60}
 .toggle-switch .toggle-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform 0.3s;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
 .toggle-switch.on .toggle-knob{transform:translateX(24px)}
-
-/* ITEM PREVIEW */
 .preview-img{width:100%;height:180px;object-fit:contain;background:#1a1d26;border-radius:12px;margin-bottom:14px}
 .preview-name{font-size:18px;font-weight:800;color:#fff;margin-bottom:6px}
 .preview-category{font-size:12px;color:#8a90a0;margin-bottom:12px}
 .preview-price{font-size:24px;font-weight:800;color:#2ea6ff;text-align:center;padding:12px;background:#1a1d26;border-radius:10px;margin-bottom:14px}
-body.light .preview-img{background:#f9fafb}
-body.light .preview-name{color:#111827}
-body.light .preview-price{background:#f9fafb}
-
-/* RE-ORDER */
 .reorder-btn{padding:6px 12px;border-radius:8px;border:none;background:#27ae60;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
-.reorder-btn:active{transform:scale(0.95)}
-
+#maintenanceOverlay{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11,#141821);z-index:999999;display:flex;align-items:center;justify-content:center}
+.mt-content{text-align:center;padding:30px}
+.mt-center{font-size:60px;animation:mtPulse 2s ease-in-out infinite}
+@keyframes mtPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.mt-title{font-size:26px;font-weight:800;color:#fff;margin:20px 0 10px}
+.mt-subtitle{font-size:14px;color:#8a90a0;margin-bottom:25px}
+.mt-progress{width:200px;height:4px;background:#1a1d26;border-radius:4px;margin:0 auto 20px;overflow:hidden}
+.mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
+@keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
 </style>
 </head>
 <body>
 
 <div id="loading"><div class="spinner"></div><p>ခဏစောင့်ပါ...</p></div>
+
+<div id="splashScreen">
+  <div class="splash-logo">🛡️</div>
+  <div class="splash-name">SAFE ZONE</div>
+  <div class="splash-sub">Game Topup</div>
+</div>
 
 <div id="login" class="hidden">
   <div class="form-card">
@@ -333,12 +300,12 @@ body.light .preview-price{background:#f9fafb}
       <label>Server ID</label>
       <input id="buyServerId" type="text" placeholder="Server ID ထည့်ပါ" />
     </div>
+    <div id="fieldNote" class="hidden">
+      <p style="text-align:center;padding:14px;background:#1a1d26;border-radius:10px;color:#f39c12;font-size:13px;font-weight:600">📌 Admin ကို ဆက်သွယ်ပါ</p>
+    </div>
     <div id="saveGameIdRow" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <input type="checkbox" id="saveGameIdCheck" style="width:auto;margin:0" />
       <label for="saveGameIdCheck" style="font-size:12px;color:#8a90a0;cursor:pointer;margin:0">📌 ဒီ Game ID ကို သိမ်းထားမယ်</label>
-    </div>
-    <div id="fieldNote" class="hidden">
-      <p class="hint" style="text-align:center;padding:12px">📌 Admin ကို ဆက်သွယ်ပါ</p>
     </div>
     <button id="confirmBuy" class="btn-success btn-full" style="margin-top:12px">✅ Confirm</button>
   </div>
@@ -487,6 +454,24 @@ body.light .preview-price{background:#f9fafb}
     <button class="modal-close" data-close>×</button>
     <h2 id="previewTitle">Item</h2>
     <div id="previewContent"></div>
+  </div>
+</div>
+
+<div id="contactAdminModal" class="modal hidden">
+  <div class="modal-content" style="text-align:center">
+    <h2 style="background:linear-gradient(135deg,#27ae60,#2ea6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">✅ Order အောင်မြင်ပါသည်</h2>
+    <div style="font-size:60px;margin:16px 0">📞</div>
+    <p style="color:#8a90a0;font-size:14px;line-height:1.7;margin-bottom:16px">
+      App Premium အတွက် Admin ကို ဆက်သွယ်ပါ။<br>
+      Order ID ကို ပြောပြီး အကောင့် ရယူပါ။
+    </p>
+    <div id="contactOrderInfo" style="background:#1a1d26;padding:14px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:left"></div>
+    <a id="contactAdminLink" href="#" target="_blank" style="display:block;width:100%;padding:15px;border-radius:12px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);color:#fff;font-weight:800;text-decoration:none;font-size:15px;margin-bottom:10px;box-sizing:border-box">
+      💬 Admin ကို ဆက်သွယ်ရန်
+    </a>
+    <button onclick="document.getElementById('contactAdminModal').classList.add('hidden')" style="width:100%;padding:12px;border-radius:12px;background:#1a1d26;color:#8a90a0;border:none;font-weight:700;cursor:pointer;font-family:inherit">
+      ပိတ်မည်
+    </button>
   </div>
 </div>
 
