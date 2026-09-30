@@ -12,7 +12,7 @@
   <div class="login-card">
     <h1>🛡️ Admin Panel</h1>
     <p>Safe Zone Game Topup</p>
-    <input id="pwd" type="password" placeholder="Admin Password" />
+    <input id="adminUser" type="text" placeholder="Username" style="margin-bottom:8px" /><input id="pwd" type="password" placeholder="Admin Password" />
     <button id="loginBtn">🔓 Login</button>
     <div id="loginError" class="login-error hidden"></div>
   </div>
@@ -21,7 +21,7 @@
 <div id="adminScreen" class="admin-screen hidden">
   <audio id="notifySound" src="notification.mp3" preload="auto"></audio>
   <header class="admin-header">
-    <div class="logo">🛡️ Safe Zone Admin</div>
+    <div class="logo">🛡️ Safe Zone Admin <span id="currentAdminBadge" style="font-size:11px;background:#2a2d36;padding:3px 8px;border-radius:10px;margin-left:6px;color:#8a90a0"></span></div>
     <div class="header-actions">
       <button id="toggleAppBtn" class="btn-toggle">...</button>
       <button id="backupBtn" class="btn-backup">💾</button>

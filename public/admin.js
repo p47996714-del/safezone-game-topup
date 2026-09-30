@@ -901,3 +901,230 @@ if (typeof _origLoadTabMulti === 'function') {
 }
 
 console.log('✅ Multi-Admin loaded');
+
+// ==========================================
+// MULTI-ADMIN SYSTEM
+// ==========================================
+ADMIN.username = '';
+ADMIN.adminInfo = null;
+
+// doLogin ကို override — Username ပါအောင်
+(function() {
+  const origLoginBtn = document.getElementById('loginBtn');
+  if (!origLoginBtn) return;
+
+  const btn = origLoginBtn.cloneNode(true);
+  origLoginBtn.parentNode.replaceChild(btn, origLoginBtn);
+
+  btn.addEventListener('click', async function() {
+    const username = (document.getElementById('adminUser').value || '').toLowerCase().trim();
+    const pwd = document.getElementById('pwd').value;
+    if (!pwd) return;
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username || 'admin', password: pwd })
+      }).then(r => r.json());
+
+      if (res.ok) {
+        ADMIN.pwd = pwd;
+        ADMIN.username = (res.admin && res.admin.username) || username || 'admin';
+        ADMIN.adminInfo = res.admin;
+        localStorage.setItem('admin_pwd', pwd);
+        localStorage.setItem('admin_username', ADMIN.username);
+        localStorage.setItem('admin_info', JSON.stringify(res.admin || {}));
+        enterAdmin();
+        requestNotificationPermission();
+        updateAdminBadge();
+      } else {
+        document.getElementById('loginError').textContent = res.error || 'မအောင်မြင်ပါ';
+        document.getElementById('loginError').classList.remove('hidden');
+      }
+    } catch(e) {
+      document.getElementById('loginError').textContent = 'Server error';
+      document.getElementById('loginError').classList.remove('hidden');
+    }
+  });
+})();
+
+// Auto-login ကို override
+(function() {
+  const saved = localStorage.getItem('admin_pwd');
+  const savedUser = localStorage.getItem('admin_username') || 'admin';
+  const savedInfo = localStorage.getItem('admin_info');
+  if (saved) {
+    ADMIN.pwd = saved;
+    ADMIN.username = savedUser;
+    if (savedInfo) try { ADMIN.adminInfo = JSON.parse(savedInfo); } catch(e) {}
+    fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: savedUser, password: saved })
+    }).then(r => r.json()).then(res => {
+      if (res.ok) {
+        ADMIN.username = (res.admin && res.admin.username) || savedUser;
+        ADMIN.adminInfo = res.admin;
+        enterAdmin();
+        requestNotificationPermission();
+        updateAdminBadge();
+      } else logout();
+    }).catch(() => logout());
+  }
+})();
+
+function updateAdminBadge() {
+  const badge = document.getElementById('currentAdminBadge');
+  if (!badge) return;
+  const info = ADMIN.adminInfo || {};
+  const name = info.name || ADMIN.username || 'admin';
+  const role = info.role === 'view' ? '👁 View' : '🔵 Full';
+  badge.textContent = name + ' • ' + role;
+}
+
+// api() function ကို override — username header ပါအောင်
+(function() {
+  const origApi = window.api;
+  window.api = async function(path, body = null, method = 'POST') {
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Admin-Password': ADMIN.pwd,
+      'X-Admin-Username': ADMIN.username || 'admin'
+    };
+    const opts = { method, headers };
+    if (body && method === 'POST') opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    if (res.status === 401) { logout(); throw new Error('unauthorized'); }
+    return res.json();
+  };
+})();
+
+// loadTab ကို override — admins tab ထည့်
+(function() {
+  const origLoadTab = window.loadTab;
+  if (typeof origLoadTab === 'function') {
+    window.loadTab = function(name) {
+      if (name === 'admins') {
+        document.querySelectorAll('.tab').forEach(function(x) { x.classList.toggle('active', x.dataset.tab === name); });
+        document.querySelectorAll('.tab-content').forEach(function(x) { x.classList.toggle('active', x.id === 'tab-' + name); });
+        ADMIN.currentTab = name;
+        loadAdmins();
+        return;
+      }
+      origLoadTab(name);
+    };
+  }
+})();
+
+// ===== Load Admins =====
+async function loadAdmins() {
+  const box = document.getElementById('adminsList');
+  if (!box) return;
+  box.innerHTML = '<div class="empty">ခဏစောင့်ပါ...</div>';
+  try {
+    const res = await api('/api/admin/admins', null, 'GET');
+    if (!res.ok) { box.innerHTML = '<div class="empty">Error</div>'; return; }
+
+    box.innerHTML = '';
+
+    // Super Admin (env)
+    const superCard = document.createElement('div');
+    superCard.className = 'card';
+    superCard.innerHTML =
+      '<div class="card-header">' +
+      '<div>' +
+      '<div class="card-title">👑 admin <span style="background:#2ea6ff;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:6px">SUPER</span></div>' +
+      '<div class="card-meta">ENV Password ဖြင့် ဝင်ရောက်<br>Role: 🔵 Full</div>' +
+      '</div></div>';
+    box.appendChild(superCard);
+
+    // Other admins
+    res.admins.forEach(function(a) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const isMe = a.username === res.currentAdmin;
+      const statusBadge = a.active ? '<span style="background:#27ae60;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px">🟢 Active</span>' : '<span style="background:#e74c3c;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px">🔴 Off</span>';
+      const roleBadge = a.role === 'full' ? '<span style="background:#2ea6ff;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px">🔵 Full</span>' : '<span style="background:#f39c12;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px">👁 View</span>';
+      const meBadge = isMe ? '<span style="background:#6a5cff;color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:4px">YOU</span>' : '';
+
+      card.innerHTML =
+        '<div class="card-header">' +
+        '<div>' +
+        '<div class="card-title">👤 ' + a.name + ' <code style="background:#0a0c11;padding:2px 6px;border-radius:6px;font-size:11px">' + a.username + '</code>' + meBadge + '</div>' +
+        '<div class="card-meta">' + statusBadge + ' ' + roleBadge + '<br>📅 ' + new Date(a.created_at * 1000).toLocaleDateString() + '</div>' +
+        '</div></div>' +
+        '<div class="card-actions">' +
+        '<button class="btn-edit" onclick="changeAdminPwd(' + a.id + ', \'' + a.username + '\')">🔑 Password</button>' +
+        '<button class="btn-gray" onclick="toggleAdmin(' + a.id + ')">' + (a.active ? '🔴 ပိတ်' : '🟢 ဖွင့်') + '</button>' +
+        '<button class="btn-no" onclick="deleteAdmin(' + a.id + ', \'' + a.username + '\')">🗑️ Delete</button>' +
+        '</div>';
+
+      box.appendChild(card);
+    });
+  } catch(e) {
+    box.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+  }
+}
+
+// ===== Add Admin =====
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.id === 'addAdminBtn') {
+    showModal(
+      '<h2>➕ Admin အသစ်</h2>' +
+      '<label>Username (English, 3+)</label>' +
+      '<input id="newAdminUser" placeholder="aung" style="text-transform:lowercase" />' +
+      '<label>နာမည်</label>' +
+      '<input id="newAdminName" placeholder="Aung Aung" />' +
+      '<label>Password (4+)</label>' +
+      '<input id="newAdminPwd" type="password" />' +
+      '<label>Role</label>' +
+      '<select id="newAdminRole"><option value="full">🔵 Full — အကုန်လုံး</option><option value="view">👁 View — ကြည့်ရုံပဲ</option></select>' +
+      '<button class="btn-submit" onclick="confirmAddAdmin()">💾 Save</button>'
+    );
+  }
+});
+
+window.confirmAddAdmin = async function() {
+  const username = document.getElementById('newAdminUser').value.toLowerCase().trim();
+  const name = document.getElementById('newAdminName').value.trim();
+  const password = document.getElementById('newAdminPwd').value;
+  const role = document.getElementById('newAdminRole').value;
+  if (!username || username.length < 3) return toast('Username 3 လုံး+', 'error');
+  if (!password || password.length < 4) return toast('Password 4 လုံး+', 'error');
+  const res = await api('/api/admin/admins/add', { username: username, name: name || username, password: password, role: role });
+  if (res.ok) { toast('✅ Admin အသစ် ဖန်တီးပြီ', 'success'); closeModal(); loadAdmins(); }
+  else toast(res.error || 'Error', 'error');
+};
+
+window.toggleAdmin = async function(id) {
+  if (!confirm('Toggle this admin?')) return;
+  const res = await api('/api/admin/admins/toggle', { admin_id: id });
+  if (res.ok) { toast(res.active ? '🟢 Active' : '🔴 Disabled', 'success'); loadAdmins(); }
+  else toast(res.error || 'Error', 'error');
+};
+
+window.deleteAdmin = async function(id, username) {
+  if (!confirm('Admin "' + username + '" ကို ဖျက်မလား?')) return;
+  const res = await api('/api/admin/admins/delete', { admin_id: id });
+  if (res.ok) { toast('🗑️ ဖျက်ပြီ', 'success'); loadAdmins(); }
+  else toast(res.error || 'Error', 'error');
+};
+
+window.changeAdminPwd = function(id, username) {
+  showModal(
+    '<h2>🔑 Password ပြောင်း — ' + username + '</h2>' +
+    '<label>Password အသစ် (4+)</label>' +
+    '<input id="chgPwdNew" type="password" />' +
+    '<button class="btn-submit" onclick="confirmChangePwd(' + id + ')">💾 Save</button>'
+  );
+};
+
+window.confirmChangePwd = async function(id) {
+  const newPwd = document.getElementById('chgPwdNew').value;
+  if (!newPwd || newPwd.length < 4) return toast('Password 4 လုံး+', 'error');
+  const res = await api('/api/admin/admins/change-password', { admin_id: id, new_password: newPwd });
+  if (res.ok) { toast('✅ Password ပြောင်းပြီ', 'success'); closeModal(); }
+  else toast(res.error || 'Error', 'error');
+};
+
+console.log('✅ Multi-Admin loaded');

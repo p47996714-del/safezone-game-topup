@@ -392,6 +392,33 @@ const H = {
     return { ok: true, admin: { id: a.id, username: a.username, name: a.name, telegram_id: a.telegram_id, isMaster: false } };
   },
 
+
+  // ===== ADMIN ACCOUNTS =====
+  listAdmins: () => dbData.admins.slice(),
+  getAdminByUsername: (username) => dbData.admins.find(a => a.username === String(username).toLowerCase().trim()) || null,
+  getAdminById: (id) => dbData.admins.find(a => a.id === Number(id)) || null,
+  createAdmin: ({ username, name, password, role }) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    const a = { id: dbData._seq.admins++, username: String(username).toLowerCase().trim(), name: name || username, password_salt: salt, password_hash: hash, role: role || 'full', active: 1, created_at: now() };
+    dbData.admins.push(a); saveDB(); return a;
+  },
+  verifyAdminPassword: (admin, password) => {
+    if (!admin || !admin.password_salt) return false;
+    const hash = crypto.pbkdf2Sync(password, admin.password_salt, 100000, 64, 'sha512').toString('hex');
+    return hash === admin.password_hash;
+  },
+  changeAdminPassword: (id, newPassword) => {
+    const a = H.getAdminById(id);
+    if (!a) return false;
+    const salt = crypto.randomBytes(16).toString('hex');
+    a.password_salt = salt;
+    a.password_hash = crypto.pbkdf2Sync(newPassword, salt, 100000, 64, 'sha512').toString('hex');
+    saveDB(); return true;
+  },
+  toggleAdminActive: (id) => { const a = H.getAdminById(id); if (a) { a.active = a.active ? 0 : 1; saveDB(); return a.active; } return 0; },
+  removeAdmin: (id) => { dbData.admins = dbData.admins.filter(a => a.id !== Number(id)); saveDB(); },
+
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
@@ -764,21 +791,21 @@ app.post('/api/admin/admins/add', adminAuth, (req, res) => {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = hashPassword(password, salt);
   const id = H.addAdmin({ username: username, name: name, telegram_id: telegram_id, password_salt: salt, password_hash: hash });
-  H.addLog('admin-panel', 'add_admin', 'admin#' + id, username);
+  H.addLog(req.adminName || 'admin-panel', 'add_admin', 'admin#' + id, username);
   res.json({ ok: true, id });
 });
 
 app.post('/api/admin/admins/toggle', adminAuth, (req, res) => {
   const { admin_id } = req.body;
   const active = H.toggleAdmin(Number(admin_id));
-  H.addLog('admin-panel', active ? 'admin_enable' : 'admin_disable', 'admin#' + admin_id, null);
+  H.addLog(req.adminName || 'admin-panel', active ? 'admin_enable' : 'admin_disable', 'admin#' + admin_id, null);
   res.json({ ok: true, active });
 });
 
 app.post('/api/admin/admins/delete', adminAuth, (req, res) => {
   const { admin_id } = req.body;
   H.removeAdmin(Number(admin_id));
-  H.addLog('admin-panel', 'delete_admin', 'admin#' + admin_id, null);
+  H.addLog(req.adminName || 'admin-panel', 'delete_admin', 'admin#' + admin_id, null);
   res.json({ ok: true });
 });
 
