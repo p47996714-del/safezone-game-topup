@@ -39,8 +39,9 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 function defaultDB() {
   return {
     users: [], games: [], items: [], deposits: [], orders: [],
-    transactions: [], logs: [], messages: [], banners: [], admins: [],
+    transactions: [], logs: [], messages: [], banners: [],
     promoCodes: [], stocks: [], pointsHistory: [], referrals: [], spins: [],
+    admins: [],
     settings: {},
     _seq: { users: 1, items: 1, deposits: 1, orders: 1, transactions: 1, logs: 1, messages: 1, banners: 1, promoCodes: 1, stocks: 1, pointsHistory: 1, referrals: 1, spins: 1, admins: 1 }
   };
@@ -50,19 +51,14 @@ function loadDB() {
   try {
     const d = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     if (!d.messages) d.messages = [];
-    if (!d.logs) d.logs = [];
-    if (!d.admins) d.admins = [];
-    if (!d._seq.admins) d._seq.admins = 1;
-    if (!d.transactions) d.transactions = [];
-    if (!d.orders) d.orders = [];
-    if (!d.deposits) d.deposits = [];
-    if (!d.users) d.users = [];
     if (!d.banners) d.banners = [];
     if (!d.promoCodes) d.promoCodes = [];
     if (!d.stocks) d.stocks = [];
     if (!d.pointsHistory) d.pointsHistory = [];
     if (!d.referrals) d.referrals = [];
     if (!d.spins) d.spins = [];
+    if (!d.admins) d.admins = [];
+    if (!d._seq.admins) d._seq.admins = 1;
     d.users.forEach(u => { if (u.spins_available === undefined) u.spins_available = 0; });
     return d;
   } catch { return defaultDB(); }
@@ -186,9 +182,7 @@ const defaultSettings = {
   referral_invitee_bonus: '500',
   spin_enabled: '1',
   spin_per_purchase: '1',
-  spin_rewards: '[100,200,300,500,1000,2000,5000]',
-  global_discount_percent: '0',
-  global_discount_enabled: '0'
+  spin_rewards: '[100,200,300,500,1000,2000,5000]'
 };
 Object.entries(defaultSettings).forEach(([k, v]) => { if (dbData.settings[k] === undefined) dbData.settings[k] = v; });
 saveDB();
@@ -240,7 +234,7 @@ const H = {
   toggleBanner: (id) => { const b = H.getBanner(id); if (b) { b.active = b.active ? 0 : 1; saveDB(); } },
   removeBanner: (id) => { dbData.banners = dbData.banners.filter(b => b.id !== Number(id)); saveDB(); },
   addLog: (actor, action, target = null, details = null) => { dbData.logs.push({ id: dbData._seq.logs++, actor, action, target, details, created_at: now() }); if (dbData.logs.length > 5000) dbData.logs = dbData.logs.slice(-5000); saveDB(); },
-  listLogs: (limit = 100) => { if (!dbData.logs || !Array.isArray(dbData.logs)) dbData.logs = []; return dbData.logs.slice(-limit).reverse(); },
+  listLogs: (limit = 100) => dbData.logs.slice(-limit).reverse(),
   listAllUsers: () => dbData.users.slice().reverse(),
   stats: () => ({ users: dbData.users.length, pendingDeposits: dbData.deposits.filter(d => d.status === 'pending').length, pendingOrders: dbData.orders.filter(o => o.status === 'pending').length, totalDeposit: dbData.deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0), totalSales: dbData.orders.reduce((s, o) => s + o.price, 0) }),
   backup: () => ({ exported_at: new Date().toISOString(), ...dbData }),
@@ -362,36 +356,6 @@ const H = {
   },
   removeStock: (stockId) => { dbData.stocks = dbData.stocks.filter(s => s.id !== Number(stockId)); saveDB(); },
   listStocks: (itemId) => dbData.stocks.filter(s => s.item_id === Number(itemId)),
-  // ===== MULTI ADMIN =====
-  listAdmins: () => dbData.admins.slice().reverse(),
-  getAdminById: (id) => dbData.admins.find(a => a.id === Number(id)) || null,
-  getAdminByUsername: (username) => dbData.admins.find(a => a.username.toLowerCase() === String(username).toLowerCase().trim()) || null,
-  addAdmin: ({ username, name, telegram_id, password_salt, password_hash }) => {
-    const a = { id: dbData._seq.admins++, username: username.toLowerCase().trim(), name, telegram_id: String(telegram_id), password_salt, password_hash, active: 1, created_at: now() };
-    dbData.admins.push(a); saveDB(); return a.id;
-  },
-  toggleAdmin: (id) => { const a = H.getAdminById(id); if (a) { a.active = a.active ? 0 : 1; saveDB(); return a.active; } return 0; },
-  removeAdmin: (id) => { dbData.admins = dbData.admins.filter(a => a.id !== Number(id)); saveDB(); },
-  getAllAdminTelegramIds: () => {
-    const ids = [String(ADMIN_ID)];
-    dbData.admins.filter(a => a.active).forEach(a => { if (!ids.includes(String(a.telegram_id))) ids.push(String(a.telegram_id)); });
-    return ids;
-  },
-  verifyAdminLogin: (username, password) => {
-    const uname = String(username || '').toLowerCase().trim();
-    // Master admin
-    if ((uname === 'admin' || uname === '') && password === ADMIN_PASSWORD) {
-      return { ok: true, admin: { id: 0, username: 'admin', name: 'Master Admin', telegram_id: ADMIN_ID, isMaster: true } };
-    }
-    // DB admins
-    const a = H.getAdminByUsername(uname);
-    if (!a) return { ok: false, error: 'Username မတွေ့ပါ' };
-    if (!a.active) return { ok: false, error: 'Admin ပိတ်ထားပါသည်' };
-    const hash = hashPassword(password, a.password_salt || '');
-    if (hash !== a.password_hash) return { ok: false, error: 'Password မှားနေပါသည်' };
-    return { ok: true, admin: { id: a.id, username: a.username, name: a.name, telegram_id: a.telegram_id, isMaster: false } };
-  },
-
 
   // ===== ADMIN ACCOUNTS =====
   listAdmins: () => dbData.admins.slice(),
@@ -417,8 +381,7 @@ const H = {
     saveDB(); return true;
   },
   toggleAdminActive: (id) => { const a = H.getAdminById(id); if (a) { a.active = a.active ? 0 : 1; saveDB(); return a.active; } return 0; },
-  removeAdmin: (id) => { dbData.admins = dbData.admins.filter(a => a.id !== Number(id)); saveDB(); },
-
+  removeAdmin: (id) => { dbData.admins = dbData.admins.filter(a => a.id !== Number(id)); saveDB(); }
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
@@ -430,13 +393,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
   next();
 });
-
-app.get('/health', (req, res) => res.json({ ok: true, status: 'healthy', users: dbData.users.length }));
-app.get('/ping', (req, res) => res.send('pong'));
 
 function validateInitData(initData, token) {
   try {
@@ -459,14 +417,27 @@ function auth(req, res, next) {
 }
 function adminAuth(req, res, next) {
   const pwd = req.headers['x-admin-password'] || req.body?.password || req.query?.password;
-  const uname = req.headers['x-admin-username'] || req.body?.username || req.query?.username || 'admin';
-  const result = H.verifyAdminLogin(uname, pwd);
-  if (!result.ok) return res.status(401).json({ ok: false, error: result.error || 'unauthorized' });
-  req.adminUser = result.admin;
-  H.setSetting('admin_last_seen', String(now()));
-  next();
+  const username = String(req.headers['x-admin-username'] || '').toLowerCase().trim();
+  if (pwd === ADMIN_PASSWORD && (!username || username === 'admin')) {
+    req.adminName = 'admin'; req.adminRole = 'full';
+    H.setSetting('admin_last_seen', String(now()));
+    return next();
+  }
+  if (username) {
+    const admin = H.getAdminByUsername(username);
+    if (admin && admin.active && H.verifyAdminPassword(admin, pwd)) {
+      req.adminName = admin.username; req.adminRole = admin.role;
+      H.setSetting('admin_last_seen', String(now()));
+      return next();
+    }
+  }
+  return res.status(401).json({ ok: false, error: 'unauthorized' });
 }
 
+app.get('/health', (req, res) => res.json({ ok: true, status: 'healthy', users: dbData.users.length }));
+app.get('/ping', (req, res) => res.send('pong'));
+
+// ============ CUSTOMER APIs ============
 app.get('/api/config', (req, res) => {
   res.json({
     ok: true,
@@ -494,7 +465,6 @@ app.post('/api/logout', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ============ REGISTER (with Referral Code) ============
 app.post('/api/register', auth, (req, res) => {
   const { name, phone, password, password2, referral_code } = req.body;
   if (!name || name.trim().length < 2) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
@@ -509,13 +479,10 @@ app.post('/api/register', auth, (req, res) => {
   u = H.createUser({ telegram_id: req.tgUser.id, username: req.tgUser.username, first_name: req.tgUser.first_name, name: name.trim(), phone, password_salt: salt, password_hash: hash });
   u.session_active = true; saveDB();
   H.generateReferralCode(u.id);
-
-  // Referral Code ရှိရင် Process
   let refResult = null;
   if (referral_code && String(referral_code).trim()) {
     refResult = H.processReferral(u.id, String(referral_code).trim().toUpperCase());
   }
-
   saveLocalBackup('register');
   res.json({ ok: true, user: u, referral: refResult });
 });
@@ -650,7 +617,7 @@ app.post('/api/purchase', auth, async (req, res) => {
     }
     try { await bot.telegram.sendMessage(u.telegram_id, `🎉 Order #${orderId} — Auto Delivered\n\n📦 ${item.name}\n💵 ${item.price} Ks\n\n${content}`); } catch (e) {}
     if (spinsGiven > 0) { try { await bot.telegram.sendMessage(u.telegram_id, `🎰 ဝယ်ယူမှုအတွက် Spin ${spinsGiven} ခါ ရပါပြီ!\n🎯 Spin ကျန်: ${H.getAvailableSpins(u.id)} ခါ`); } catch (e) {} }
-    try { await notifyAllAdmins(`✅ Auto-Delivered\n🛒 Order #${orderId}\n👤 ${u.name}\n📦 ${item.name}`); } catch (e) {}
+    try { await bot.telegram.sendMessage(ADMIN_ID, `✅ Auto-Delivered\n🛒 Order #${orderId}\n👤 ${u.name}\n📦 ${item.name}`); } catch (e) {}
     return res.json({ ok: true, order_id: orderId, auto_delivered: true, spins_given: spinsGiven });
   }
 
@@ -674,7 +641,7 @@ app.post('/api/purchase', auth, async (req, res) => {
   let cap = `🛒 New Order #${orderId}\n👤 ${u.name || u.first_name || ''}\n📱 ${u.phone}\n🎮 ${item.game_id}\n📦 ${item.name}\n💵 ${item.price} MMK\n`;
   if (needsAccount) cap += `\n⚠️ App Premium`; else { cap += `🆔 ${game_account}`; if (server_id) cap += `\n🌐 Server: ${server_id}`; }
   try {
-    const sent = await notifyAllAdmins(cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
+    const sent = await bot.telegram.sendMessage(ADMIN_ID, cap, { reply_markup: { inline_keyboard: [[{ text: '✅ ပို့ပြီး', callback_data: `ord:ok:${orderId}` }, { text: '❌ ပယ် (Refund)', callback_data: `ord:no:${orderId}` }]] } });
     const o = H.getOrder(orderId); if (o) { o.admin_msg_id = sent.message_id; saveDB(); }
   } catch (e) {}
   if (spinsGiven > 0) { try { await bot.telegram.sendMessage(u.telegram_id, `🎰 ဝယ်ယူမှုအတွက် Spin ${spinsGiven} ခါ ရပါပြီ!\n🎯 Spin ကျန်: ${H.getAvailableSpins(u.id)} ခါ`); } catch (e) {} }
@@ -700,7 +667,6 @@ app.get('/api/my-tx', auth, (req, res) => {
   res.json({ ok: true, txs: H.listUserTx(u.id, 30) });
 });
 
-// ============ POINTS / REFERRAL / PROMO / SPIN APIs ============
 app.post('/api/points/balance', auth, (req, res) => {
   const u = H.getUserByTg(req.tgUser.id);
   if (!u) return res.json({ ok: true, points: 0, rate: 10, minRedeem: 100 });
@@ -764,49 +730,21 @@ app.post('/api/spin/play', auth, (req, res) => {
   res.json({ ok: true, reward: result.reward, newBalance: fresh.balance, remaining: result.remaining });
 });
 
-// ============ ADMIN API ============
+// ============ ADMIN APIs ============
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
-  const result = H.verifyAdminLogin(username || 'admin', password);
-  if (result.ok) return res.json({ ok: true, admin: result.admin });
-  res.status(401).json({ ok: false, error: result.error || 'Password မှားနေပါသည်' });
-});
-
-// ===== ADMIN MANAGEMENT APIs =====
-app.get('/api/admin/admins', adminAuth, (req, res) => {
-  const admins = H.listAdmins().map(a => ({ id: a.id, username: a.username, name: a.name, telegram_id: a.telegram_id, active: a.active, created_at: a.created_at }));
-  res.json({ ok: true, admins, master: { username: 'admin', name: 'Master Admin', telegram_id: ADMIN_ID } });
-});
-
-app.post('/api/admin/admins/add', adminAuth, (req, res) => {
-  const { username, name, telegram_id, password } = req.body;
-  if (!username || username.length < 3) return res.status(400).json({ ok: false, error: 'Username အနည်းဆုံး 3 လုံး' });
-  if (username.toLowerCase() === 'admin') return res.status(400).json({ ok: false, error: 'admin ဆိုတဲ့နာမည် မသုံးရပါ' });
-  if (!name) return res.status(400).json({ ok: false, error: 'နာမည် ထည့်ပါ' });
-  if (!telegram_id || !/^[0-9]+$/.test(String(telegram_id))) return res.status(400).json({ ok: false, error: 'Telegram ID မှန်ကန်စွာထည့်ပါ' });
-  if (!password || password.length < 4) return res.status(400).json({ ok: false, error: 'Password 4 လုံး+' });
-  if (H.getAdminByUsername(username)) return res.status(400).json({ ok: false, error: 'Username ရှိပြီးသား' });
-  const existing = H.listAdmins().find(a => String(a.telegram_id) === String(telegram_id));
-  if (existing) return res.status(400).json({ ok: false, error: 'Telegram ID ရှိပြီးသား' });
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = hashPassword(password, salt);
-  const id = H.addAdmin({ username: username, name: name, telegram_id: telegram_id, password_salt: salt, password_hash: hash });
-  H.addLog(req.adminName || 'admin-panel', 'add_admin', 'admin#' + id, username);
-  res.json({ ok: true, id });
-});
-
-app.post('/api/admin/admins/toggle', adminAuth, (req, res) => {
-  const { admin_id } = req.body;
-  const active = H.toggleAdmin(Number(admin_id));
-  H.addLog(req.adminName || 'admin-panel', active ? 'admin_enable' : 'admin_disable', 'admin#' + admin_id, null);
-  res.json({ ok: true, active });
-});
-
-app.post('/api/admin/admins/delete', adminAuth, (req, res) => {
-  const { admin_id } = req.body;
-  H.removeAdmin(Number(admin_id));
-  H.addLog(req.adminName || 'admin-panel', 'delete_admin', 'admin#' + admin_id, null);
-  res.json({ ok: true });
+  if (!password) return res.status(401).json({ ok: false, error: 'Password ထည့်ပါ' });
+  if (password === ADMIN_PASSWORD && (!username || username.toLowerCase().trim() === 'admin')) {
+    return res.json({ ok: true, admin: { username: 'admin', name: 'Super Admin', role: 'full', isSuper: true } });
+  }
+  if (username) {
+    const admin = H.getAdminByUsername(username);
+    if (!admin) return res.status(401).json({ ok: false, error: 'Username မတွေ့ပါ' });
+    if (!admin.active) return res.status(401).json({ ok: false, error: 'Account ပိတ်ထားပါသည်' });
+    if (!H.verifyAdminPassword(admin, password)) return res.status(401).json({ ok: false, error: 'Password မှားနေပါသည်' });
+    return res.json({ ok: true, admin: { id: admin.id, username: admin.username, name: admin.name, role: admin.role } });
+  }
+  res.status(401).json({ ok: false, error: 'Username နှင့် Password ထည့်ပါ' });
 });
 
 app.get('/api/admin/stats', adminAuth, (req, res) => {
@@ -818,6 +756,85 @@ app.get('/api/admin/stats', adminAuth, (req, res) => {
   res.json({ ok: true, stats: s, totalBalance, totalPoints, totalSpins, unreadChats, itemsCount: dbData.items.length, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
 });
 
+// ===== ADMIN MANAGEMENT =====
+app.get('/api/admin/admins', adminAuth, (req, res) => {
+  const admins = H.listAdmins().map(a => ({ id: a.id, username: a.username, name: a.name, role: a.role, active: a.active, created_at: a.created_at }));
+  res.json({ ok: true, admins, currentAdmin: req.adminName, currentRole: req.adminRole });
+});
+
+app.post('/api/admin/admins/add', adminAuth, (req, res) => {
+  if (req.adminRole !== 'full') return res.status(403).json({ ok: false, error: 'Permission မရှိပါ' });
+  const { username, name, password, role } = req.body;
+  if (!username || !password) return res.status(400).json({ ok: false, error: 'Username နှင့် Password ထည့်ပါ' });
+  if (username.length < 3) return res.status(400).json({ ok: false, error: 'Username 3 လုံးအထက်' });
+  if (!/^[a-z0-9_]+$/.test(username)) return res.status(400).json({ ok: false, error: 'Username တွင် a-z, 0-9, _ သာ' });
+  if (password.length < 4) return res.status(400).json({ ok: false, error: 'Password 4 လုံးအထက်' });
+  if (H.getAdminByUsername(username)) return res.status(400).json({ ok: false, error: 'Username ရှိပြီးသား' });
+  const a = H.createAdmin({ username, name: name || username, password, role: role || 'full' });
+  H.addLog(req.adminName, 'admin_add', 'admin:' + a.username, 'role:' + a.role);
+  res.json({ ok: true, id: a.id });
+});
+
+app.post('/api/admin/admins/toggle', adminAuth, (req, res) => {
+  if (req.adminRole !== 'full') return res.status(403).json({ ok: false, error: 'Permission မရှိပါ' });
+  const { admin_id } = req.body;
+  const a = H.getAdminById(Number(admin_id));
+  if (!a) return res.status(400).json({ ok: false, error: 'Admin not found' });
+  const newActive = H.toggleAdminActive(Number(admin_id));
+  H.addLog(req.adminName, newActive ? 'admin_enable' : 'admin_disable', 'admin:' + a.username, null);
+  res.json({ ok: true, active: newActive });
+});
+
+app.post('/api/admin/admins/delete', adminAuth, (req, res) => {
+  if (req.adminRole !== 'full') return res.status(403).json({ ok: false, error: 'Permission မရှိပါ' });
+  const { admin_id } = req.body;
+  const a = H.getAdminById(Number(admin_id));
+  if (!a) return res.status(400).json({ ok: false, error: 'Admin not found' });
+  H.removeAdmin(Number(admin_id));
+  H.addLog(req.adminName, 'admin_delete', 'admin:' + a.username, null);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/admins/change-password', adminAuth, (req, res) => {
+  if (req.adminRole !== 'full') return res.status(403).json({ ok: false, error: 'Permission မရှိပါ' });
+  const { admin_id, new_password } = req.body;
+  if (!new_password || new_password.length < 4) return res.status(400).json({ ok: false, error: 'Password 4 လုံးအထက်' });
+  const a = H.getAdminById(Number(admin_id));
+  if (!a) return res.status(400).json({ ok: false, error: 'Admin not found' });
+  H.changeAdminPassword(Number(admin_id), new_password);
+  H.addLog(req.adminName, 'admin_change_pwd', 'admin:' + a.username, null);
+  res.json({ ok: true });
+});
+
+// ===== LOGS =====
+app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 200;
+    const filter = req.query.action || '';
+    let logs = (dbData.logs || []).slice(-limit).reverse();
+    if (filter) logs = logs.filter(l => l.action && l.action.includes(filter));
+    const enriched = logs.map(l => ({
+      ...l,
+      timeFormatted: new Date(l.created_at * 1000).toLocaleString(),
+      relative: (() => {
+        const diff = now() - l.created_at;
+        if (diff < 60) return diff + 's ago';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+      })()
+    }));
+    const actions = {};
+    (dbData.logs || []).forEach(l => { if (l.action) actions[l.action] = (actions[l.action] || 0) + 1; });
+    res.json({ ok: true, logs: enriched, actions, total: (dbData.logs || []).length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/admin/logs', adminAuth, (req, res) => res.json({ ok: true, logs: H.listLogs(100) }));
+
+// ===== USERS =====
 app.get('/api/admin/users', adminAuth, (req, res) => {
   const q = String(req.query.q || '').toLowerCase();
   let users = dbData.users.slice().reverse();
@@ -830,6 +847,7 @@ app.post('/api/admin/user/balance', adminAuth, (req, res) => {
   const amt = Number(amount);
   if (!user_id || isNaN(amt)) return res.status(400).json({ ok: false, error: 'Invalid' });
   const newBal = H.addBalance(Number(user_id), amt, 'admin', note || 'Admin adjustment', amt > 0 ? 'admin_credit' : 'admin_debit');
+  H.addLog(req.adminName, 'balance_adjust', 'user#' + user_id, amt + ' → ' + newBal);
   res.json({ ok: true, newBalance: newBal });
 });
 
@@ -838,6 +856,7 @@ app.post('/api/admin/user/points', adminAuth, (req, res) => {
   const pts = Number(points);
   if (!user_id || isNaN(pts)) return res.status(400).json({ ok: false, error: 'Invalid' });
   const newPts = H.addPoints(Number(user_id), pts, 'admin_adjust', note || 'Admin');
+  H.addLog(req.adminName, 'points_adjust', 'user#' + user_id, pts + ' → ' + newPts);
   res.json({ ok: true, newPoints: newPts });
 });
 
@@ -846,6 +865,7 @@ app.post('/api/admin/user/spins', adminAuth, (req, res) => {
   const sp = Number(spins);
   if (!user_id || isNaN(sp)) return res.status(400).json({ ok: false, error: 'Invalid' });
   const newSp = H.addSpin(Number(user_id), sp);
+  H.addLog(req.adminName, 'spins_adjust', 'user#' + user_id, sp + ' → ' + newSp);
   res.json({ ok: true, newSpins: newSp });
 });
 
@@ -855,9 +875,11 @@ app.post('/api/admin/user/ban', adminAuth, (req, res) => {
   if (!u) return res.status(400).json({ ok: false, error: 'User မတွေ့ပါ' });
   u.banned = u.banned ? 0 : 1;
   saveDB();
+  H.addLog(req.adminName, u.banned ? 'ban' : 'unban', 'user#' + user_id, null);
   res.json({ ok: true, banned: !!u.banned });
 });
 
+// ===== DEPOSITS =====
 app.get('/api/admin/deposits', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.deposits.slice().reverse().slice(0, 100) : H.listDeposits(status, 100);
@@ -869,8 +891,9 @@ app.post('/api/admin/deposit/approve', adminAuth, async (req, res) => {
   const { deposit_id } = req.body;
   const d = H.getDeposit(Number(deposit_id));
   if (!d || d.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
-  const newBal = H.addBalance(d.user_id, d.amount, `dep#${d.id}`, 'Approved', 'deposit');
-  H.updateDeposit(d.id, 'approved', 'admin-web');
+  const newBal = H.addBalance(d.user_id, d.amount, 'dep#' + d.id, 'Approved', 'deposit');
+  H.updateDeposit(d.id, 'approved', req.adminName || 'admin-web');
+  H.addLog(req.adminName, 'deposit_approve', 'dep#' + d.id, d.amount + ' MMK');
   const u = H.getUserById(d.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 ${Number(newBal).toLocaleString()} MMK`); } catch(e){}
   res.json({ ok: true, newBalance: newBal });
@@ -880,12 +903,14 @@ app.post('/api/admin/deposit/reject', adminAuth, async (req, res) => {
   const { deposit_id } = req.body;
   const d = H.getDeposit(Number(deposit_id));
   if (!d || d.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
-  H.updateDeposit(d.id, 'rejected', 'admin-web');
+  H.updateDeposit(d.id, 'rejected', req.adminName || 'admin-web');
+  H.addLog(req.adminName, 'deposit_reject', 'dep#' + d.id, d.amount + ' MMK');
   const u = H.getUserById(d.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `❌ Deposit ပယ်လိုက်ပါသည်။`); } catch(e){}
   res.json({ ok: true });
 });
 
+// ===== ORDERS =====
 app.get('/api/admin/orders', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.orders.slice().reverse().slice(0, 100) : H.listOrders(status, 100);
@@ -898,6 +923,7 @@ app.post('/api/admin/order/complete', adminAuth, async (req, res) => {
   const o = H.getOrder(Number(order_id));
   if (!o || o.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
   H.updateOrder(o.id, 'completed');
+  H.addLog(req.adminName, 'order_complete', 'ord#' + o.id, o.item_name);
   const u = H.getUserById(o.user_id);
   if (account_info) { try { await bot.telegram.sendMessage(u.telegram_id, `🎉 Order #${o.id}\n\n📦 ${o.item_name}\n\n${account_info}`); } catch(e){} }
   else { try { await bot.telegram.sendMessage(u.telegram_id, `✅ Order #${o.id} ပို့ပြီး`); } catch(e){} }
@@ -908,13 +934,15 @@ app.post('/api/admin/order/refund', adminAuth, async (req, res) => {
   const { order_id } = req.body;
   const o = H.getOrder(Number(order_id));
   if (!o || o.status !== 'pending') return res.status(400).json({ ok: false, error: 'Already processed' });
-  H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund', 'refund');
+  H.addBalance(o.user_id, o.price, 'refund#' + o.id, 'Refund', 'refund');
   H.updateOrder(o.id, 'rejected');
+  H.addLog(req.adminName, 'order_refund', 'ord#' + o.id, o.price + ' MMK');
   const u = H.getUserById(o.user_id);
   try { await bot.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch(e){}
   res.json({ ok: true });
 });
 
+// ===== ITEMS =====
 app.get('/api/admin/items', adminAuth, (req, res) => {
   const items = dbData.items.map(i => ({ ...i, stock: H.getStockCount(i.id) }));
   res.json({ ok: true, items, games: dbData.games.slice() });
@@ -924,13 +952,14 @@ app.post('/api/admin/item/add', adminAuth, (req, res) => {
   const { game_id, name, price, category, auto_delivery } = req.body;
   if (!game_id || !name || !price) return res.status(400).json({ ok: false, error: 'Invalid' });
   const id = H.addItem({ game_id, name, price: Number(price), category: category || null, auto_delivery: auto_delivery ? 1 : 0 });
+  H.addLog(req.adminName, 'additem', 'item#' + id, game_id + ' ' + name);
   res.json({ ok: true, id });
 });
 
-app.post('/api/admin/item/price', adminAuth, (req, res) => { H.setItemPrice(Number(req.body.item_id), Number(req.body.price)); res.json({ ok: true }); });
+app.post('/api/admin/item/price', adminAuth, (req, res) => { H.setItemPrice(Number(req.body.item_id), Number(req.body.price)); H.addLog(req.adminName, 'setprice', 'item#' + req.body.item_id, req.body.price); res.json({ ok: true }); });
 app.post('/api/admin/item/toggle', adminAuth, (req, res) => { H.toggleItem(Number(req.body.item_id)); res.json({ ok: true }); });
 app.post('/api/admin/item/toggle-auto', adminAuth, (req, res) => { const auto = H.toggleAutoDelivery(Number(req.body.item_id)); res.json({ ok: true, auto_delivery: auto }); });
-app.post('/api/admin/item/delete', adminAuth, (req, res) => { H.removeItem(Number(req.body.item_id)); res.json({ ok: true }); });
+app.post('/api/admin/item/delete', adminAuth, (req, res) => { H.removeItem(Number(req.body.item_id)); H.addLog(req.adminName, 'delitem', 'item#' + req.body.item_id, null); res.json({ ok: true }); });
 
 app.get('/api/admin/stocks', adminAuth, (req, res) => {
   const itemId = Number(req.query.item_id);
@@ -945,22 +974,26 @@ app.post('/api/admin/stocks/add', adminAuth, (req, res) => {
   const lines = String(contents).split('\n').map(l => l.trim()).filter(l => l.length > 0);
   let added = 0;
   for (const line of lines) { H.addStock(item_id, line); added++; }
+  H.addLog(req.adminName, 'add_stock', 'item#' + item_id, added + ' accounts');
   res.json({ ok: true, added });
 });
 
 app.post('/api/admin/stocks/delete', adminAuth, (req, res) => { H.removeStock(Number(req.body.stock_id)); res.json({ ok: true }); });
 
+// ===== PROMOS =====
 app.get('/api/admin/promo-codes', adminAuth, (req, res) => res.json({ ok: true, promos: H.listPromoCodes() }));
 app.post('/api/admin/promo-codes/add', adminAuth, (req, res) => {
   const { code, type, value, max_uses, expires_at, min_purchase } = req.body;
   if (!code || !type || !value) return res.status(400).json({ ok: false, error: 'Invalid' });
   if (H.getPromoByCode(code)) return res.status(400).json({ ok: false, error: 'Code ရှိပြီးသား' });
   const id = H.addPromoCode({ code, type, value, max_uses, expires_at, min_purchase });
+  H.addLog(req.adminName, 'add_promo', 'promo#' + id, code);
   res.json({ ok: true, id });
 });
 app.post('/api/admin/promo-codes/toggle', adminAuth, (req, res) => { H.togglePromoCode(Number(req.body.promo_id)); res.json({ ok: true }); });
 app.post('/api/admin/promo-codes/delete', adminAuth, (req, res) => { H.removePromoCode(Number(req.body.promo_id)); res.json({ ok: true }); });
 
+// ===== REFERRALS =====
 app.get('/api/admin/referrals', adminAuth, (req, res) => {
   const refs = H.listReferrals(200).map(r => {
     const referrer = H.getUserById(r.referrer_id);
@@ -970,6 +1003,7 @@ app.get('/api/admin/referrals', adminAuth, (req, res) => {
   res.json({ ok: true, referrals: refs });
 });
 
+// ===== POINTS =====
 app.get('/api/admin/points-history', adminAuth, (req, res) => {
   const history = dbData.pointsHistory.slice(-200).reverse().map(p => {
     const u = H.getUserById(p.user_id);
@@ -978,6 +1012,7 @@ app.get('/api/admin/points-history', adminAuth, (req, res) => {
   res.json({ ok: true, history });
 });
 
+// ===== SPINS =====
 app.get('/api/admin/spins', adminAuth, (req, res) => {
   const spins = H.listSpins(200).map(s => {
     const u = H.getUserById(s.user_id);
@@ -986,6 +1021,7 @@ app.get('/api/admin/spins', adminAuth, (req, res) => {
   res.json({ ok: true, spins, totalReward: spins.reduce((s, x) => s + x.reward, 0) });
 });
 
+// ===== SETTINGS =====
 app.get('/api/admin/settings', adminAuth, (req, res) => res.json({ ok: true, settings: dbData.settings }));
 app.post('/api/admin/settings', adminAuth, (req, res) => {
   const { settings } = req.body;
@@ -993,9 +1029,11 @@ app.post('/api/admin/settings', adminAuth, (req, res) => {
   const allowed = ['miniapp_enabled', 'payment_kbz', 'payment_wave', 'payment_uab', 'payment_aya', 'loyalty_enabled', 'points_per_1000ks', 'points_to_ks_rate', 'points_min_redeem', 'referral_enabled', 'referral_inviter_bonus', 'referral_invitee_bonus', 'spin_enabled', 'spin_per_purchase', 'spin_rewards'];
   let count = 0;
   for (const [k, v] of Object.entries(settings)) { if (allowed.includes(k)) { H.setSetting(k, String(v)); count++; } }
+  H.addLog(req.adminName, 'update_settings', null, count + ' settings');
   res.json({ ok: true, count });
 });
 
+// ===== ANALYTICS =====
 app.get('/api/admin/analytics', adminAuth, (req, res) => {
   const users = dbData.users;
   const orders = dbData.orders;
@@ -1045,15 +1083,18 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
   const users = dbData.users.filter(u => u.telegram_id && !u.banned);
   res.json({ ok: true, total: users.length });
   (async () => {
+    let success = 0, failed = 0;
     for (const user of users) {
-      try { if (image_url) await bot.telegram.sendPhoto(user.telegram_id, image_url, { caption: message }); else await bot.telegram.sendMessage(user.telegram_id, message); } catch (e) {}
+      try { if (image_url) await bot.telegram.sendPhoto(user.telegram_id, image_url, { caption: message }); else await bot.telegram.sendMessage(user.telegram_id, message); success++; }
+      catch (e) { failed++; }
       await new Promise(r => setTimeout(r, 50));
     }
+    H.addLog(req.adminName, 'broadcast', null, success + ' sent, ' + failed + ' failed');
   })();
 });
 
 app.get('/api/admin/banners', adminAuth, (req, res) => res.json({ ok: true, banners: H.listAllBanners() }));
-app.post('/api/admin/banner/add', adminAuth, (req, res) => { const { title, subtitle, color1, color2 } = req.body; if (!title) return res.status(400).json({ ok: false, error: 'Title required' }); const id = H.addBanner({ title, subtitle, color1, color2 }); res.json({ ok: true, id }); });
+app.post('/api/admin/banner/add', adminAuth, (req, res) => { const { title, subtitle, color1, color2 } = req.body; if (!title) return res.status(400).json({ ok: false, error: 'Title required' }); const id = H.addBanner({ title, subtitle, color1, color2 }); H.addLog(req.adminName, 'add_banner', 'banner#' + id, title); res.json({ ok: true, id }); });
 app.post('/api/admin/banner/toggle', adminAuth, (req, res) => { H.toggleBanner(Number(req.body.banner_id)); res.json({ ok: true }); });
 app.post('/api/admin/banner/delete', adminAuth, (req, res) => { H.removeBanner(Number(req.body.banner_id)); res.json({ ok: true }); });
 
@@ -1078,11 +1119,10 @@ app.get('/api/admin/chats', adminAuth, (req, res) => {
   res.json({ ok: true, messages: enriched });
 });
 
-app.get('/api/admin/logs', adminAuth, (req, res) => res.json({ ok: true, logs: H.listLogs(100) }));
-
 app.post('/api/admin/toggle-miniapp', adminAuth, (req, res) => {
   const cur = H.getSetting('miniapp_enabled', '1') === '1';
   H.setSetting('miniapp_enabled', cur ? '0' : '1');
+  H.addLog(req.adminName, 'toggle_miniapp', null, cur ? 'OFF' : 'ON');
   res.json({ ok: true, enabled: !cur });
 });
 
@@ -1092,31 +1132,7 @@ app.post('/api/admin/backup', adminAuth, async (req, res) => { await sendBackupT
 const bot = new Telegraf(BOT_TOKEN);
 const isAdmin = (id) => String(id) === ADMIN_ID;
 
-async function notifyAllAdmins(text, options = {}) {
-  const adminIds = H.getAllAdminTelegramIds();
-  for (const id of adminIds) {
-    try { await bot.telegram.sendMessage(id, text, options); }
-    catch (e) { console.log('Notify ' + id + ' failed: ' + e.message); }
-  }
-}
-
-
-
 bot.use(async (ctx, next) => { if (ctx.from && isAdmin(ctx.from.id)) H.setSetting('admin_last_seen', String(now())); return next(); });
-
-async function buildAdminPanel() {
-  const s = H.stats();
-  const enabled = H.getSetting('miniapp_enabled', '1') === '1';
-  const unreadChats = (dbData.messages || []).filter(m => m.from === 'user' && !m.read_by_admin).length;
-  const text = `🛠️ Admin Panel\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💬 Chats: ${unreadChats}\n💰 Total: ${s.totalDeposit} MMK\n📦 Items: ${dbData.items.length}\n🔌 App: ${enabled ? '✅ ON' : '❌ OFF'}`;
-  const kb = Markup.inlineKeyboard([
-    [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
-    [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
-    [Markup.button.callback(enabled ? '🔴 ပိတ်မယ်' : '🟢 ဖွင့်မယ်', 'adm:toggle')],
-    [Markup.button.callback('💾 Backup', 'adm:backup')]
-  ]);
-  return { text, kb };
-}
 
 bot.start(async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
@@ -1145,7 +1161,7 @@ bot.hears('⭐ Points', async (ctx) => {
 bot.hears('🎰 Spins', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
   if (!u) return ctx.reply('⚠️ Mini App ထဲဝင်ပြီး အကောင့်ဖွင့်ပါ။');
-  ctx.reply(`🎰 Spin ကျန်: ${Number(u.spins_available || 0)} ခါ\n\n💡 ဝယ်ယူတိုင်း Spin ၁ ခါ ရပါသည်။`);
+  ctx.reply(`🎰 Spin ကျန်: ${Number(u.spins_available || 0)} ခါ`);
 });
 bot.hears('👤 အကောင့်', async (ctx) => {
   const u = H.getUserByTg(ctx.from.id);
@@ -1198,11 +1214,8 @@ bot.on('text', async (ctx, next) => {
   }
   const lastSeen = Number(H.getSetting('admin_last_seen', '0'));
   const isOnline = (now() - lastSeen) < AUTO_REPLY_TIMEOUT;
-  if (isOnline) {
-    await ctx.reply(`✅ Admin online ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin မြန်မြန် ပြန်ဖြေပါမည်။\n\n📞 @${ADMIN_CONTACT_CLEAN}`);
-  } else {
-    await ctx.reply(`🤖 Admin offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ — Admin ပြန်ဝင်လာသည်နှင့် ပြန်ဖြေပါမည်။\n\n📞 @${ADMIN_CONTACT_CLEAN}`);
-  }
+  if (isOnline) await ctx.reply(`✅ Admin online ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ\n\n📞 @${ADMIN_CONTACT_CLEAN}`);
+  else await ctx.reply(`🤖 Admin offline ဖြစ်နေပါသည်။\n\n📩 စာ ရောက်ထားပြီးပါပြီ\n\n📞 @${ADMIN_CONTACT_CLEAN}`);
   return next();
 });
 
@@ -1218,7 +1231,15 @@ async function sendBackupToAdmin(reason = 'manual') {
 
 bot.command('admin', async (ctx) => {
   if (!isAdmin(ctx.from.id)) return;
-  const { text, kb } = await buildAdminPanel();
+  const s = H.stats();
+  const enabled = H.getSetting('miniapp_enabled', '1') === '1';
+  const text = `🛠️ Admin Panel\n\n👥 Users: ${s.users}\n📥 Deposits: ${s.pendingDeposits}\n🛒 Orders: ${s.pendingOrders}\n💰 Total: ${s.totalDeposit} MMK\n🔌 App: ${enabled ? '✅' : '❌'}`;
+  const kb = Markup.inlineKeyboard([
+    [Markup.button.callback(`📥 Deposits (${s.pendingDeposits})`, 'adm:deposits')],
+    [Markup.button.callback(`🛒 Orders (${s.pendingOrders})`, 'adm:orders')],
+    [Markup.button.callback(enabled ? '🔴 ပိတ်မယ်' : '🟢 ဖွင့်မယ်', 'adm:toggle')],
+    [Markup.button.callback('💾 Backup', 'adm:backup')]
+  ]);
   await ctx.reply(text, { parse_mode: 'Markdown', ...kb });
 });
 
@@ -1227,8 +1248,6 @@ bot.action('adm:toggle', async (ctx) => {
   const cur = H.getSetting('miniapp_enabled', '1') === '1';
   H.setSetting('miniapp_enabled', cur ? '0' : '1');
   await ctx.answerCbQuery(cur ? '🔴 ပိတ်ပြီ' : '🟢 ဖွင့်ပြီ');
-  const { text, kb } = await buildAdminPanel();
-  try { await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb }); } catch (e) {}
 });
 
 bot.action('adm:backup', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await ctx.answerCbQuery('💾'); await sendBackupToAdmin('manual'); });
@@ -1254,7 +1273,7 @@ bot.action('adm:orders', async (ctx) => {
   for (const o of list) {
     const u = H.getUserById(o.user_id);
     let cap = `🛒 Order #${o.id}\n👤 ${u?.name || ''}\n📱 ${u?.phone}\n🎮 ${o.game_id}\n📦 ${o.item_name}\n💵 ${o.price} MMK\n`;
-    if (o.needs_account) cap += `⚠️ App Premium`; else { cap += `🆔 ${o.game_account}`; if (o.server_id) cap += `\n🌐 Server: ${o.server_id}`; }
+    if (o.needs_account) cap += `⚠️ App Premium`; else { cap += `🆔 ${o.game_account}`; if (o.server_id) cap += `\n🌐 ${o.server_id}`; }
     const kb = Markup.inlineKeyboard([[Markup.button.callback('✅ ပို့ပြီး', `ord:ok:${o.id}`), Markup.button.callback('❌ ပယ် (Refund)', `ord:no:${o.id}`)]]);
     const sent = await ctx.reply(cap, kb);
     const order = H.getOrder(o.id); if (order && !order.admin_msg_id) { order.admin_msg_id = sent.message_id; saveDB(); }
@@ -1265,15 +1284,14 @@ bot.action(/^dep:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const d = H.getDeposit(Number(ctx.match[1]));
   if (!d || d.status !== 'pending') return ctx.answerCbQuery('Already');
-  const newBal = H.addBalance(d.user_id, d.amount, `dep#${d.id}`, 'Approved', 'deposit');
+  const newBal = H.addBalance(d.user_id, d.amount, 'dep#' + d.id, 'Approved', 'deposit');
   H.updateDeposit(d.id, 'approved', String(ctx.from.id));
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(d.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Deposit ${Number(d.amount).toLocaleString()} MMK အတည်ပြုပြီ။\n💰 ${Number(newBal).toLocaleString()} MMK`); } catch(e) {}
-  try { await ctx.editMessageCaption(`✅ APPROVED — #${d.id} | ${d.amount} MMK`).catch(()=>{}); } catch(e) {}
+  try { await ctx.editMessageCaption(`✅ APPROVED — #${d.id}`).catch(()=>{}); } catch(e) {}
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
-
 bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const d = H.getDeposit(Number(ctx.match[1]));
@@ -1285,7 +1303,6 @@ bot.action(/^dep:no:(\d+)$/, async (ctx) => {
   try { await ctx.editMessageCaption(`❌ REJECTED — #${d.id}`).catch(()=>{}); } catch(e) {}
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
-
 bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const o = H.getOrder(Number(ctx.match[1]));
@@ -1294,60 +1311,30 @@ bot.action(/^ord:ok:(\d+)$/, async (ctx) => {
   await ctx.answerCbQuery('✅');
   const u = H.getUserById(o.user_id);
   try { await ctx.telegram.sendMessage(u.telegram_id, `✅ Order #${o.id} ပို့ပြီး`); } catch(e) {}
-  try { await ctx.editMessageText(`✅ COMPLETED — Order #${o.id}`).catch(()=>{}); } catch(e) {}
+  try { await ctx.editMessageText(`✅ COMPLETED — #${o.id}`).catch(()=>{}); } catch(e) {}
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
-
 bot.action(/^ord:no:(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx.from.id)) return ctx.answerCbQuery('❌');
   const o = H.getOrder(Number(ctx.match[1]));
   if (!o || o.status !== 'pending') return ctx.answerCbQuery('Already');
-  H.addBalance(o.user_id, o.price, `refund#${o.id}`, 'Refund', 'refund');
+  H.addBalance(o.user_id, o.price, 'refund#' + o.id, 'Refund', 'refund');
   H.updateOrder(o.id, 'rejected');
   await ctx.answerCbQuery('❌ Refunded');
   const u = H.getUserById(o.user_id);
-  try { await ctx.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch(e) {}
-  try { await ctx.editMessageText(`❌ REFUNDED — Order #${o.id}`).catch(()=>{}); } catch(e) {}
+  try { await bot.telegram.sendMessage(u.telegram_id, `❌ Order #${o.id} ပယ်ပြီး ${o.price} MMK ပြန်ထည့်ပါသည်။`); } catch(e) {}
+  try { await ctx.editMessageText(`❌ REFUNDED — #${o.id}`).catch(()=>{}); } catch(e) {}
   try { await ctx.editMessageReplyMarkup(undefined).catch(()=>{}); } catch(e) {}
 });
 
 bot.command('backupnow', async (ctx) => { if (!isAdmin(ctx.from.id)) return; await sendBackupToAdmin('manual'); await ctx.reply('✅ Backup sent'); });
-
-
-// ===== DETAILED LOGS (Admin Panel အတွက်) =====
-app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
-  try {
-    const limit = Number(req.query.limit) || 200;
-    if (!dbData.logs || !Array.isArray(dbData.logs)) dbData.logs = [];
-    const logs = dbData.logs.slice(-limit).reverse().map(l => ({
-      id: l.id,
-      actor: l.actor || 'system',
-      action: l.action || 'unknown',
-      target: l.target || null,
-      details: l.details || null,
-      created_at: l.created_at,
-      timeFormatted: new Date(l.created_at * 1000).toLocaleString(),
-      relative: (function() {
-        const diff = now() - l.created_at;
-        if (diff < 60) return diff + 's ago';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        return Math.floor(diff / 86400) + 'd ago';
-      })()
-    }));
-    const actions = {};
-    dbData.logs.forEach(l => { if (l.action) actions[l.action] = (actions[l.action] || 0) + 1; });
-    res.json({ ok: true, logs, actions, total: dbData.logs.length });
-  } catch (e) {
-    res.json({ ok: true, logs: [], actions: {}, total: 0, error: e.message });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`\n═══════════════════════════`);
   console.log(`  🛡️  SAFE ZONE — Running`);
   console.log(`  🌐 Port: ${PORT}`);
   console.log(`  👥 Users: ${dbData.users.length}`);
+  console.log(`  👤 Admins: ${dbData.admins.length}`);
   console.log(`═══════════════════════════\n`);
 });
 
