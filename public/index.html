@@ -161,6 +161,68 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .mt-progress-bar{height:100%;width:40%;background:linear-gradient(90deg,#2ea6ff,#6a5cff);border-radius:4px;animation:mtProgress 2s ease-in-out infinite}
 @keyframes mtProgress{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
 .mt-note{font-size:13px;color:#6b7280;margin-top:10px}
+
+/* SPLASH SCREEN */
+#splashScreen{position:fixed;inset:0;background:linear-gradient(160deg,#0a0c11,#141821);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.6s,visibility 0.6s}
+#splashScreen.hide{opacity:0;visibility:hidden}
+.splash-logo{font-size:90px;animation:splashBounce 1.2s ease-in-out infinite;filter:drop-shadow(0 10px 30px rgba(46,166,255,0.6))}
+@keyframes splashBounce{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(5deg)}}
+.splash-name{font-size:32px;font-weight:900;margin-top:20px;background:linear-gradient(135deg,#2ea6ff,#6a5cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:3px}
+.splash-sub{font-size:14px;color:#8a90a0;margin-top:8px;letter-spacing:6px}
+
+/* LIGHT THEME */
+body.light{background:#f4f6f9;color:#1f2937}
+body.light .app-header{background:#ffffff;border-bottom-color:#e5e7eb}
+body.light .user-name{color:#111827}
+body.light .user-phone{color:#6b7280}
+body.light .header-btn{background:#f3f4f6;color:#374151}
+body.light .dashboard-card{background:linear-gradient(135deg,#ffffff,#f9fafb);border-color:#e5e7eb}
+body.light .dc-title{color:#6b7280}
+body.light .dc-value{color:#111827}
+body.light .section-title{color:#111827}
+body.light .game-card{background:#ffffff;border-color:#e5e7eb}
+body.light .game-card .name{color:#111827}
+body.light .bottom-nav{background:#ffffff;border-top-color:#e5e7eb}
+body.light .nav-btn{color:#6b7280}
+body.light .modal-content{background:#ffffff;color:#111827}
+body.light .modal-content h2{color:#111827}
+body.light .modal-close{background:#f3f4f6;color:#6b7280}
+body.light .modal-content input,body.light .modal-content select,body.light .modal-content textarea{background:#f9fafb;color:#111827;border-color:#e5e7eb}
+body.light .modal-content label{color:#6b7280}
+body.light .item-card{background:#ffffff;border-color:#e5e7eb}
+body.light .item-card .item-name{color:#111827}
+body.light .item-row{background:#f9fafb}
+body.light .pay-btn{background:#f9fafb;color:#6b7280;border-color:#e5e7eb}
+body.light .qa-btn{background:#f9fafb;color:#374151;border-color:#e5e7eb}
+body.light .pay-info{background:#f9fafb;color:#374151}
+body.light .chat-msg.admin{background:#f3f4f6;color:#111827}
+body.light #chatMessages{background:#f9fafb}
+body.light #chatInput{background:#f9fafb;color:#111827;border-color:#e5e7eb}
+body.light .form-card{background:linear-gradient(160deg,#ffffff,#f9fafb);border-color:#e5e7eb}
+body.light .form-card h1{color:#111827}
+body.light .form-card input{background:#f9fafb!important;color:#111827!important;border-color:#e5e7eb!important}
+body.light .form-card .switch-text{color:#6b7280}
+body.light .toast{background:#1f2937}
+
+/* TOGGLE SWITCH */
+.toggle-switch{width:52px;height:28px;border-radius:14px;background:#2a2d36;position:relative;cursor:pointer;transition:background 0.3s}
+.toggle-switch.on{background:#27ae60}
+.toggle-switch .toggle-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform 0.3s;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
+.toggle-switch.on .toggle-knob{transform:translateX(24px)}
+
+/* ITEM PREVIEW */
+.preview-img{width:100%;height:180px;object-fit:contain;background:#1a1d26;border-radius:12px;margin-bottom:14px}
+.preview-name{font-size:18px;font-weight:800;color:#fff;margin-bottom:6px}
+.preview-category{font-size:12px;color:#8a90a0;margin-bottom:12px}
+.preview-price{font-size:24px;font-weight:800;color:#2ea6ff;text-align:center;padding:12px;background:#1a1d26;border-radius:10px;margin-bottom:14px}
+body.light .preview-img{background:#f9fafb}
+body.light .preview-name{color:#111827}
+body.light .preview-price{background:#f9fafb}
+
+/* RE-ORDER */
+.reorder-btn{padding:6px 12px;border-radius:8px;border:none;background:#27ae60;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+.reorder-btn:active{transform:scale(0.95)}
+
 </style>
 </head>
 <body>
@@ -199,6 +261,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
         <div class="user-phone">Safe Zone Game Topup</div>
       </div>
       <div class="header-actions">
+        <button class="header-btn" id="themeToggleBtn">🌙</button>
         <button class="header-btn" id="wishlistBtn">❤️<span class="badge hidden" id="wishBadge">0</span></button>
         <button class="header-btn" id="profileBtn">👤</button>
       </div>
@@ -270,6 +333,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <label>Server ID</label>
       <input id="buyServerId" type="text" placeholder="Server ID ထည့်ပါ" />
     </div>
+    <div id="saveGameIdRow" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <input type="checkbox" id="saveGameIdCheck" style="width:auto;margin:0" />
+      <label for="saveGameIdCheck" style="font-size:12px;color:#8a90a0;cursor:pointer;margin:0">📌 ဒီ Game ID ကို သိမ်းထားမယ်</label>
+    </div>
     <div id="fieldNote" class="hidden">
       <p class="hint" style="text-align:center;padding:12px">📌 Admin ကို ဆက်သွယ်ပါ</p>
     </div>
@@ -336,6 +403,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="modal-close" data-close>×</button>
     <h2>👤 ပရိုဖိုင်</h2>
     <div id="profileInfo"></div>
+    <div style="margin-top:14px;padding:12px;background:#1a1d26;border-radius:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:600">🔊 အသံ ဖွင့်/ပိတ်</span>
+        <div class="toggle-switch" id="soundToggle"><div class="toggle-knob"></div></div>
+      </div>
+    </div>
     <button id="logoutBtn" class="btn-primary btn-full" style="margin-top:14px;background:#e74c3c">🚪 Logout</button>
   </div>
 </div>
@@ -406,6 +479,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <button onclick="redeemPromo()">Redeem</button>
     </div>
     <div id="promoResult" style="text-align:center;font-size:14px;font-weight:600;margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="previewModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close>×</button>
+    <h2 id="previewTitle">Item</h2>
+    <div id="previewContent"></div>
   </div>
 </div>
 
