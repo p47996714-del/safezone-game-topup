@@ -923,3 +923,83 @@ document.head.appendChild(extraStyle);
 
 updateWishBadge();
 init();
+
+// ==========================================
+// TERMS / PRIVACY / ABOUT US
+// ==========================================
+const TERMS_DATA = {
+  terms: {
+    title: '📜 သတ်မှတ်ချက်များ',
+    content:
+      '<h3>၁။ အကောင့်ဖွင့်ခြင်း</h3>' +
+      '<p>အသက် ၁၃ နှစ်အထက် ဖြစ်ရပါမည်။ မှန်ကန်သော အချက်အလက်များ ဖြည့်စွက်ရပါမည်။ တစ်ဦးလျှင် အကောင့် ၁ ခုသာ ဖွင့်ခွင့်ရှိသည်။</p>' +
+      '<h3>၂။ ဝယ်ယူခြင်း</h3>' +
+      '<p>Order တင်ပြီးနောက် Admin မှ စစ်ဆေးပြီး ဆောင်ရွက်ပါမည်။ Game ID မှားထည့်ခြင်းကြောင့် ဖြစ်ပေါ်သော ဆုံးရှုံးမှုအတွက် ကျွန်ုပ်တို့ တာဝန်မခံပါ။</p>' +
+      '<h3>၃။ ငွေပြန်အမ်းခြင်း</h3>' +
+      '<p>Order မဆောင်ရွက်ရသေးပါက Refund ရနိုင်သည်။ ဆောင်ရွက်ပြီးပါက Refund မရနိုင်ပါ။</p>' +
+      '<h3>၄။ ပိတ်ပင်ခြင်း</h3>' +
+      '<p>Rule ချိုးဖောက်ပါက အကောင့်ကို ပိတ်ပင်နိုင်သည်။ Balance များ ဆုံးရှုံးနိုင်သည်။</p>' +
+      '<h3>၅။ ပြောင်းလဲမှု</h3>' +
+      '<p>သတ်မှတ်ချက်များကို ကြိုတင်အသိပေးခြင်းမရှိဘဲ ပြောင်းလဲနိုင်သည်။</p>'
+  },
+  privacy: {
+    title: '🔒 Privacy Policy',
+    content:
+      '<h3>၁။ ကောက်ခံသော အချက်အလက်များ</h3>' +
+      '<ul><li>Telegram User ID</li><li>နာမည်</li><li>ဖုန်းနံပါတ်</li><li>Order မှတ်တမ်းများ</li></ul>' +
+      '<h3>၂။ အသုံးပြုသည့် ရည်ရွယ်ချက်</h3>' +
+      '<p>Order ဆောင်ရွက်ရန်၊ Customer Service ပေးရန်၊ လုံခြုံရေးအတွက် အသုံးပြုသည်။</p>' +
+      '<h3>၃။ မျှဝေခြင်း</h3>' +
+      '<p>သင့်အချက်အလက်များကို တတိယပါတီသို့ မျှဝေမည် မဟုတ်ပါ။ ဥပဒေအရ တောင်းခံပါက မှလွဲ၍။</p>' +
+      '<h3>၄။ လုံခြုံရေး</h3>' +
+      '<p>Password များကို Hash လုပ်ပြီး သိမ်းဆည်းသည်။ သင့် Password ကို ဘယ်သူ့ကိုမှ မပေးပါနှင့်။</p>' +
+      '<h3>၅။ သင့်အခွင့်အရေး</h3>' +
+      '<p>သင့်အချက်အလက်များကို ကြည့်ရှုရန်၊ ပြင်ဆင်ရန်၊ ဖျက်ရန် Admin ကို ဆက်သွယ်နိုင်သည်။</p>'
+  }
+};
+
+window.openTermsModal = function(tab) {
+  show('termsModal');
+  switchTermsTab(tab || 'terms');
+};
+
+window.switchTermsTab = function(tab) {
+  const data = TERMS_DATA[tab] || TERMS_DATA.terms;
+  const titleEl = document.getElementById('termsTitle');
+  const contentEl = document.getElementById('termsContent');
+  const termsBtn = document.getElementById('termsTabBtn');
+  const privBtn = document.getElementById('privacyTabBtn');
+  if (titleEl) titleEl.textContent = data.title;
+  if (contentEl) contentEl.innerHTML = data.content;
+  if (termsBtn && privBtn) {
+    termsBtn.className = 'terms-tab-btn ' + (tab === 'terms' ? 'active' : 'inactive');
+    privBtn.className = 'terms-tab-btn ' + (tab === 'privacy' ? 'active' : 'inactive');
+  }
+};
+
+window.openAboutModal = function() {
+  show('aboutModal');
+  const el = document.getElementById('aboutContent');
+  if (!el) return;
+  el.innerHTML =
+    '<h3>🛡️ Safe Zone Game Topup</h3>' +
+    '<p>မြန်မာနိုင်ငံရှိ ဂိမ်းကစားသူများအတွက် လျင်မြန်လုံခြုံသော Top-up ဝန်ဆောင်မှုကို ပေးအပ်လျက်ရှိပါသည်။</p>' +
+    '<h3>🎯 ကျွန်ုပ်တို့၏ ရည်မှန်းချက်</h3>' +
+    '<ul><li>⚡ လျင်မြန်သော ဝန်ဆောင်မှု (၅ မိနစ် ~ ၁ နာရီ)</li>' +
+    '<li>🔒 လုံခြုံသော ငွေပေးချေမှု</li>' +
+    '<li>💬 ၂၄/၇ Customer Support</li>' +
+    '<li>💰 ဈေးနှုန်းသက်သာမှု</li></ul>' +
+    '<h3>🏢 ဆိုင်အချက်အလက်</h3>' +
+    '<ul><li><b>ဆိုင်အမည်:</b> Safe Zone Game Topup</li>' +
+    '<li><b>တည်နေရာ:</b> မြန်မာနိုင်ငံ</li>' +
+    '<li><b>ဝန်ဆောင်မှု:</b> MLBB, PUBG, Magic Chess, App Premium</li>' +
+    '<li><b>ငွေပေးချေမှု:</b> KBZ, Wave, UAB, AYA</li></ul>' +
+    '<h3>📞 ဆက်သွယ်ရန်</h3>' +
+    '<ul><li><b>Telegram:</b> @pyae_phyo_12327</li>' +
+    '<li><b>Chat:</b> Mini App ထဲမှ 💬 Chat</li></ul>' +
+    '<h3>🕐 ဖွင့်ချိန်</h3>' +
+    '<p>မနက် ၉:၀၀ ~ ည ၁၁:၀၀ (တစ်ပတ်လုံး)</p>' +
+    '<p style="text-align:center;color:#8a90a0;font-size:11px;margin-top:16px">© 2026 Safe Zone Game Topup. All rights reserved.</p>';
+};
+
+console.log('✅ Terms/Privacy/About loaded');
