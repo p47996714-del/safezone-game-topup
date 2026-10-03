@@ -60,6 +60,7 @@ function loadDB() {
     if (!d.admins) d.admins = [];
     if (!d._seq.admins) d._seq.admins = 1;
     d.users.forEach(u => { if (u.spins_available === undefined) u.spins_available = 0; });
+    d.items.forEach(i => { if (i.image === undefined) i.image = null; });
     return d;
   } catch { return defaultDB(); }
 }
@@ -209,14 +210,21 @@ const H = {
   listItems: (gameId = null) => dbData.items.filter(i => i.active && (!gameId || i.game_id === gameId)).sort((a, b) => a.id - b.id),
   listAllItems: () => dbData.items.slice(),
   getItem: (id) => dbData.items.find(i => i.id === Number(id)) || null,
-  addItem: ({ game_id, name, price, category = null, auto_delivery = 0 }) => {
-    const it = { id: dbData._seq.items++, game_id, name, price: Number(price), category, image: null, active: 1, sort_order: 0, auto_delivery: auto_delivery ? 1 : 0 };
+  addItem: ({ game_id, name, price, category = null, auto_delivery = 0, image = null }) => {
+    const it = { id: dbData._seq.items++, game_id, name, price: Number(price), category, image: image || null, active: 1, sort_order: 0, auto_delivery: auto_delivery ? 1 : 0 };
     dbData.items.push(it); saveDB(); return it.id;
   },
+  setItemImage: (id, imageUrl) => { const it = H.getItem(id); if (it) { it.image = imageUrl || null; saveDB(); return true; } return false; },
   setItemPrice: (id, price) => { const it = H.getItem(id); if (it) { it.price = Number(price); saveDB(); } },
   toggleItem: (id) => { const it = H.getItem(id); if (it) { it.active = it.active ? 0 : 1; saveDB(); } },
   toggleAutoDelivery: (id) => { const it = H.getItem(id); if (it) { it.auto_delivery = it.auto_delivery ? 0 : 1; saveDB(); return it.auto_delivery; } return 0; },
-  removeItem: (id) => { dbData.items = dbData.items.filter(i => i.id !== Number(id)); saveDB(); },
+  removeItem: (id) => {
+    const it = H.getItem(id);
+    if (it && it.image) {
+      try { const oldPath = path.join(UPLOAD_DIR, path.basename(it.image)); if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath); } catch(e) {}
+    }
+    dbData.items = dbData.items.filter(i => i.id !== Number(id)); saveDB();
+  },
   createDeposit: ({ user_id, amount, method, receipt_file_id, receipt_local }) => { const d = { id: dbData._seq.deposits++, user_id, amount: Number(amount), method, receipt_file_id: receipt_file_id || null, receipt_local: receipt_local || null, status: 'pending', created_at: now(), processed_at: null, processed_by: null, note: null }; dbData.deposits.push(d); saveDB(); return d.id; },
   getDeposit: (id) => dbData.deposits.find(d => d.id === Number(id)) || null,
   listDeposits: (status = null, limit = 50) => dbData.deposits.filter(d => !status || d.status === status).slice(-limit).reverse(),
@@ -357,7 +365,6 @@ const H = {
   removeStock: (stockId) => { dbData.stocks = dbData.stocks.filter(s => s.id !== Number(stockId)); saveDB(); },
   listStocks: (itemId) => dbData.stocks.filter(s => s.item_id === Number(itemId)),
 
-  // ===== ADMIN ACCOUNTS =====
   listAdmins: () => dbData.admins.slice(),
   getAdminByUsername: (username) => dbData.admins.find(a => a.username === String(username).toLowerCase().trim()) || null,
   getAdminById: (id) => dbData.admins.find(a => a.id === Number(id)) || null,
@@ -385,7 +392,19 @@ const H = {
 };
 
 function hashPassword(password, salt) { return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex'); }
+
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 * 1024 } });
+
+// image only upload (5MB limit)
+const uploadImage = multer({
+  dest: UPLOAD_DIR,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(jpe?g|png|webp|gif)$/i.test(file.mimetype);
+    if (!ok) return cb(new Error('Only image files allowed (jpg/png/webp/gif)'));
+    cb(null, true);
+  }
+});
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -756,7 +775,6 @@ app.get('/api/admin/stats', adminAuth, (req, res) => {
   res.json({ ok: true, stats: s, totalBalance, totalPoints, totalSpins, unreadChats, itemsCount: dbData.items.length, enabled: H.getSetting('miniapp_enabled', '1') === '1' });
 });
 
-// ===== ADMIN MANAGEMENT =====
 app.get('/api/admin/admins', adminAuth, (req, res) => {
   const admins = H.listAdmins().map(a => ({ id: a.id, username: a.username, name: a.name, role: a.role, active: a.active, created_at: a.created_at }));
   res.json({ ok: true, admins, currentAdmin: req.adminName, currentRole: req.adminRole });
@@ -806,7 +824,6 @@ app.post('/api/admin/admins/change-password', adminAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ===== LOGS =====
 app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
   try {
     const limit = Number(req.query.limit) || 200;
@@ -834,7 +851,6 @@ app.get('/api/admin/logs/detailed', adminAuth, (req, res) => {
 
 app.get('/api/admin/logs', adminAuth, (req, res) => res.json({ ok: true, logs: H.listLogs(100) }));
 
-// ===== USERS =====
 app.get('/api/admin/users', adminAuth, (req, res) => {
   const q = String(req.query.q || '').toLowerCase();
   let users = dbData.users.slice().reverse();
@@ -879,7 +895,6 @@ app.post('/api/admin/user/ban', adminAuth, (req, res) => {
   res.json({ ok: true, banned: !!u.banned });
 });
 
-// ===== DEPOSITS =====
 app.get('/api/admin/deposits', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.deposits.slice().reverse().slice(0, 100) : H.listDeposits(status, 100);
@@ -910,7 +925,6 @@ app.post('/api/admin/deposit/reject', adminAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ===== ORDERS =====
 app.get('/api/admin/orders', adminAuth, (req, res) => {
   const status = req.query.status || 'pending';
   const list = status === 'all' ? dbData.orders.slice().reverse().slice(0, 100) : H.listOrders(status, 100);
@@ -949,9 +963,9 @@ app.get('/api/admin/items', adminAuth, (req, res) => {
 });
 
 app.post('/api/admin/item/add', adminAuth, (req, res) => {
-  const { game_id, name, price, category, auto_delivery } = req.body;
+  const { game_id, name, price, category, auto_delivery, image } = req.body;
   if (!game_id || !name || !price) return res.status(400).json({ ok: false, error: 'Invalid' });
-  const id = H.addItem({ game_id, name, price: Number(price), category: category || null, auto_delivery: auto_delivery ? 1 : 0 });
+  const id = H.addItem({ game_id, name, price: Number(price), category: category || null, auto_delivery: auto_delivery ? 1 : 0, image: image || null });
   H.addLog(req.adminName, 'additem', 'item#' + id, game_id + ' ' + name);
   res.json({ ok: true, id });
 });
@@ -960,6 +974,49 @@ app.post('/api/admin/item/price', adminAuth, (req, res) => { H.setItemPrice(Numb
 app.post('/api/admin/item/toggle', adminAuth, (req, res) => { H.toggleItem(Number(req.body.item_id)); res.json({ ok: true }); });
 app.post('/api/admin/item/toggle-auto', adminAuth, (req, res) => { const auto = H.toggleAutoDelivery(Number(req.body.item_id)); res.json({ ok: true, auto_delivery: auto }); });
 app.post('/api/admin/item/delete', adminAuth, (req, res) => { H.removeItem(Number(req.body.item_id)); H.addLog(req.adminName, 'delitem', 'item#' + req.body.item_id, null); res.json({ ok: true }); });
+
+// ⭐⭐⭐ ITEM IMAGE UPLOAD ⭐⭐⭐
+app.post('/api/admin/item/image', adminAuth, uploadImage.single('image'), (req, res) => {
+  try {
+    const itemId = Number(req.body.item_id);
+    if (!itemId) return res.status(400).json({ ok: false, error: 'item_id required' });
+
+    const item = H.getItem(itemId);
+    if (!item) return res.status(400).json({ ok: false, error: 'Item not found' });
+
+    // ပုံမပါရင် = ဖျက်ချင်
+    if (!req.file) {
+      if (item.image) {
+        const oldPath = path.join(UPLOAD_DIR, path.basename(item.image));
+        try { if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath); } catch(e) {}
+      }
+      H.setItemImage(itemId, null);
+      H.addLog(req.adminName, 'del_item_image', 'item#' + itemId, null);
+      return res.json({ ok: true, image: null });
+    }
+
+    // ဖိုင်အသစ် — path ကို /uploads/xxx ပုံစံ ပြောင်း
+    const ext = (path.extname(req.file.originalname) || '.jpg').toLowerCase();
+    const newName = `item_${itemId}_${Date.now()}${ext}`;
+    const newPath = path.join(UPLOAD_DIR, newName);
+    fs.renameSync(req.file.path, newPath);
+
+    // ဖိုင်အဟောင်း ရှိရင် ဖျက်
+    if (item.image) {
+      const oldPath = path.join(UPLOAD_DIR, path.basename(item.image));
+      try { if (fs.existsSync(oldPath) && oldPath !== newPath) fs.unlinkSync(oldPath); } catch(e) {}
+    }
+
+    const imageUrl = `/uploads/${newName}`;
+    H.setItemImage(itemId, imageUrl);
+    H.addLog(req.adminName, 'set_item_image', 'item#' + itemId, imageUrl);
+
+    res.json({ ok: true, image: imageUrl });
+  } catch (e) {
+    LOG.error('Item image upload:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 app.get('/api/admin/stocks', adminAuth, (req, res) => {
   const itemId = Number(req.query.item_id);
@@ -980,7 +1037,6 @@ app.post('/api/admin/stocks/add', adminAuth, (req, res) => {
 
 app.post('/api/admin/stocks/delete', adminAuth, (req, res) => { H.removeStock(Number(req.body.stock_id)); res.json({ ok: true }); });
 
-// ===== PROMOS =====
 app.get('/api/admin/promo-codes', adminAuth, (req, res) => res.json({ ok: true, promos: H.listPromoCodes() }));
 app.post('/api/admin/promo-codes/add', adminAuth, (req, res) => {
   const { code, type, value, max_uses, expires_at, min_purchase } = req.body;
@@ -993,7 +1049,6 @@ app.post('/api/admin/promo-codes/add', adminAuth, (req, res) => {
 app.post('/api/admin/promo-codes/toggle', adminAuth, (req, res) => { H.togglePromoCode(Number(req.body.promo_id)); res.json({ ok: true }); });
 app.post('/api/admin/promo-codes/delete', adminAuth, (req, res) => { H.removePromoCode(Number(req.body.promo_id)); res.json({ ok: true }); });
 
-// ===== REFERRALS =====
 app.get('/api/admin/referrals', adminAuth, (req, res) => {
   const refs = H.listReferrals(200).map(r => {
     const referrer = H.getUserById(r.referrer_id);
@@ -1003,7 +1058,6 @@ app.get('/api/admin/referrals', adminAuth, (req, res) => {
   res.json({ ok: true, referrals: refs });
 });
 
-// ===== POINTS =====
 app.get('/api/admin/points-history', adminAuth, (req, res) => {
   const history = dbData.pointsHistory.slice(-200).reverse().map(p => {
     const u = H.getUserById(p.user_id);
@@ -1012,7 +1066,6 @@ app.get('/api/admin/points-history', adminAuth, (req, res) => {
   res.json({ ok: true, history });
 });
 
-// ===== SPINS =====
 app.get('/api/admin/spins', adminAuth, (req, res) => {
   const spins = H.listSpins(200).map(s => {
     const u = H.getUserById(s.user_id);
@@ -1021,7 +1074,6 @@ app.get('/api/admin/spins', adminAuth, (req, res) => {
   res.json({ ok: true, spins, totalReward: spins.reduce((s, x) => s + x.reward, 0) });
 });
 
-// ===== SETTINGS =====
 app.get('/api/admin/settings', adminAuth, (req, res) => res.json({ ok: true, settings: dbData.settings }));
 app.post('/api/admin/settings', adminAuth, (req, res) => {
   const { settings } = req.body;
@@ -1033,7 +1085,6 @@ app.post('/api/admin/settings', adminAuth, (req, res) => {
   res.json({ ok: true, count });
 });
 
-// ===== ANALYTICS =====
 app.get('/api/admin/analytics', adminAuth, (req, res) => {
   const users = dbData.users;
   const orders = dbData.orders;
