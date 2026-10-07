@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Safe Zone">
+<link rel="apple-touch-icon" href="https://i.imgur.com/iRwIfqs.png">
+<title>Safe Zone Game Topup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#0b1120;color:#fff;padding-bottom:80px;overflow-x:hidden;transition:background 0.3s}
+body.light{background:#f1f5f9;color:#0f172a}
+.header{background:rgba(30,41,59,0.95);backdrop-filter:blur(10px);padding:12px 15px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;border-bottom:1px solid #334155}
+body.light .header{background:rgba(255,255,255,0.95);border-color:#e2e8f0}
+.user-info{display:flex;align-items:center;gap:10px}
+.avatar{width:40px;height:40px;background:linear-gradient(135deg,#38bdf8,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px}
+.user-name{font-size:14px;font-weight:bold}
+.user-phone{font-size:11px;color:#94a3b8}
+.header-actions{display:flex;gap:8px;align-items:center}
+.theme-btn,.logout-btn,.bell-btn{background:rgba(56,189,248,0.15);border:1px solid #38bdf8;color:#38bdf8;font-size:14px;font-weight:bold;cursor:pointer;padding:6px 10px;border-radius:20px;transition:0.2s}
+.logout-btn{background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444;font-size:11px}
+.bell-btn{position:relative;font-size:18px;padding:6px 10px}
+.bell-badge{position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;padding:2px 5px;border-radius:10px;font-weight:bold}
+.balance-card{margin:15px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:22px;padding:24px;position:relative;overflow:hidden;box-shadow:0 12px 30px rgba(59,130,246,0.4)}
+.balance-card::after{content:'';position:absolute;right:-30px;top:-30px;width:150px;height:150px;background:rgba(255,255,255,0.1);border-radius:50%}
+.balance-label{font-size:13px;opacity:0.9;margin-bottom:5px;position:relative;z-index:1}
+.balance-amount{font-size:36px;font-weight:bold;position:relative;z-index:1}
+.balance-amount span{font-size:16px;font-weight:normal;opacity:0.9}
+.points-row{position:relative;z-index:1;margin-top:12px;display:flex;gap:15px;font-size:12px;flex-wrap:wrap;align-items:center}
+.vip-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold}
+.vip-Bronze{background:#cd7f32;color:#fff}
+.vip-Silver{background:#c0c0c0;color:#000}
+.vip-Gold{background:linear-gradient(135deg,#ffd700,#ffb700);color:#000}
+.vip-Diamond{background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff}
+.search-bar{margin:15px;position:relative}
+.search-bar input{width:100%;padding:12px 16px;border-radius:14px;border:1px solid #334155;background:rgba(30,41,59,0.8);color:#fff;font-size:14px}
+body.light .search-bar input{background:#fff;border-color:#cbd5e1;color:#0f172a}
+.search-bar input:focus{outline:none;border-color:#38bdf8}
+.category-tabs{display:flex;gap:8px;margin:0 15px 15px;overflow-x:auto;padding-bottom:5px;scrollbar-width:none}
+.category-tabs::-webkit-scrollbar{display:none}
+.category-tabs button{padding:8px 16px;background:rgba(30,41,59,0.8);color:#94a3b8;border:1px solid #334155;border-radius:20px;cursor:pointer;font-weight:bold;font-size:12px;white-space:nowrap;font-family:inherit}
+.category-tabs button.active{background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff;border-color:transparent}
+.carousel{margin:15px;position:relative;height:150px;border-radius:22px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,0.4)}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity 0.6s;display:flex;flex-direction:column;justify-content:center;padding:24px}
+.slide.active{opacity:1}
+.slide h3{font-size:23px;margin-bottom:6px;font-weight:bold}
+.slide p{font-size:13px;opacity:0.95}
+.dots{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.dot{width:6px;height:6px;background:rgba(255,255,255,0.4);border-radius:50%;transition:all 0.3s}
+.dot.active{background:#fff;width:22px;border-radius:3px}
+.flash-sale{margin:15px;padding:15px;background:linear-gradient(135deg,#ef4444,#f59e0b);border-radius:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 8px 20px rgba(239,68,68,0.4)}
+.flash-sale .fs-text{font-weight:bold;font-size:14px}
+.flash-sale .fs-timer{background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:10px;font-weight:bold;font-family:monospace;font-size:16px}
+.section-title{margin:20px 15px 10px;font-size:15px;font-weight:bold}
+.quick-grid{margin:0 15px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quick-card{background:rgba(30,41,59,0.8);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:5px;cursor:pointer;border:1px solid #334155;transition:all 0.2s;position:relative;overflow:hidden}
+body.light .quick-card{background:#fff;border-color:#e2e8f0}
+.quick-card:active{transform:scale(0.97);border-color:#38bdf8}
+.quick-card .icon{font-size:26px}
+.quick-card .label{font-size:12px;color:#94a3b8;margin-top:3px}
+.quick-card .value{font-size:17px;font-weight:bold;color:#f59e0b}
+.quick-card .value.green{color:#10b981}
+.quick-card .value.purple{color:#a855f7}
+.quick-card .value.blue{color:#38bdf8}
+.quick-card .value.red{color:#ef4444}
+.games-grid{margin:0 15px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.game-card{background:rgba(30,41,59,0.8);border-radius:16px;overflow:hidden;cursor:pointer;transition:all 0.2s;border:1px solid #334155;position:relative}
+body.light .game-card{background:#fff;border-color:#e2e8f0}
+.game-card:active{transform:scale(0.97);border-color:#38bdf8}
+.game-img{width:100%;height:120px;object-fit:cover;background:#334155;display:block}
+.game-title{padding:10px;font-size:12px;text-align:center;font-weight:600;min-height:50px;display:flex;align-items:center;justify-content:center}
+.fav-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.fav-btn.active{background:rgba(239,68,68,0.9)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(30,41,59,0.95);backdrop-filter:blur(10px);display:flex;border-top:1px solid #334155;z-index:100;padding:8px 0}
+body.light .bottom-nav{background:rgba(255,255,255,0.95);border-color:#e2e8f0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:#64748b;cursor:pointer;font-size:10px;background:none;border:none;padding:5px;font-family:inherit;transition:color 0.2s}
+.nav-item.active{color:#38bdf8}
+.nav-item .nav-icon{font-size:22px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:flex-end;justify-content:center;z-index:200}
+.modal.show{display:flex}
+.modal-box{background:#1e293b;padding:25px;border-radius:24px 24px 0 0;width:100%;max-width:500px;animation:slideUpModal 0.3s;max-height:85vh;overflow-y:auto;border-top:1px solid #334155}
+body.light .modal-box{background:#fff;color:#0f172a}
+@keyframes slideUpModal{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-box h3{margin-bottom:15px;color:#38bdf8;font-size:16px}
+.modal-box input{width:100%;padding:12px;margin-bottom:10px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:14px;font-family:inherit}
+.modal-box button{width:100%;padding:13px;background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff;border:none;border-radius:12px;font-weight:bold;cursor:pointer;font-size:14px;margin-bottom:8px}
+.modal-box button.cancel{background:#334155}
+.empty{text-align:center;padding:30px;color:#64748b;font-size:13px}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:bold;margin-left:5px}
+.status-pending{background:#eab30822;color:#eab308;border:1px solid #eab30855}
+.status-processing{background:#3b82f622;color:#3b82f6;border:1px solid #3b82f655}
+.status-completed,.status-approved{background:#22c55e22;color:#22c55e;border:1px solid #22c55e55}
+.status-rejected{background:#ef444422;color:#ef4444;border:1px solid #ef444455}
+.chat-wrap{padding:15px;display:flex;flex-direction:column;height:calc(100vh - 190px)}
+.chat-head{background:linear-gradient(135deg,#38bdf8,#a855f7);padding:15px;border-radius:16px;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.chat-head .admin-av{width:44px;height:44px;background:#fff;color:#0f172a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
+.chat-head .admin-name{font-weight:bold}
+.chat-head .admin-status{font-size:11px}
+.chat-messages{flex:1;overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;gap:8px}
+.chat-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.4;word-wrap:break-word}
+.chat-bubble.user{align-self:flex-end;background:linear-gradient(135deg,#38bdf8,#3b82f6);border-bottom-right-radius:4px}
+.chat-bubble.admin{align-self:flex-start;background:#1e293b;border:1px solid #334155;border-bottom-left-radius:4px}
+body.light .chat-bubble.admin{background:#f1f5f9;border-color:#e2e8f0;color:#0f172a}
+.chat-bubble img{max-width:100%;border-radius:8px;margin-bottom:5px;display:block}
+.chat-bubble .time{font-size:10px;opacity:0.7;margin-top:4px;text-align:right}
+.chat-input-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid #334155;align-items:center}
+.chat-input-row input[type="text"]{flex:1;padding:12px 16px;border-radius:24px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:14px}
+.chat-input-row button{width:auto;padding:12px 16px;border-radius:24px;background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff;border:none;font-weight:bold;cursor:pointer;margin:0;font-size:16px}
+.chat-input-row .attach-btn{background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid #38bdf8;padding:12px;min-width:44px}
+.payment-method{display:flex;align-items:center;gap:12px;padding:14px;background:rgba(15,23,42,0.6);border-radius:14px;margin-bottom:8px;border:1px solid #334155;cursor:pointer;transition:all 0.2s}
+body.light .payment-method{background:#f8fafc}
+.payment-method.selected{border-color:#38bdf8;background:rgba(56,189,248,0.08)}
+.pay-logo{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;color:#fff;flex-shrink:0}
+.kbz{background:linear-gradient(135deg,#005ba8,#0074d9)}
+.wave{background:linear-gradient(135deg,#f7b500,#ffdc00);color:#000 !important}
+.uab{background:linear-gradient(135deg,#003087,#0d47a1)}
+.aya{background:linear-gradient(135deg,#c8102e,#e63946)}
+.pay-info{flex:1}
+.pay-info .pay-name{font-weight:bold;font-size:14px}
+.pay-info .pay-num{font-size:12px;color:#94a3b8;margin-top:2px}
+.pay-owner{background:linear-gradient(135deg,#f59e0b,#ef4444);padding:12px 16px;border-radius:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.copy-btn{background:rgba(255,255,255,0.25);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-weight:bold}
+.faq-item{background:rgba(30,41,59,0.8);border:1px solid #334155;border-radius:14px;margin-bottom:10px;overflow:hidden}
+body.light .faq-item{background:#fff}
+.faq-item[open]{border-color:#38bdf8;background:rgba(56,189,248,0.05)}
+.faq-item summary{padding:16px;cursor:pointer;font-weight:bold;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:'＋';color:#38bdf8;font-size:18px;font-weight:bold}
+.faq-item[open] summary::after{content:'−'}
+.faq-item p{padding:0 16px 16px;color:#cbd5e1;font-size:13px;line-height:1.6}
+.maint{position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,#1e293b,#0b1120);z-index:9999;display:none;align-items:center;justify-content:center;padding:30px;text-align:center;flex-direction:column}
+.maint.show{display:flex}
+.maint-icon{font-size:80px;margin-bottom:20px;animation:mspin 4s linear infinite}
+@keyframes mspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.maint h2{font-size:24px;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:15px}
+.maint p{color:#cbd5e1;font-size:15px;line-height:1.6;max-width:400px}
+.splash{position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,#1e293b,#0b1120);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.6s,visibility 0.6s}
+.splash.hide{opacity:0;visibility:hidden}
+.splash-logo{font-size:90px;line-height:1;animation:splashIn 1s ease-out;filter:drop-shadow(0 0 30px rgba(56,189,248,0.5));position:relative;font-weight:bold}
+.splash-logo::after{content:'';position:absolute;inset:-35px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,0.25),transparent 70%);animation:glowPulse 2.5s ease-in-out infinite;z-index:-1}
+@keyframes splashIn{0%{opacity:0;transform:scale(0.85)}100%{opacity:1;transform:scale(1)}}
+@keyframes glowPulse{0%,100%{transform:scale(1);opacity:0.5}50%{transform:scale(1.15);opacity:0.85}}
+.splash-title{margin-top:35px;font-size:26px;font-weight:bold;background:linear-gradient(135deg,#38bdf8,#a855f7,#ec4899);background-size:200% 200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gradShift 2s ease infinite,fadeUp 0.8s 0.3s backwards}
+@keyframes gradShift{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.splash-sub{margin-top:8px;font-size:13px;color:#94a3b8;letter-spacing:3px;animation:fadeUp 0.8s 0.6s backwards}
+.splash-loader{margin-top:40px;width:180px;height:4px;background:#1e293b;border-radius:4px;overflow:hidden;animation:fadeUp 0.8s 0.9s backwards}
+.splash-bar{height:100%;background:linear-gradient(90deg,#38bdf8,#a855f7,#ec4899);border-radius:4px;animation:loadBar 2s ease-in-out forwards}
+@keyframes loadBar{0%{width:0}100%{width:100%}}
+.splash-stars{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.splash-star{position:absolute;color:#38bdf8;font-size:14px;opacity:0.6;animation:twinkle 2s infinite}
+@keyframes twinkle{0%,100%{opacity:0.2;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}
+.skeleton{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:skeleton 1.5s infinite;border-radius:12px}
+@keyframes skeleton{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.tour{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:5000;display:none;align-items:center;justify-content:center;padding:20px}
+.tour.show{display:flex}
+.tour-box{background:#1e293b;padding:28px;border-radius:20px;max-width:360px;text-align:center;border:1px solid #38bdf8;box-shadow:0 20px 60px rgba(56,189,248,0.3);animation:slideUp 0.4s}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.tour-icon{font-size:60px;margin-bottom:15px}
+.tour-title{font-size:18px;font-weight:bold;color:#38bdf8;margin-bottom:10px}
+.tour-text{color:#cbd5e1;font-size:14px;line-height:1.6;margin-bottom:20px}
+.tour-dots{display:flex;justify-content:center;gap:6px;margin-bottom:18px}
+.tour-dot{width:8px;height:8px;border-radius:50%;background:#334155;transition:0.3s}
+.tour-dot.active{background:#38bdf8;width:24px;border-radius:4px}
+.tour-buttons{display:flex;gap:10px}
+.tour-buttons button{flex:1;padding:12px;border:none;border-radius:12px;font-weight:bold;cursor:pointer;font-size:14px}
+.tour-skip{background:#334155;color:#fff}
+.tour-next{background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-100px);background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:14px 24px;border-radius:14px;font-weight:bold;font-size:14px;z-index:10000;transition:transform 0.4s;box-shadow:0 8px 25px rgba(16,185,129,0.4);max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 8px 25px rgba(239,68,68,0.4)}
+.toast.info{background:linear-gradient(135deg,#38bdf8,#3b82f6);box-shadow:0 8px 25px rgba(56,189,248,0.4)}
+.confetti{position:fixed;width:10px;height:10px;background:#f59e0b;z-index:10001;pointer-events:none;animation:confetti 3s linear forwards}
+@keyframes confetti{to{transform:translateY(100vh) rotate(720deg);opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="splash-stars">
+    <span class="splash-star" style="top:15%;left:20%;animation-delay:0s">✦</span>
+    <span class="splash-star" style="top:25%;right:18%;animation-delay:0.3s">✦</span>
+    <span class="splash-star" style="bottom:20%;left:15%;animation-delay:0.6s">✦</span>
+    <span class="splash-star" style="bottom:30%;right:22%;animation-delay:0.9s">✦</span>
+    <span class="splash-star" style="top:10%;right:35%;animation-delay:1.2s">✦</span>
+  </div>
+  <div class="splash-logo"><img src="https://i.imgur.com/iRwIfqs.png" style="width:140px;height:140px;object-fit:contain"></div>
+  <div class="splash-title">SAFE ZONE</div>
+  <div class="splash-sub">GAME TOPUP</div>
+  <div class="splash-loader"><div class="splash-bar"></div></div>
+</div>
+
+<div class="maint" id="maintOverlay">
+  <div class="maint-icon">🔧</div>
+  <h2>Website ပြုပြင်နေပါသည်</h2>
+  <p id="maintOverlayMsg">မကြာမီ ပြန်လည် ဖွင့်ပေးပါမည်။</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="tour" id="tour">
+  <div class="tour-box">
+    <div class="tour-icon" id="tourIcon">👋</div>
+    <div class="tour-title" id="tourTitle">ကြိုဆိုပါတယ်!</div>
+    <div class="tour-text" id="tourText">Safe Zone မှာ ဂိမ်း topup လုပ်နည်း လမ်းညွှန်ပြပါမယ်</div>
+    <div class="tour-dots" id="tourDots"></div>
+    <div class="tour-buttons">
+      <button class="tour-skip" onclick="endTour()">Skip</button>
+      <button class="tour-next" onclick="nextTour()">Next</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="user-info">
+    <div class="avatar" id="avatar">P</div>
+    <div>
+      <div class="user-name" id="uName">User</div>
+      <div class="user-phone" id="uPhone">09xxxxxxxxx</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="bell-btn" onclick="openNotif()">🔔<span class="bell-badge" id="notifBadge" style="display:none">0</span></button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div id="view-home">
+  <div class="balance-card">
+    <div class="balance-label">💰 လက်ကျန်ငွေ</div>
+    <div class="balance-amount" id="bal">0 <span>Ks</span></div>
+    <div class="points-row">
+      <div>⭐ <span id="pts">0</span> Points</div>
+      <div class="vip-badge vip-Bronze" id="vipBadge">Bronze</div>
+    </div>
+  </div>
+
+  <div class="flash-sale" id="flashSale" style="display:none">
+    <div class="fs-text">🔥 Flash Sale!</div>
+    <div class="fs-timer" id="fsTimer">00:00:00</div>
+  </div>
+
+  <div class="carousel" id="carousel"><div class="dots" id="dots"></div></div>
+
+  <div class="quick-grid">
+    
+    <div class="quick-card" onclick="openCoupon()">
+      <div class="icon">🎟️</div>
+      <div class="label">Coupon</div>
+      <div class="value red">Redeem</div>
+    </div>
+    <div class="quick-card" onclick="openLeaderboard()">
+      <div class="icon">🏆</div>
+      <div class="label">Leaderboard</div>
+      <div class="value blue">Top 10</div>
+    </div>
+    <div class="quick-card" onclick="copyRef()">
+      <div class="icon">🎯</div>
+      <div class="label">Referral</div>
+      <div class="value green">Copy</div>
+    </div>
+    <div class="quick-card" onclick="openAchievements()">
+      <div class="icon">🏅</div>
+      <div class="label">Achievements</div>
+      <div class="value" id="achCount">0</div>
+    </div>
+    <div class="quick-card" onclick="gotoChat()">
+      <div class="icon">💬</div>
+      <div class="label">Live Chat</div>
+      <div class="value purple">Chat</div>
+    </div>
+  </div>
+
+  <div style="margin:20px 15px 0;display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none">
+    <div style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#10b981;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:bold;white-space:nowrap">✅ Verified Shop</div>
+    <div style="background:rgba(56,189,248,0.15);border:1px solid #38bdf8;color:#38bdf8;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:bold;white-space:nowrap">⚡ Fast Delivery</div>
+    <div style="background:rgba(168,85,247,0.15);border:1px solid #a855f7;color:#a855f7;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:bold;white-space:nowrap">🛡️ Safe Payment</div>
+    <div style="background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:bold;white-space:nowrap">📊 <span id="orderCount">0</span>+ Orders</div>
+  </div>
+
+  <div class="search-bar">
+    <input id="searchInput" placeholder="🔍 ဂိမ်း ရှာပါ..." oninput="filterGames()">
+  </div>
+
+  <div class="category-tabs" id="categoryTabs">
+    <button class="active" onclick="setCategory('all',this)">🌐 အားလုံး</button>
+    <button onclick="setCategory('MOBA',this)">⚔️ MOBA</button>
+    <button onclick="setCategory('Battle Royale',this)">🔫 Battle Royale</button>
+    <button onclick="setCategory('Casual',this)">♟️ Casual</button>
+    <button onclick="setCategory('Premium',this)">⭐ Premium</button>
+  </div>
+
+  <div class="section-title">🎮 ဂိမ်းများ</div>
+  <div class="games-grid" id="gamesGrid"></div>
+
+  <div class="section-title">⚡ Live Activity</div>
+  <div id="liveActivity" style="margin:0 15px 15px;background:rgba(16,185,129,0.08);border:1px solid #10b981;border-radius:14px;padding:12px;font-size:12px;color:#86efac">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;background:#10b981;border-radius:50%;animation:pulse 1.5s infinite"></span>
+      <span id="liveText">Loading...</span>
+    </div>
+  </div>
+
+  <div class="section-title">🔗 Social Links</div>
+  <div class="quick-grid" style="margin-bottom:20px">
+    <div class="quick-card" onclick="openLink('facebook')" style="background:linear-gradient(135deg,rgba(24,119,242,0.2),rgba(24,119,242,0.1));border-color:#1877f2">
+      <div class="icon">📘</div>
+      <div class="label">Facebook</div>
+    </div>
+    <div class="quick-card" onclick="openLink('tiktok')" style="background:linear-gradient(135deg,rgba(0,0,0,0.4),rgba(238,29,82,0.15));border-color:#ee1d52">
+      <div class="icon">🎵</div>
+      <div class="label">TikTok</div>
+    </div>
+    <div class="quick-card" onclick="openLink('whatsapp')" style="background:linear-gradient(135deg,rgba(37,211,102,0.2),rgba(37,211,102,0.05));border-color:#25d366">
+      <div class="icon">💬</div>
+      <div class="label">WhatsApp</div>
+    </div>
+    <div class="quick-card" onclick="openLink('viber')" style="background:linear-gradient(135deg,rgba(115,96,255,0.2),rgba(115,96,255,0.05));border-color:#7360ff">
+      <div class="icon">📞</div>
+      <div class="label">Viber</div>
+    </div>
+  </div>
+</div>
+
+<div id="view-wallet" style="display:none;padding:15px">
+  <h2 style="color:#38bdf8;margin-bottom:15px;font-size:18px">💰 Wallet ဖြည့်ရန်</h2>
+  <div class="pay-owner">
+    <div>👤 <b id="payName">-</b></div>
+    <button class="copy-btn" onclick="copyNum()">📋 Copy</button>
+  </div>
+  <a id="viberBtn" href="#" style="display:block;padding:12px;background:rgba(115,96,255,0.15);color:#7360ff;border:1px solid #7360ff;border-radius:12px;font-weight:bold;cursor:pointer;text-align:center;text-decoration:none;margin-bottom:12px">📞 Viber ဆက်သွယ်ရန်</a>
+  
+  <div id="paymentList"></div>
+  <div style="background:rgba(30,41,59,0.8);padding:18px;border-radius:16px;border:1px solid #334155;margin-top:15px">
+    <input id="dAmt" type="number" placeholder="ပမာဏ (Ks)" style="width:100%;padding:12px;margin-bottom:10px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff">
+    <input id="dRef" placeholder="Transaction ID / Ref No." style="width:100%;padding:12px;margin-bottom:12px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:#fff">
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:6px">📸 ငွေလွှဲ Receipt ပုံ (Optional)</label>
+      <input type="file" id="receiptInput" accept="image/*" style="width:100%;padding:10px;border-radius:12px;border:1px dashed #38bdf8;background:rgba(56,189,248,0.05);color:#94a3b8;font-size:12px" onchange="previewReceipt(this)">
+      <div id="receiptPreview" style="margin-top:10px;display:none;text-align:center">
+        <img id="receiptImg" style="max-width:100%;max-height:200px;border-radius:12px;border:1px solid #38bdf8">
+      </div>
+    </div>
+    <button onclick="deposit()" style="width:100%;padding:13px;background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff;border:none;border-radius:12px;font-weight:bold">Deposit တင်မယ်</button>
+  </div>
+  <h3 style="margin:20px 0 10px;font-size:14px;color:#38bdf8">📜 ဖြည့်မှု မှတ်တမ်း</h3>
+  <div id="depList"></div>
+</div>
+
+<div id="view-orders" style="display:none;padding:15px">
+  <h2 style="color:#38bdf8;margin-bottom:15px;font-size:18px">📦 မှာယူမှု မှတ်တမ်း</h2>
+  <div id="ordList"></div>
+</div>
+
+<div id="view-chat" style="display:none">
+  <div class="chat-wrap">
+    <div class="chat-head">
+      <div class="admin-av">👨‍💼</div>
+      <div>
+        <div class="admin-name">Admin Support</div>
+        <div class="admin-status">🟢 Online · ချက်ချင်း ဖြေပါမယ်</div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <button class="attach-btn" onclick="document.getElementById('imgInput').click()">📎</button>
+      <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="sendImage(this)">
+      <input type="text" id="chatInput" placeholder="စာ ရေးပါ..." onkeypress="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-faq" style="display:none;padding:15px">
+  <h2 style="color:#38bdf8;margin-bottom:15px;font-size:18px">❓ FAQ</h2>
+  <div class="faq-list">
+    <details class="faq-item"><summary>💰 Deposit တင်ပြီး ဘယ်လောက်ကြာမလဲ?</summary><p>ပုံမှန် ၅-၁၅ မိနစ်အတွင်း approve လုပ်ပေးပါတယ်။</p></details>
+    <details class="faq-item"><summary>❌ Order Reject ဖြစ်ရင် ငွေပြန်ရလား?</summary><p>ရပါတယ်။ Balance ကို အလိုအလျောက် ပြန်အမ်းပါတယ်။</p></details>
+    <details class="faq-item"><summary>🆔 Player ID မှားထည့်မိရင်?</summary><p>Live Chat မှာ ချက်ချင်း အသိပေးပါ။</p></details>
+    <details class="faq-item"><summary>⏱️ Order ဘယ်လောက်ကြာမလဲ?</summary><p>များသောအားဖြင့် ၁၀-၃၀ မိနစ်အတွင်း။</p></details>
+    <details class="faq-item"><summary>🔄 Order မှားမှာမိရင်?</summary><p>Pending ဖြစ်နေတုန်း Chat မှာ ပြောပါ။</p></details>
+    <details class="faq-item"><summary>📅 Daily Check-in ဘယ်လိုလုပ်မလဲ?</summary><p>Home မှာ Daily Check-in card ကို နှိပ်ပါ။ ရက် ၇ ဆက်ရင် 500 Ks အထိရ။</p></details>
+    <details class="faq-item"><summary>🎟️ Coupon ဘယ်လိုရမလဲ?</summary><p>Facebook/TikTok မှာ ဖြန့်ပေးတယ်။ Home → Coupon → Redeem။</p></details>
+    <details class="faq-item"><summary>🔖 Ref No. မရှိရင်?</summary><p>KBZ/Wave app History မှာ ရှာပါ။</p></details>
+    <details class="faq-item"><summary>💬 Live Chat ဖွင့်ချိန်?</summary><p>၂၄ နာရီ။</p></details>
+    <details class="faq-item"><summary>💵 ငွေဖြည့်နည်း?</summary><p>KBZ / Wave / UAB / AYA → 09763442881 (Mg Pyae Phyo Kyaw)။</p></details>
+  </div>
+  <div style="margin-top:20px;padding:15px;background:rgba(30,41,59,0.8);border-radius:14px;border:1px solid #334155;text-align:center">
+    <div style="font-size:13px;color:#94a3b8;margin-bottom:10px">အဖြေ မတွေ့ဘူးလား?</div>
+    <button onclick="gotoChat()" style="padding:10px 20px;background:linear-gradient(135deg,#38bdf8,#a855f7);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer">💬 Live Chat ဖွင့်</button>
+  </div>
+</div>
+
+<div id="view-profile" style="display:none;padding:15px">
+  <h2 style="color:#38bdf8;margin-bottom:15px;font-size:18px">👤 ပရိုဖိုင်</h2>
+  <div style="background:rgba(30,41,59,0.8);padding:24px;border-radius:18px;text-align:center;border:1px solid #334155">
+    <div style="width:80px;height:80px;background:linear-gradient(135deg,#38bdf8,#a855f7);border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold" id="pAvatar">P</div>
+    <div style="font-size:20px;font-weight:bold" id="pName">User</div>
+    <div style="font-size:13px;color:#94a3b8;margin-top:5px" id="pPhone">-</div>
+    <div class="vip-badge vip-Bronze" id="pVip" style="margin-top:10px;display:inline-block;padding:4px 12px">Bronze</div>
+    <div style="margin-top:20px;padding:15px;background:#0f172a;border-radius:14px">
+      <div style="font-size:12px;color:#94a3b8">လက်ကျန်ငွေ</div>
+      <div style="font-size:26px;font-weight:bold;color:#22c55e" id="pBal">0 Ks</div>
+    </div>
+    <div style="margin-top:12px;padding:12px;background:#0f172a;border-radius:14px;font-size:13px;text-align:left">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#94a3b8">⭐ Points</span><b id="pPts">0</b></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#94a3b8">💎 Total Spent</span><b id="pSpent">0 Ks</b></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#94a3b8">🎁 Referral</span><b id="pRef" style="color:#38bdf8">-</b></div>
+    </div>
+    <div style="margin-top:12px;padding:12px;background:#0f172a;border-radius:14px;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:bold">🔐 2FA Login</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:3px">Telegram OTP နဲ့ ဝင်ရောက်မယ်</div>
+        </div>
+        <button onclick="toggle2FA()" id="twoFABtn" style="padding:8px 16px;background:#334155;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;font-size:12px">OFF</button>
+      </div>
+    </div>
+    <button onclick="openTerms()" style="width:100%;padding:12px;background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid #38bdf8;border-radius:12px;font-weight:bold;margin-top:15px;cursor:pointer">📜 Terms & Privacy</button>
+    <div style="display:flex;justify-content:center;margin-top:12px">
+      <button onclick="installPWA()" id="pwaBtn" style="padding:8px 18px;background:rgba(16,185,129,0.12);color:#10b981;border:1px solid #10b981;border-radius:20px;font-weight:bold;font-size:12px;cursor:pointer;display:inline-block">📱 Install App</button>
+    </div>
+    <button onclick="logout()" style="width:100%;padding:13px;background:rgba(127,29,29,0.9);color:#fff;border:none;border-radius:12px;font-weight:bold;margin-top:12px">Logout</button>
+  </div>
+</div>
+
+<div class="modal" id="orderModal"><div class="modal-box">
+  <h3 id="mTitle">Order</h3>
+  <input id="playerId" placeholder="Player ID / UID">
+  <button onclick="submitOrder()">ဝယ်မယ်</button>
+  <button class="cancel" onclick="closeModal('orderModal')">Cancel</button>
+</div></div>
+
+<div class="modal" id="productModal"><div class="modal-box" id="productModalBox"></div></div>
+
+<div class="modal" id="leaderModal"><div class="modal-box">
+  <h3>🏆 Top Spenders</h3>
+  <div id="leaderBox"></div>
+  <button class="cancel" onclick="closeModal('leaderModal')">Close</button>
+</div></div>
+
+<div class="modal" id="couponModal"><div class="modal-box">
+  <h3>🎟️ Coupon Redeem</h3>
+  <input id="couponCode" placeholder="Coupon Code ရိုက်ပါ" style="text-transform:uppercase;text-align:center;font-size:18px;letter-spacing:2px">
+  <button onclick="redeemCoupon()">✅ Redeem</button>
+  <button class="cancel" onclick="closeModal('couponModal')">Close</button>
+</div></div>
+
+<div class="modal" id="achModal"><div class="modal-box">
+  <h3>🏅 Achievements</h3>
+  <div id="achBox"></div>
+  <button class="cancel" onclick="closeModal('achModal')">Close</button>
+</div></div>
+
+<div class="modal" id="qrModal"><div class="modal-box">
+  <h3>📱 QR Code</h3>
+  <div style="text-align:center;padding:20px;background:#fff;border-radius:14px;margin-bottom:15px">
+    <img id="qrImg" style="width:100%;max-width:280px" alt="QR">
+  </div>
+  <div style="text-align:center;color:#94a3b8;font-size:12px;margin-bottom:15px" id="qrInfo"></div>
+  <button class="cancel" onclick="closeModal('qrModal')">Close</button>
+</div></div>
+
+<div class="modal" id="notifModal"><div class="modal-box">
+  <h3>🔔 Notifications</h3>
+  <div id="notifList"></div>
+  <button class="cancel" onclick="closeModal('notifModal')">Close</button>
+</div></div>
+
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('home',this)"><span class="nav-icon">🏠</span>ပင်မ</button>
+  <button class="nav-item" onclick="switchTab('wallet',this)"><span class="nav-icon">💰</span>ငွေဖြည့်</button>
+  <button class="nav-item" onclick="switchTab('orders',this)"><span class="nav-icon">📦</span>မှာတမ်း</button>
+  <button class="nav-item" onclick="switchTab('chat',this)"><span class="nav-icon">💬</span>Chat</button>
+  <button class="nav-item" onclick="switchTab('faq',this)"><span class="nav-icon">❓</span>FAQ</button>
+  <button class="nav-item" onclick="switchTab('profile',this)"><span class="nav-icon">👤</span>ပရိုဖိုင်</button>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/';
+const H = {'Content-Type':'application/json','Authorization':token};
+let products = [], selected = null, siteData = null, selectedPay = 'KBZ Pay';
+let currentCategory = 'all', searchTerm = '', userData = {};
+let deferredPrompt = null;
+
+setTimeout(() => {
+  const s = document.getElementById('splash');
+  if (s) { s.classList.add('hide'); setTimeout(() => s.remove(), 700); }
+}, 2200);
+
+if (localStorage.getItem('theme') === 'light') { document.body.classList.add('light'); document.getElementById('themeBtn').textContent = '☀️'; }
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  const isLight = document.body.classList.contains('light');
+  document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  haptic(20); playSound('click');
+}
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function playSound(type){
+  try {
+    if (!audioCtx) audioCtx = new AudioCtx();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if (type === 'success') { osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1); }
+    else if (type === 'error') { osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.2); }
+    else { osc.frequency.setValueAtTime(600, audioCtx.currentTime); }
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+  } catch(e){}
+}
+function haptic(ms){ if (navigator.vibrate) navigator.vibrate(ms || 30); }
+function showToast(text, type){
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.className = 'toast ' + (type || '');
+  t.classList.add('show');
+  setTimeout(() => { t.classList.remove("show"); t.textContent = ""; t.className = "toast"; }, 2500);
+}
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+async function installPWA(){
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") showToast("✅ App install ပြီးပါပြီ", "success");
+    deferredPrompt = null;
+    return;
+  }
+  alert("📱 App Install လုပ်နည်း:\n\n1. Chrome ၏ Menu (⋮) ကို နှိပ်ပါ\n2. \"Add to Home screen\" ကို ရွေးပါ\n3. \"Add\" ကို နှိပ်ပါ\n\n✅ Home screen မှာ App လို ပေါ်လာမယ်");
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.quick-card, .game-card');
+  if (btn) haptic(15);
+});
+
+async function api(url, opts={}) {
+  const r = await fetch(url, {...opts, headers: {...H, ...(opts.headers||{})}});
+  if (r.status === 401) { localStorage.clear(); location.href='/'; return {error:'unauth'}; }
+  if (r.status === 403) { showToast('Account ပိတ်ထားသည်', 'error'); return {error:'banned'}; }
+  return r.json();
+}
+
+async function checkMaint(){
+  try {
+    const d = await (await fetch('/api/maintenance')).json();
+    const ov = document.getElementById('maintOverlay');
+    if (d.enabled) {
+      document.getElementById('maintOverlayMsg').textContent = d.message || 'မကြာမီ ပြန်လည် ဖွင့်ပေးပါမည်။';
+      ov.classList.add('show');
+    } else ov.classList.remove('show');
+  } catch(e){}
+}
+setInterval(checkMaint, 15000);
+
+async function loadSite(){
+  siteData = await (await fetch('/api/site')).json();
+  document.title = siteData.siteName;
+  const car = document.getElementById('carousel');
+  const dotsBox = document.getElementById('dots');
+  siteData.banners.forEach((b,i) => {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i===0?' active':'');
+    div.style.background = b.bg;
+    div.innerHTML = `<h3>${b.title}</h3><p>${b.subtitle}</p>`;
+    car.insertBefore(div, dotsBox);
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i===0?' active':'');
+    dotsBox.appendChild(dot);
+  });
+  document.getElementById('payName').textContent = siteData.payName + ' — ' + siteData.payNumber;
+  document.getElementById('viberBtn').href = 'viber://chat?number=95' + siteData.viber.replace(/^0/,'');
+  document.getElementById('orderCount').textContent = (siteData.trustBadge?.completed || 0);
+  const pays = [
+    {name:'KBZ Pay', cls:'kbz', label:'KBZ'},
+    {name:'Wave Money', cls:'wave', label:'Wave'},
+    {name:'UAB Pay', cls:'uab', label:'UAB'},
+    {name:'AYA Pay', cls:'aya', label:'AYA'}
+  ];
+  document.getElementById('paymentList').innerHTML = pays.map(p=>`
+    <div class="payment-method ${p.name===selectedPay?'selected':''}" onclick="selectPay('${p.name}',this)">
+      <div class="pay-logo ${p.cls}">${p.label}</div>
+      <div class="pay-info"><div class="pay-name">${p.name}</div><div class="pay-num">${siteData.payNumber} · ${siteData.payName}</div></div>
+    </div>`).join('');
+}
+function selectPay(name, el){
+  selectedPay = name;
+  document.querySelectorAll('.payment-method').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+  haptic(15); playSound('click');
+}
+function copyNum(){ navigator.clipboard.writeText(siteData.payNumber).then(()=>showToast('✅ နံပါတ် ကူးပြီးပါပြီ', 'success')); }
+
+let slideIdx = 0;
+setInterval(() => {
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  if (!slides.length) return;
+  slides[slideIdx].classList.remove('active'); dots[slideIdx].classList.remove('active');
+  slideIdx = (slideIdx + 1) % slides.length;
+  slides[slideIdx].classList.add('active'); dots[slideIdx].classList.add('active');
+}, 3500);
+
+function updateFlashSale(){
+  const now = new Date();
+  const end = new Date(); end.setHours(23,59,59,999);
+  const diff = end - now;
+  if (diff > 0 && now.getHours() >= 20) {
+    document.getElementById('flashSale').style.display = 'flex';
+    const h = Math.floor(diff/3600000), m = Math.floor(diff%3600000/60000), s = Math.floor(diff%60000/1000);
+    document.getElementById('fsTimer').textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  } else {
+    document.getElementById('flashSale').style.display = 'none';
+  }
+}
+setInterval(updateFlashSale, 1000);
+
+async function loadMe(){
+  const d = await api('/api/me');
+  if (d.error) return;
+  userData = d;
+  document.getElementById('bal').innerHTML = d.balance.toLocaleString() + ' <span>Ks</span>';
+  document.getElementById('pBal').textContent = d.balance.toLocaleString() + ' Ks';
+  document.getElementById('pts').textContent = d.points || 0;
+  document.getElementById('pPts').textContent = d.points || 0;
+  document.getElementById('pSpent').textContent = (d.totalSpent||0).toLocaleString() + ' Ks';
+  document.getElementById('pRef').textContent = d.referralCode;
+  document.getElementById('uName').textContent = d.username;
+  document.getElementById('uPhone').textContent = d.phone || '09xxxxxxxxx';
+  document.getElementById('pName').textContent = d.username;
+  document.getElementById('pPhone').textContent = d.phone || '-';
+  document.getElementById('avatar').textContent = d.username.charAt(0).toUpperCase();
+  document.getElementById('pAvatar').textContent = d.username.charAt(0).toUpperCase();
+  const vip = d.vip || 'Bronze';
+  document.getElementById('vipBadge').textContent = vip;
+  document.getElementById('vipBadge').className = 'vip-badge vip-' + vip;
+  document.getElementById('pVip').textContent = vip;
+  document.getElementById('pVip').className = 'vip-badge vip-' + vip;
+  document.getElementById('achCount').textContent = (d.achievements||[]).length;
+  const btn = document.getElementById('twoFABtn');
+  if (d.twoFA) { btn.textContent = 'ON'; btn.style.background = '#22c55e'; }
+  else { btn.textContent = 'OFF'; btn.style.background = '#334155'; }
+}
+
+async function loadProducts(){
+  products = await api('/api/products');
+  renderGames();
+}
+function renderGames(){
+  const games = [...new Set(products.map(p => p.game))];
+  const imgs = siteData?.gameImages || {};
+  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
+  let filtered = games.filter(g => {
+    if (searchTerm && !g.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (currentCategory !== 'all') {
+      const p = products.find(x => x.game === g);
+      if (!p || p.category !== currentCategory) return false;
+    }
+    return true;
+  });
+  document.getElementById('gamesGrid').innerHTML = filtered.map(g => {
+    const img = imgs[g] || 'https://via.placeholder.com/200x120/334155/38bdf8?text=Game';
+    const isFav = favs.includes(g);
+    return `<div class="game-card" onclick="openGameProducts('${g.replace(/'/g,"\\'")}')">
+      <button class="fav-btn ${isFav?'active':''}" onclick="event.stopPropagation();toggleFav('${g.replace(/'/g,"\\'")}',this)">${isFav?'❤️':'🤍'}</button>
+      <img class="game-img" src="${img}" alt="${g}" onerror="this.src='https://via.placeholder.com/200x120/334155/38bdf8?text=Game'">
+      <div class="game-title">${g}</div></div>`;
+  }).join('') || '<div class="empty" style="grid-column:1/-1">ဂိမ်း မတွေ့ပါ</div>';
+}
+function filterGames(){ searchTerm = document.getElementById('searchInput').value; renderGames(); }
+function setCategory(cat, el){
+  currentCategory = cat;
+  document.querySelectorAll('.category-tabs button').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  haptic(15);
+  renderGames();
+}
+function toggleFav(game, el){
+  const favs = JSON.parse(localStorage.getItem('favs') || '[]');
+  const idx = favs.indexOf(game);
+  if (idx >= 0) { favs.splice(idx,1); el.textContent='🤍'; el.classList.remove('active'); }
+  else { favs.push(game); el.textContent='❤️'; el.classList.add('active'); showToast('⭐ Favorite ထည့်ပြီး', 'info'); }
+  localStorage.setItem('favs', JSON.stringify(favs));
+  haptic(20);
+}
+
+async function loadDeposits(){
+  const d = await api('/api/deposits');
+  document.getElementById('depList').innerHTML = d.length ? d.map(x=>`
+    <div style="background:rgba(30,41,59,0.8);padding:14px;border-radius:14px;margin-bottom:10px;font-size:13px;border:1px solid #334155">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="color:#38bdf8">${x.amount.toLocaleString()} Ks</b>
+        <span class="status-badge status-${x.status}">${x.status}</span>
+      </div>
+      <div style="font-size:12px;color:#94a3b8">${x.method} · Ref: ${x.ref}</div>
+    </div>`).join('') : '<div class="empty">မှတ်တမ်း မရှိပါ</div>';
+}
+async function loadOrders(){
+  const d = await api('/api/orders');
+  document.getElementById('ordList').innerHTML = d.length ? d.map(x=>`
+    <div style="background:rgba(30,41,59,0.8);padding:14px;border-radius:14px;margin-bottom:10px;font-size:13px;border:1px solid #334155">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="color:#38bdf8">${x.game}</b>
+        <span class="status-badge status-${x.status}">${x.status}</span>
+      </div>
+      <div>${x.product}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:4px">ID: ${x.playerId} · ${x.price.toLocaleString()} Ks</div>
+      <button onclick="reorder('${x.id}')" style="margin-top:8px;padding:8px 14px;background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid #38bdf8;border-radius:10px;font-size:12px;font-weight:bold;cursor:pointer">🔄 Reorder</button>
+    </div>`).join('') : '<div class="empty">မှတ်တမ်း မရှိပါ</div>';
+}
+
+let lastChatId = null, chatPoll = null;
+async function loadChat(){
+  const list = await api('/api/chat');
+  if (list.error) return;
+  const box = document.getElementById('chatMessages');
+  box.innerHTML = list.length ? list.map(m=>`
+    <div class="chat-bubble ${m.from}">
+      ${m.image ? `<img src="${m.image}" alt="img">` : ''}
+      ${m.text ? escapeHtml(m.text) : ''}
+      <div class="time">${new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`).join('') : '<div class="empty">Admin ဆီ စာ ရေးလို့ရပါပြီ 👋</div>';
+  const last = list[list.length-1];
+  if (last && last.id !== lastChatId) { lastChatId = last.id; box.scrollTop = box.scrollHeight; }
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function sendChat(){
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  const r = await api('/api/chat', {method:'POST', body: JSON.stringify({text})});
+  if (r.success) { loadChat(); playSound('click'); haptic(20); }
+}
+async function sendImage(input){
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('ပုံ 2MB အောက်သာ', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const r = await api('/api/chat', {method:'POST', body: JSON.stringify({text:'[📷 Image]', image: e.target.result})});
+    if (r.success) { loadChat(); showToast('✅ ပုံ ပို့ပြီးပါပြီ', 'success'); }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function switchTab(name, btn){
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.style.display='none');
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).style.display='block';
+  btn.classList.add('active');
+  haptic(15);
+  if (name==='wallet') loadDeposits();
+  if (name==='orders') loadOrders();
+  if (name==='chat') { loadChat(); lastChatId = null; startChatPoll(); } else stopChatPoll();
+}
+function gotoChat(){ switchTab('chat', document.querySelectorAll('.nav-item')[3]); }
+function startChatPoll(){ if (chatPoll) clearInterval(chatPoll); chatPoll = setInterval(loadChat, 3000); }
+function stopChatPoll(){ if (chatPoll) clearInterval(chatPoll); chatPoll = null; }
+
+function openGameProducts(game){
+  const gProducts = products.filter(p=>p.game===game);
+  const userVip = userData.vip || 'Bronze';
+  const vipDisc = {Bronze:0, Silver:2, Gold:5, Diamond:8}[userVip] || 0;
+  const list = gProducts.map(p=>{
+    const final = Math.round(p.price * (1 - vipDisc/100));
+    const disc = vipDisc > 0 ? `<div style="font-size:11px;color:#22c55e;margin-top:2px">-${vipDisc}% → ${final.toLocaleString()} Ks</div>` : '';
+    return `<div class="game-card" onclick="openModal(${p.id})" style="cursor:pointer">
+      <div style="padding:15px;text-align:center">
+        <div style="font-size:26px">${p.image}</div>
+        <div style="font-weight:bold;margin-top:5px;font-size:13px">${p.name}</div>
+        <div style="color:#22c55e;margin-top:5px;font-weight:bold">${p.price.toLocaleString()} Ks</div>
+        ${disc}
+      </div></div>`;
+  }).join('');
+  document.getElementById('productModalBox').innerHTML = `
+    <h3>${game} - ရွေးပါ</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${list}</div>
+    <button class="cancel" style="margin-top:15px" onclick="closeModal('productModal')">Close</button>`;
+  document.getElementById('productModal').classList.add('show');
+}
+function openModal(id){
+  selected = products.find(p=>p.id===id);
+  document.getElementById('mTitle').textContent = selected.name + ' - ' + selected.price.toLocaleString() + ' Ks';
+  document.getElementById('playerId').value = '';
+  closeModal('productModal');
+  document.getElementById('orderModal').classList.add('show');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+async function submitOrder(){
+  const playerId = document.getElementById('playerId').value.trim();
+  if (!playerId) return showToast('Player ID ဖြည့်ပါ', 'error');
+  const d = await api('/api/order', {method:'POST', body: JSON.stringify({productId: selected.id, playerId})});
+  if (d.success){
+    playSound('success'); haptic(100);
+    confetti();
+    showToast('✅ Order တင်ပြီးပါပြီ', 'success');
+    closeModal('orderModal');
+    loadMe(); loadOrders();
+  } else { playSound('error'); showToast('❌ ' + d.error, 'error'); }
+}
+async function reorder(orderId){
+  if (!confirm('ဒီ order ကို ပြန်မှာမှာလား?')) return;
+  const d = await api('/api/reorder', {method:'POST', body: JSON.stringify({orderId})});
+  if (d.success) { showToast('✅ Reorder ပြီးပါပြီ', 'success'); loadMe(); loadOrders(); }
+  else showToast('❌ ' + d.error, 'error');
+}
+
+function previewReceipt(input){
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast("ပုံ 2MB အောက်သာ", "error"); input.value = ""; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("receiptImg").src = e.target.result;
+    document.getElementById("receiptPreview").style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deposit(){
+  const amount = document.getElementById('dAmt').value;
+  const ref = document.getElementById('dRef').value.trim();
+  if (!amount || amount < 1000) return showToast('အနည်းဆုံး 1000 Ks', 'error');
+  if (!ref) return showToast('Transaction ID ဖြည့်ပါ', 'error');
+  let receipt = null;
+  const receiptImg = document.getElementById("receiptImg");
+  if (receiptImg && receiptImg.src && document.getElementById("receiptPreview").style.display !== "none") receipt = receiptImg.src;
+  const d = await api("/api/deposit", {method:"POST", body: JSON.stringify({amount, method:selectedPay, ref, receipt})});
+  if (d.success){
+    playSound('success'); haptic(60);
+    showToast('✅ ' + d.message, 'success');
+    document.getElementById('dAmt').value=''; document.getElementById('dRef').value='';
+    loadDeposits();
+  } else { playSound('error'); showToast('❌ ' + d.error, 'error'); }
+}
+
+
+
+function openCoupon(){
+  document.getElementById('couponCode').value = '';
+  document.getElementById('couponModal').classList.add('show');
+  setTimeout(() => document.getElementById('couponCode').focus(), 300);
+}
+async function redeemCoupon(){
+  const code = document.getElementById('couponCode').value.trim();
+  if (!code) return showToast('Code ရိုက်ပါ', 'error');
+  const d = await api('/api/redeem-coupon', {method:'POST', body: JSON.stringify({code})});
+  if (d.success) {
+    playSound('success'); haptic(60); confetti();
+    showToast(`✅ +${d.reward.toLocaleString()} Ks!`, 'success');
+    closeModal('couponModal'); loadMe();
+  } else { playSound('error'); showToast('❌ ' + d.error, 'error'); }
+}
+
+async function openLeaderboard(){
+  const list = await api('/api/leaderboard');
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('leaderBox').innerHTML = list.length ? list.map((u,i)=>`
+    <div style="display:flex;justify-content:space-between;padding:12px;background:rgba(15,23,42,0.6);border-radius:12px;margin-bottom:8px;border:1px solid #334155">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px;width:28px">${medals[i]||('#'+(i+1))}</span>
+        <div>
+          <b style="color:#38bdf8">${u.username}</b>
+          <div style="font-size:10px"><span class="vip-badge vip-${u.vip}">${u.vip}</span></div>
+        </div>
+      </div>
+      <b style="color:#22c55e">${u.total.toLocaleString()} Ks</b>
+    </div>`).join('') : '<div class="empty">ဒေတာ မရှိပါ</div>';
+  document.getElementById('leaderModal').classList.add('show');
+}
+
+const ACH_DEFS = {
+  first_order: {icon:'🎯', name:'First Order', desc:'ပထမဆုံး ဝယ်ပြီးပါပြီ'},
+  ten_orders: {icon:'🔟', name:'10 Orders', desc:'၁၀ ခါ ဝယ်ပြီးပါပြီ'},
+  big_spender: {icon:'💎', name:'Big Spender', desc:'100,000 Ks ဝယ်ပြီးပါပြီ'}
+};
+function openAchievements(){
+  const achs = userData.achievements || [];
+  const all = Object.keys(ACH_DEFS);
+  document.getElementById('achBox').innerHTML = all.map(k => {
+    const has = achs.includes(k);
+    const d = ACH_DEFS[k];
+    return `<div style="display:flex;gap:12px;padding:14px;background:${has?'rgba(34,197,94,0.1)':'rgba(15,23,42,0.6)'};border-radius:12px;margin-bottom:10px;border:1px solid ${has?'#22c55e':'#334155'};opacity:${has?1:0.5}">
+      <div style="font-size:32px">${d.icon}</div>
+      <div>
+        <div style="font-weight:bold;font-size:14px">${d.name}</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:3px">${d.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('achModal').classList.add('show');
+}
+
+async function toggle2FA(){
+  const d = await api('/api/toggle-2fa', {method:'POST'});
+  if (d.success) {
+    showToast(d.twoFA ? '✅ 2FA ON' : '🔓 2FA OFF', 'success');
+    loadMe();
+  } else showToast('❌ ' + d.error, 'error');
+}
+
+async function openNotif(){
+  const list = await api('/api/notifications');
+  document.getElementById('notifList').innerHTML = list.length ? list.map(n=>`
+    <div style="padding:14px;background:${n.read?'rgba(15,23,42,0.4)':'rgba(56,189,248,0.08)'};border-radius:12px;margin-bottom:8px;border:1px solid ${n.read?'#334155':'#38bdf8'}">
+      <div style="font-size:13px">${escapeHtml(n.message)}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:5px">${new Date(n.createdAt).toLocaleString()}</div>
+    </div>`).join('') : '<div class="empty">Notification မရှိပါ</div>';
+  document.getElementById('notifModal').classList.add('show');
+  await api('/api/notifications/read', {method:'POST'});
+  loadMe();
+}
+
+function copyRef(){
+  const code = userData.referralCode || '';
+  navigator.clipboard.writeText(code).then(()=>showToast('✅ Referral: ' + code, 'success')).catch(()=>showToast('Code: ' + code, 'info'));
+}
+
+function openLink(platform){
+  const map = {
+    facebook: siteData.facebook,
+    tiktok: siteData.tiktok,
+    whatsapp: 'https://wa.me/95' + siteData.whatsapp.replace(/^0/,''),
+    viber: 'viber://chat?number=95' + siteData.viber.replace(/^0/,'')
+  };
+  window.open(map[platform], '_blank');
+  haptic(20);
+}
+
+function showQR(){
+  const num = siteData.payNumber;
+  document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(num);
+  document.getElementById('qrInfo').innerHTML = `📱 ${num}<br>👤 ${siteData.payName}`;
+  document.getElementById('qrModal').classList.add('show');
+}
+
+function openTerms(){ window.open('/terms.html', '_blank'); }
+
+const TOUR_STEPS = [
+  { icon:'👋', title:'Safe Zone မှ ကြိုဆိုပါတယ်!', text:'Game Topup လုပ်နည်း ၃ ဆင့် လမ်းညွှန်ပြပါမယ်။' },
+  { icon:'💰', title:'Step 1: Wallet ဖြည့်', text:'ငွေဖြည့် tab မှာ KBZ/Wave/UAB/AYA နဲ့ balance ဖြည့်ပါ။' },
+  { icon:'🎮', title:'Step 2: ဂိမ်း ရွေး', text:'ဂိမ်း ရွေးပြီး Player ID ထည့်ကာ Order တင်ပါ။' },
+  { icon:'⚡', title:'Step 3: ချက်ချင်း ရ', text:'Admin approve ပြီးရင် ဂိမ်းထဲ ငွေဝင်ပါပြီ!' },
+  { icon:'🎁', title:'Bonus Features', text:'Daily Check-in, Coupon, Leaderboard နဲ့ Points တွေ ရှိသေးတယ်!' }
+];
+let tourIdx = 0;
+function startTour(){
+  if (localStorage.getItem('tourSeen')) return;
+  tourIdx = 0;
+  document.getElementById('tourDots').innerHTML = TOUR_STEPS.map((s,i) =>
+    `<div class="tour-dot ${i===0?'active':''}"></div>`).join('');
+  updateTour();
+  document.getElementById('tour').classList.add('show');
+}
+function updateTour(){
+  const s = TOUR_STEPS[tourIdx];
+  document.getElementById('tourIcon').textContent = s.icon;
+  document.getElementById('tourTitle').textContent = s.title;
+  document.getElementById('tourText').textContent = s.text;
+  document.querySelectorAll('.tour-dot').forEach((d,i) => d.classList.toggle('active', i === tourIdx));
+  document.querySelector('.tour-next').textContent = tourIdx === TOUR_STEPS.length-1 ? 'ပြီးပါပြီ' : 'Next';
+}
+function nextTour(){
+  tourIdx++;
+  if (tourIdx >= TOUR_STEPS.length) return endTour();
+  updateTour(); haptic(15);
+}
+function endTour(){
+  document.getElementById('tour').classList.remove('show');
+  localStorage.setItem('tourSeen', '1');
+  haptic(30);
+}
+
+function confetti(){
+  const colors = ['#38bdf8','#a855f7','#f59e0b','#22c55e','#ec4899'];
+  for (let i = 0; i < 30; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + '%';
+    c.style.top = '-10px';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.animationDelay = Math.random() * 0.5 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3500);
+  }
+}
+
+const LIVE_MSGS = [
+  'MgMg က Mobile Legends 86 Diamonds ဝယ်သွားတယ်',
+  'AungAung က PUBG 325 UC ဝယ်သွားတယ်',
+  'SuSu က 5,000 Ks deposit လုပ်သွားတယ်',
+  'KyawKyaw က Magic Chess 100 Diamonds ဝယ်သွားတယ်',
+  'ZinZin က 10,000 Ks deposit လုပ်သွားတယ်'
+];
+let liveIdx = 0;
+setInterval(() => {
+  document.getElementById('liveText').textContent = LIVE_MSGS[liveIdx] + ' · ' + Math.floor(Math.random()*30+1) + ' မိနစ်က';
+  liveIdx = (liveIdx + 1) % LIVE_MSGS.length;
+}, 5000);
+
+async function logout(){
+  if (!confirm('Logout လုပ်မှာသေချာလား?')) return;
+  await api('/api/logout', {method:'POST'});
+  localStorage.clear(); location.href = '/';
+}
+
+(async () => {
+  await checkMaint();
+  await loadSite();
+  await loadMe();
+  await loadProducts();
+  updateFlashSale();
+  setTimeout(startTour, 2500);
+  setInterval(loadMe, 15000);
+  setInterval(async () => {
+    try {
+      const d = await api('/api/me');
+      if (d.unread > 0) {
+        const b = document.getElementById('notifBadge');
+        b.textContent = d.unread; b.style.display = 'inline-block';
+      } else document.getElementById('notifBadge').style.display = 'none';
+    } catch(e){}
+  }, 10000);
+})();
+</script>
+</body>
+</html>
